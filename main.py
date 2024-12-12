@@ -88,24 +88,54 @@ def get_months():
 # scale routes
 
 
-@app.get("/scale")
-def get_scale():
-    return handle_get_scale()
-
-
 @app.get("/scale/worker/{worker_id}/month/{month_id}")
 def get_scale_by_worker_and_month(worker_id: int, month_id: int):
-    return handle_get_scale_by_worker_and_month(worker_id, month_id)
+    with Session(engine) as session:
+        statement = select(Scale).where(
+            Scale.worker_id == worker_id, Scale.month_id == month_id
+        )
+
+        scale = session.exec(statement).first()
+    return scale
 
 
 @app.post("/scale")
-def post_scale(scale: Scale):
-    return handle_post_scale(scale)
+def post_scale(formData: Scale):
+    with Session(engine) as session:
+        session.add(formData)
+
+        session.commit()
+
+        session.refresh(formData)
+    return formData
 
 
 @app.put("/scale/{id}")
-def put_scale(id: int, scale: Scale):
-    return handle_put_scale(id, scale)
+def put_scale(id: int, formData: Scale):
+    with Session(engine) as session:
+        scale = session.get(Scale, id)
+
+        scale.date = formData.date
+
+        scale.worker_id = formData.worker_id
+
+        scale.month_id = formData.month_id
+
+        session.add(scale)
+
+        session.commit()
+
+        session.refresh(scale)
+    return scale
+
+
+@app.delete("/scale/{id}")
+def delete_scale(id: int):
+    with Session(engine) as session:
+        scale = session.get(Scale, id)
+        session.delete(scale)
+        session.commit()
+    return {"message": "Scale deleted successfully"}
 
 
 # subsidiaries routes

@@ -46,7 +46,6 @@ from seeds.seed_all import (
     seed_subsidiaries,
     seed_users,
 )
-from services.firebase import initialize_firebase
 from controllers.turn import handle_get_turns
 from controllers.workers import handle_get_workers_by_turn_and_subsidiarie
 from models.month import Month
@@ -55,8 +54,6 @@ from controllers.months import handle_get_months
 load_dotenv()
 
 app = FastAPI()
-
-bucket = initialize_firebase()
 
 add_cors_middleware(app)
 
@@ -76,19 +73,64 @@ def docs():
 
 # months routes
 
+
 @app.get("/months")
 def get_months():
     return handle_get_months()
 
+
 # scale routes
 
 
-# @app.get("/scales/history/subsidiarie/{subsidiarie_id}")
-# def get_scales_history(subsidiarie_id: int):
-#     return handle_get_scales_history(subsidiarie_id)
+@app.get("/scale/worker/{worker_id}/month/{month_id}")
+def get_scale_by_worker_and_month(worker_id: int, month_id: int):
+    with Session(engine) as session:
+        statement = select(Scale).where(
+            Scale.worker_id == worker_id, Scale.month_id == month_id
+        )
+
+        scale = session.exec(statement).first()
+    return scale
 
 
-# xx
+@app.post("/scale")
+def post_scale(formData: Scale):
+    with Session(engine) as session:
+        session.add(formData)
+
+        session.commit()
+
+        session.refresh(formData)
+    return formData
+
+
+@app.put("/scale/{id}")
+def put_scale(id: int, formData: Scale):
+    with Session(engine) as session:
+        scale = session.get(Scale, id)
+
+        scale.date = formData.date
+
+        scale.worker_id = formData.worker_id
+
+        scale.month_id = formData.month_id
+
+        session.add(scale)
+
+        session.commit()
+
+        session.refresh(scale)
+    return scale
+
+
+@app.delete("/scale/{id}")
+def delete_scale(id: int):
+    with Session(engine) as session:
+        scale = session.get(Scale, id)
+        session.delete(scale)
+        session.commit()
+    return {"message": "Scale deleted successfully"}
+
 
 # subsidiaries routes
 

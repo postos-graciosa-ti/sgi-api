@@ -46,17 +46,20 @@ from seeds.seed_all import (
     seed_subsidiaries,
     seed_users,
 )
-from services.firebase import initialize_firebase
 from controllers.turn import handle_get_turns
 from controllers.workers import handle_get_workers_by_turn_and_subsidiarie
 from models.month import Month
 from controllers.months import handle_get_months
+from controllers.scale import (
+    handle_post_scale,
+    handle_get_scale,
+    handle_get_scale_by_worker_and_month,
+    handle_put_scale,
+)
 
 load_dotenv()
 
 app = FastAPI()
-
-bucket = initialize_firebase()
 
 add_cors_middleware(app)
 
@@ -76,19 +79,34 @@ def docs():
 
 # months routes
 
+
 @app.get("/months")
 def get_months():
     return handle_get_months()
 
+
 # scale routes
 
 
-# @app.get("/scales/history/subsidiarie/{subsidiarie_id}")
-# def get_scales_history(subsidiarie_id: int):
-#     return handle_get_scales_history(subsidiarie_id)
+@app.get("/scale")
+def get_scale():
+    return handle_get_scale()
 
 
-# xx
+@app.get("/scale/worker/{worker_id}/month/{month_id}")
+def get_scale_by_worker_and_month(worker_id: int, month_id: int):
+    return handle_get_scale_by_worker_and_month(worker_id, month_id)
+
+
+@app.post("/scale")
+def post_scale(scale: Scale):
+    return handle_post_scale(scale)
+
+
+@app.put("/scale/{id}")
+def put_scale(id: int, scale: Scale):
+    return handle_put_scale(id, scale)
+
 
 # subsidiaries routes
 

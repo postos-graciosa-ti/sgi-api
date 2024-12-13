@@ -46,3 +46,4 @@ def delete(id: int, Model: dict):
         session.commit()
 
     return {"message": "Registro deletado com sucesso"}
+  

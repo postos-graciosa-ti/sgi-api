@@ -55,6 +55,12 @@ from controllers.turn import (
 from controllers.workers import handle_get_workers_by_turn_and_subsidiarie
 from models.month import Month
 from controllers.months import handle_get_months
+from controllers.scale import (
+    handle_post_scale,
+    handle_get_scale,
+    handle_get_scale_by_worker_and_month,
+    handle_put_scale,
+)
 
 load_dotenv()
 

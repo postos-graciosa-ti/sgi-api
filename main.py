@@ -46,7 +46,12 @@ from seeds.seed_all import (
     seed_subsidiaries,
     seed_users,
 )
-from controllers.turn import handle_get_turns
+from controllers.turn import (
+    handle_get_turns,
+    handle_post_turns,
+    handle_put_turns,
+    handle_delete_turn,
+)
 from controllers.workers import handle_get_workers_by_turn_and_subsidiarie
 from models.month import Month
 from controllers.months import handle_get_months
@@ -86,6 +91,24 @@ def get_months():
 
 
 # scale routes
+
+
+@app.get("/scales")
+def get_scales():
+    with Session(engine) as session:
+        statement = select(Scale)
+
+        scales = session.exec(statement).all()
+
+        scales_data = []
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+
+            month = session.get(Month, scale.month_id)
+
+            scales_data.append({"scale": scale, "worker": worker, "month": month})
+    return scales_data
 
 
 @app.get("/scale/worker/{worker_id}/month/{month_id}")
@@ -168,8 +191,6 @@ def delete_subsidiaries(id: int):
     return handle_delete_subsidiarie(id)
 
 
-# xx
-
 # turn routes
 
 
@@ -178,7 +199,54 @@ def get_turns():
     return handle_get_turns()
 
 
-# xx
+@app.post("/turns")
+def post_turns(formData: Turn):
+    return handle_post_turns(formData)
+
+
+class PutTurn(BaseModel):
+    name: str
+    start_time: str
+    start_interval_time: str
+    end_time: str
+    end_interval_time: str
+
+
+@app.put("/turns/{id}")
+def update_turn_schedule(id: int, formData: PutTurn):
+    formData.start_time = datetime.strptime(formData.start_time, "%H:%M").time()
+    
+    formData.start_interval_time = datetime.strptime(formData.start_interval_time, "%H:%M").time()
+    
+    formData.end_time = datetime.strptime(formData.end_time, "%H:%M").time()
+    
+    formData.end_interval_time = datetime.strptime(formData.end_interval_time, "%H:%M").time()
+    
+    with Session(engine) as session:
+        statement = select(Turn).where(Turn.id == id)
+
+        turn = session.exec(statement).first()
+
+        turn.name = formData.name
+
+        turn.start_time = formData.start_time
+
+        turn.start_interval_time = formData.start_interval_time
+
+        turn.end_time = formData.end_time
+
+        turn.end_interval_time = formData.end_interval_time
+
+        session.commit()
+
+        session.refresh(turn)
+    return turn
+
+
+@app.delete("/turns/{id}")
+def delete_turn(id: int):
+    return handle_delete_turn(id)
+
 
 # workers routes
 
@@ -625,11 +693,11 @@ def get_week_scale(date: str):
     return [data.strftime("%Y-%m-%d") for data in datas_da_semana]
 
 
-@app.get("/scales")
-def get_all_scales():
-    with Session(engine) as session:
-        scales = session.exec(select(Scale)).all()
-    return scales
+# @app.get("/scales")
+# def get_all_scales():
+#     with Session(engine) as session:
+#         scales = session.exec(select(Scale)).all()
+#     return scales
 
 
 @app.post("/scale")

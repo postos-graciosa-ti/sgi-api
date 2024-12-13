@@ -1,32 +1,49 @@
 from sqlmodel import Session, select, text
 from database.sqlite import engine
 
+
 def find_all(Model: dict):
-  with Session(engine) as session:
-    statement = select(Model)
-    
-    rows = session.exec(statement).all()
+    with Session(engine) as session:
+        statement = select(Model)
 
-  return rows
+        rows = session.exec(statement).all()
 
-def create(form_data: dict):
-  with Session(engine) as session:
-    session.add(form_data)
-    
-    session.commit()
-    
-    session.refresh(form_data)
-    
-    return form_data
+    return rows
 
-# def update(id: int, Model: dict):
-#   with Session(engine) as session:
-#     statement = select(Model).where(Model.id == id)
-    
-#     session.exec(statement)
-    
-#     session.commit()
-    
-#     session.refresh(Model)
-    
-#     return Model
+
+def create(formData: dict):
+    with Session(engine) as session:
+        session.add(formData)
+
+        session.commit()
+
+        session.refresh(formData)
+    return formData
+
+
+def update(id: int, Model: dict, formData: dict):
+    with Session(engine) as session:
+        statement = select(Model).where(Model.id == id)
+
+        row = session.exec(statement).first()
+
+        row = formData
+
+        session.commit()
+
+        session.refresh(row)
+    return row
+
+
+def delete(id: int, Model: dict):
+    with Session(engine) as session:
+        statement = select(Model).where(Model.id == id)
+
+        row = session.exec(statement).first()
+
+        session.delete(row)
+
+        session.commit()
+
+    return {"message": "Registro deletado com sucesso"}
+  

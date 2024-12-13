@@ -9,7 +9,7 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.month import Month
-
+from datetime import time
 
 def seed_roles():
     with Session(engine) as session:
@@ -128,8 +128,8 @@ def seed_turns():
         existing_turns = session.exec(select(Turn)).all()
         if not existing_turns:
             turns = [
-                Turn(name="Manhã", time="08:00-12:00"),
-                Turn(name="Noite", time="14:00-18:00"),
+                Turn(name="Manhã", start_time=time(8, 0), start_interval_time=time(8, 0), end_time=time(12, 0), end_interval_time=time(12, 0)),
+                Turn(name="Noite", start_time=time(14, 0), start_interval_time=time(14, 0), end_time=time(18, 0), end_interval_time=time(18, 0)),
             ]
             session.add_all(turns)
             session.commit()

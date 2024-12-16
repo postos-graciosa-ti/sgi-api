@@ -11,11 +11,12 @@ from models.user import User
 from models.month import Month
 from datetime import time
 
+
 def seed_roles():
     with Session(engine) as session:
         existing_roles = session.exec(select(Role)).all()
         if not existing_roles:
-            roles = [Role(name="Admin"), Role(name="User")]
+            roles = [Role(name="Administrador"), Role(name="Usuário")]
             session.add_all(roles)
             session.commit()
 
@@ -91,14 +92,72 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Administrador",
                     role_id=1,
-                    subsidiaries_id="[1,2,3]",
+                    function_id=1,
+                    is_active=True,
+                    subsidiaries_id="[1,2,3,4,5,6]",
                 ),
                 User(
-                    email="analistaderh@gmail.com",
+                    email="michel@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
-                    name="Analista de RH",
+                    name="Michel",
                     role_id=2,
-                    subsidiaries_id="[1,2,3]",
+                    function_id=1,
+                    is_active=True,
+                    subsidiaries_id="[1,4,5,6]",
+                ),
+                User(
+                    email="nilson@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Nilson",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[1]",
+                ),
+                User(
+                    email="daniel@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Daniel",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[2]",
+                ),
+                User(
+                    email="rudinick@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Rudinick",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[3]",
+                ),
+                User(
+                    email="marcia@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Marcia",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[4]",
+                ),
+                User(
+                    email="tiago@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Tiago",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[5]",
+                ),
+                User(
+                    email="luciano@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Luciano",
+                    role_id=2,
+                    function_id=2,
+                    is_active=True,
+                    subsidiaries_id="[6]",
                 ),
             ]
             session.add_all(users)
@@ -110,6 +169,14 @@ def seed_functions():
         existing_functions = session.exec(select(Function)).all()
         if not existing_functions:
             functions = [
+                Function(
+                    name="Gerente",
+                    description="Gerente do posto de combustível",
+                ),
+                Function(
+                    name="Coordenador",
+                    description="Coordenador do posto de combustível",
+                ),
                 Function(
                     name="Frentista",
                     description="Atendimento ao cliente no posto de combustível",
@@ -128,8 +195,20 @@ def seed_turns():
         existing_turns = session.exec(select(Turn)).all()
         if not existing_turns:
             turns = [
-                Turn(name="Manhã", start_time=time(8, 0), start_interval_time=time(8, 0), end_time=time(12, 0), end_interval_time=time(12, 0)),
-                Turn(name="Noite", start_time=time(14, 0), start_interval_time=time(14, 0), end_time=time(18, 0), end_interval_time=time(18, 0)),
+                Turn(
+                    name="Manhã",
+                    start_time=time(8, 0),
+                    start_interval_time=time(8, 0),
+                    end_time=time(12, 0),
+                    end_interval_time=time(12, 0),
+                ),
+                Turn(
+                    name="Noite",
+                    start_time=time(14, 0),
+                    start_interval_time=time(14, 0),
+                    end_time=time(18, 0),
+                    end_interval_time=time(18, 0),
+                ),
             ]
             session.add_all(turns)
             session.commit()

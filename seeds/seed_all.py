@@ -10,6 +10,7 @@ from models.turn import Turn
 from models.user import User
 from models.month import Month
 from datetime import time
+from models.workers import Workers
 
 
 def seed_roles():
@@ -238,6 +239,46 @@ def seed_months():
 
             session.commit()
 
+def seed_workers():
+    with Session(engine) as session:
+        existing_workers = session.exec(select(Workers)).all()
+        
+        if not existing_workers:
+            workers = [
+                Workers(
+                    name="Frentista 01 - manhã",
+                    subsidiarie_id=1,
+                    function_id=1,
+                    turn_id=1,
+                    is_active=True
+                ),
+                Workers(
+                    name="Frentista 02 - manhã", 
+                    subsidiarie_id=1,
+                    function_id=1,
+                    turn_id=1,
+                    is_active=True
+                ),
+                Workers(
+                    name="Frentista 03 - noite",
+                    subsidiarie_id=1, 
+                    function_id=1,
+                    turn_id=2,
+                    is_active=True
+                ),
+                Workers(
+                    name="Frentista 04 - noite",
+                    subsidiarie_id=1, 
+                    function_id=1,
+                    turn_id=2,
+                    is_active=True
+                )
+            ]
+            
+            session.add_all(workers)
+            
+            session.commit()
+
 
 def seed_database():
     seed_roles()
@@ -247,3 +288,4 @@ def seed_database():
     seed_functions()
     seed_turns()
     seed_months()
+    seed_workers()

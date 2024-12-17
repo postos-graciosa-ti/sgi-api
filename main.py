@@ -65,6 +65,7 @@ from controllers.users import (
     handle_put_user,
     handle_delete_user,
 )
+from controllers.scale import handle_delete_scale
 
 load_dotenv()
 
@@ -187,13 +188,9 @@ def put_scale(id: int, formData: Scale):
     return scale
 
 
-@app.delete("/scale/{id}")
-def delete_scale(id: int):
-    with Session(engine) as session:
-        scale = session.get(Scale, id)
-        session.delete(scale)
-        session.commit()
-    return {"message": "Scale deleted successfully"}
+@app.delete("/scale/reset/worker/{worker_id}/month/{month_id}")
+def delete_scale(worker_id: int, month_id: int):
+    return handle_delete_scale(worker_id, month_id)
 
 
 # subsidiaries routes

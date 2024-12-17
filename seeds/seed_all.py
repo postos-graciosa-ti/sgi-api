@@ -239,10 +239,11 @@ def seed_months():
 
             session.commit()
 
+
 def seed_workers():
     with Session(engine) as session:
         existing_workers = session.exec(select(Workers)).all()
-        
+
         if not existing_workers:
             workers = [
                 Workers(
@@ -250,33 +251,61 @@ def seed_workers():
                     subsidiarie_id=1,
                     function_id=1,
                     turn_id=1,
-                    is_active=True
+                    is_active=True,
                 ),
                 Workers(
-                    name="Frentista 02 - manhã", 
+                    name="Frentista 02 - manhã",
                     subsidiarie_id=1,
                     function_id=1,
                     turn_id=1,
-                    is_active=True
+                    is_active=True,
                 ),
                 Workers(
                     name="Frentista 03 - noite",
-                    subsidiarie_id=1, 
+                    subsidiarie_id=1,
                     function_id=1,
                     turn_id=2,
-                    is_active=True
+                    is_active=True,
                 ),
                 Workers(
                     name="Frentista 04 - noite",
-                    subsidiarie_id=1, 
+                    subsidiarie_id=1,
                     function_id=1,
                     turn_id=2,
-                    is_active=True
-                )
+                    is_active=True,
+                ),
+                Workers(
+                    name="Caixa 01 - manhã",
+                    subsidiarie_id=1,
+                    function_id=4,
+                    turn_id=1,
+                    is_active=True,
+                ),
+                Workers(
+                    name="Caixa 02 - manhã",
+                    subsidiarie_id=1,
+                    function_id=4,
+                    turn_id=1,
+                    is_active=True,
+                ),
+                Workers(
+                    name="Caixa 03 - noite",
+                    subsidiarie_id=1,
+                    function_id=4,
+                    turn_id=2,
+                    is_active=True,
+                ),
+                Workers(
+                    name="Caixa 04 - noite",
+                    subsidiarie_id=1,
+                    function_id=4,
+                    turn_id=2,
+                    is_active=True,
+                ),
             ]
-            
+
             session.add_all(workers)
-            
+
             session.commit()
 
 

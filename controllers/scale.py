@@ -31,3 +31,18 @@ def handle_put_scale(id: int, scale: Scale):
     scale = update_scale(id, scale)
 
     return scale
+
+
+def handle_delete_scale(worker_id: int, month_id: int):
+    with Session(engine) as session:
+        statement = select(Scale).where(
+            Scale.worker_id == worker_id, Scale.month_id == month_id
+        )
+
+        scale = session.exec(statement).first()
+
+        session.delete(scale)
+
+        session.commit()
+
+        return {"message": "Scale deleted successfully"}

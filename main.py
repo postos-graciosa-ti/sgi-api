@@ -52,7 +52,10 @@ from controllers.turn import (
     handle_put_turns,
     handle_delete_turn,
 )
-from controllers.workers import handle_get_workers_by_turn_and_subsidiarie
+from controllers.workers import (
+    handle_get_workers_by_turn_and_subsidiarie,
+    handle_get_active_workers_by_turn_and_subsidiarie,
+)
 from models.month import Month
 from controllers.months import handle_get_months
 from controllers.users import (
@@ -292,6 +295,11 @@ def get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
     return handle_get_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
 
 
+@app.get("/workers/on-track/turn/{turn_id}/subsidiarie/{subsidiarie_id}")
+def get_active_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
+    return handle_get_active_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
+
+
 # xx
 
 
@@ -385,218 +393,6 @@ def delete_job(job_id: int):
             session.delete(job)
             session.commit()
     return {"message": "Job deleted successfully"}
-
-
-# class UserSignIn(BaseModel):
-#     email: str
-#     password: str
-
-
-# class GetUserSignIn(BaseModel):
-#     id: int
-#     name: str
-#     email: str
-#     role: str
-
-
-# @app.post("/users/sign-in")
-# def sign_in(user: UserSignIn):
-#     with Session(engine) as session:
-#         statement = text(
-#             "SELECT * FROM user LEFT JOIN role ON user.role_id = role.id WHERE user.email = :email"
-#         )
-
-#         result = session.execute(statement, {"email": user.email})
-
-#         print(result)
-
-#         return result.fetchall()
-
-
-# @app.post("/users")
-# def create_user(user: User):
-#     with Session(engine) as session:
-#         session.add(user)
-#         session.commit()
-#         session.refresh(user)
-#     return user
-
-
-# @app.put("/users/{user_id}")
-# def update_user(user_id: int, user: User):
-#     default_user_pwd = os.environ.get("DEFAULT_USER_PWD")
-
-#     user.password = default_user_pwd if user.password == "1" else user.password
-
-#     with Session(engine) as session:
-#         db_user = session.get(User, user_id)
-
-#         if db_user:
-#             db_user.name = user.name
-#             db_user.email = user.email
-#             db_user.password = user.password
-#             db_user.role_id = user.role_id
-#             session.add(db_user)
-#             session.commit()
-#             session.refresh(db_user)
-#             return db_user
-#         return JSONResponse(status_code=404, content={"message": "User not found"})
-
-
-# @app.delete("/users/{user_id}")
-# def delete_user(user_id: int):
-#     with Session(engine) as session:
-#         db_user = session.get(User, user_id)
-
-#         if db_user:
-#             session.delete(db_user)
-#             session.commit()
-#             return {"message": "User deleted"}
-
-#         return JSONResponse(status_code=404, content={"message": "User not found"})
-
-
-# @app.get("/users")
-# def get_all_users():
-#     with Session(engine) as session:
-#         statement = (
-#             select(
-#                 User.id,
-#                 User.name,
-#                 User.email,
-#                 User.subsidiaries_id,
-#                 Role.id,
-#                 Role.name,
-#                 Function.id,
-#                 Function.name,
-#             )
-#             .join(Role, User.role_id == Role.id)
-#             .join(Function, User.function_id == Function.id)
-#         )
-
-#         users = session.exec(statement).all()
-
-#         for user in users:
-#             user_subsidiaries = eval(user[3])
-
-#             for subsidiary in user_subsidiaries:
-#                 subsidiary_name = session.get(Subsidiarie, subsidiary)
-
-#                 user.subsidiaries = subsidiary_name.name
-
-#     return [
-#         {
-#             "user_id": user[0],
-#             "user_name": user[1],
-#             "user_email": user[2],
-#             "subsidiaries_id": eval(user[3]),
-#             "role_id": user[4],
-#             "role_name": user[5],
-#             "function_id": user[6],
-#             "function_name": user[7],
-#         }
-#         for user in users
-#     ]
-
-
-# @app.get("/users")
-# def get_all_users():
-#     with Session(engine) as session:
-#         # Query all required user information with joins
-#         statement = (
-#             select(
-#                 User.id,
-#                 User.name,
-#                 User.email,
-#                 User.subsidiaries_id,
-#                 Role.id.label("role_id"),
-#                 Role.name.label("role_name"),
-#                 Function.id.label("function_id"),
-#                 Function.name.label("function_name"),
-#             )
-#             .join(Role, User.role_id == Role.id)
-#             .join(Function, User.function_id == Function.id)
-#         )
-
-#         # Fetch all users from the database
-#         users = session.exec(statement).all()
-
-#         # Prefetch all subsidiaries
-#         all_subsidiaries = session.exec(select(Subsidiarie.id, Subsidiarie.name)).all()
-#         subsidiaries_map = {sub.id: sub.name for sub in all_subsidiaries}
-
-#         # Process users and replace subsidiaries_id with names
-#         result = []
-#         for user in users:
-#             subsidiary_ids = json.loads(user[3])  # Replace eval with json.loads
-#             subsidiary_names = [
-#                 subsidiaries_map.get(sub_id, "Unknown") for sub_id in subsidiary_ids
-#             ]
-#             result.append(
-#                 {
-#                     "user_id": user[0],
-#                     "user_name": user[1],
-#                     "user_email": user[2],
-#                     "subsidiaries_id": subsidiary_ids,
-#                     "subsidiaries": subsidiary_names,  # Add names of subsidiaries
-#                     "role_id": user[4],
-#                     "role_name": user[5],
-#                     "function_id": user[6],
-#                     "function_name": user[7],
-#                 }
-#             )
-
-#     return result
-
-
-# @app.get("/users")
-# def get_all_users():
-#     with Session(engine) as session:
-#         statement = (
-#             select(
-#                 User.id,
-#                 User.name,
-#                 User.email,
-#                 User.subsidiaries_id,
-#                 Role.id.label("role_id"),
-#                 Role.name.label("role_name"),
-#                 Function.id.label("function_id"),
-#                 Function.name.label("function_name"),
-#             )
-#             .join(Role, User.role_id == Role.id)
-#             .join(Function, User.function_id == Function.id)
-#         )
-
-#         users = session.exec(statement).all()
-
-#         all_subsidiaries = session.exec(select(Subsidiarie.id, Subsidiarie.name)).all()
-
-#         subsidiaries_map = {sub.id: sub.name for sub in all_subsidiaries}
-
-#         result = []
-
-#         for user in users:
-#             subsidiary_ids = json.loads(user[3])
-
-#             subsidiaries = [
-#                 {"id": sub_id, "name": subsidiaries_map.get(sub_id, "Unknown")}
-#                 for sub_id in subsidiary_ids
-#             ]
-
-#             result.append(
-#                 {
-#                     "user_id": user[0],
-#                     "user_name": user[1],
-#                     "user_email": user[2],
-#                     "subsidiaries": subsidiaries,
-#                     "role_id": user[4],
-#                     "role_name": user[5],
-#                     "function_id": user[6],
-#                     "function_name": user[7],
-#                 }
-#             )
-
-#     return result
 
 
 @app.get("/roles")

@@ -82,32 +82,18 @@ def handle_post_user(user: User):
 
 def handle_put_user(id: int, user: User):
     with Session(engine) as session:
-        try:
-            statement = select(User).where(User.id == id)
+        # Fetch user by id
+        statement = select(User).where(User.id == id)
+        db_user = session.execute(statement).scalars().first()
 
-            row = session.exec(statement).first()
+        if db_user:
+            # Update user details
+            db_user.name = user.name
+            session.commit()  # Commit changes
 
-            if not row:
-                raise ValueError(f"User with ID {id} not found.")
-
-            row.name = user.name
-
-            row.email = user.email
-
-            row.subsidiaries_id = user.subsidiaries_id
-
-            row.role_id = user.role_id
-
-            row.function_id = user.function_id
-
-            session.commit()
-
-            return row
-
-        except Exception as e:
-            session.rollback()
-
-            raise e
+            return db_user
+        else:
+            return None  # User not found
 
 
 def handle_delete_user(id: int):

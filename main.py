@@ -58,6 +58,7 @@ from models.jobs import Jobs
 from models.month import Month
 from models.role import Role
 from models.scale import Scale
+from models.scale_signature import ScaleSignature
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
@@ -133,37 +134,103 @@ def get_months():
 # scale
 
 
-@app.get("/scales")
-def get_scales():
+@app.get("/scales/subsidiaries/{subsidiarie_id}")
+def get_scales(subsidiarie_id: int):
     with Session(engine) as session:
-        statement = select(Scale)
+        statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
 
         scales = session.exec(statement).all()
 
-        scales_data = []
+        result = []
 
         for scale in scales:
-            worker = session.get(Workers, scale.worker_id)
+            # Converte strings para listas usando `eval`, mas é melhor usar JSON (ajuste no modelo recomendado)
+            workers_on = eval(scale.workers_on)
 
-            month = session.get(Month, scale.month_id)
+            workers_off = eval(scale.workers_off)
 
-            scales_data.append({"scale": scale, "worker": worker, "month": month})
-    return scales_data
+            # Obtem os detalhes dos trabalhadores de acordo com os IDs
+            workers_on_data = [
+                session.get(Workers, worker_on) for worker_on in workers_on
+            ]
 
+            workers_off_data = [
+                session.get(Workers, worker_off) for worker_off in workers_off
+            ]
 
-@app.get("/scale/worker/{worker_id}/month/{month_id}")
-def get_scale_by_worker_and_month(worker_id: int, month_id: int):
+            # Monta o dicionário para exibir os dados
+            result.append(
+                {
+                    "scale_id": scale.id,
+                    "date": scale.date,  # Certifique-se de que o modelo Scale tenha o campo `date`
+                    "workers_on": [
+                        {"id": worker.id, "name": worker.name}
+                        for worker in workers_on_data
+                        if worker
+                    ],
+                    "workers_off": [
+                        {"id": worker.id, "name": worker.name}
+                        for worker in workers_off_data
+                        if worker
+                    ],
+                }
+            )
+
+        return result
+    
+class GetScalesByDate(BaseModel):
+    initial_date: str
+    end_date: str
+
+@app.post("/scales/date")
+def get_scales_by_date(formData: GetScalesByDate):
+    initial = datetime.strptime(formData.initial_date, "%d/%m/%Y").date()
+    
+    end = datetime.strptime(formData.end_date, "%d/%m/%Y").date()
+    
     with Session(engine) as session:
-        statement = select(Scale).where(
-            Scale.worker_id == worker_id, Scale.month_id == month_id
-        )
+        statement = select(Scale).where(Scale.date >= initial, Scale.date <= end)
+        scales = session.exec(statement).all()
+        
+        result = []
+        
+        for scale in scales:
+            workers_on = eval(scale.workers_on)
+            workers_off = eval(scale.workers_off)
+            
+            workers_on_data = [
+                session.get(Workers, worker_on) for worker_on in workers_on
+            ]
+            
+            workers_off_data = [
+                session.get(Workers, worker_off) for worker_off in workers_off
+            ]
+            
+            result.append(
+                {
+                    "scale_id": scale.id,
+                    "date": scale.date,
+                    "workers_on": [
+                        {"id": worker.id, "name": worker.name}
+                        for worker in workers_on_data
+                        if worker
+                    ],
+                    "workers_off": [
+                        {"id": worker.id, "name": worker.name}
+                        for worker in workers_off_data
+                        if worker
+                    ],
+                }
+            )
+            
+        return result
 
-        scale = session.exec(statement).first()
-    return scale
 
 
-@app.post("/scale")
+@app.post("/scales")
 def post_scale(formData: Scale):
+    formData.date = datetime.strptime(formData.date, "%d/%m/%Y").date()
+
     with Session(engine) as session:
         session.add(formData)
 
@@ -173,28 +240,64 @@ def post_scale(formData: Scale):
     return formData
 
 
-@app.put("/scale/{id}")
-def put_scale(id: int, formData: Scale):
+@app.delete("/scales/{id}")
+def delete_scale(id: int):
     with Session(engine) as session:
         scale = session.get(Scale, id)
 
-        scale.date = formData.date
-
-        scale.worker_id = formData.worker_id
-
-        scale.month_id = formData.month_id
-
-        session.add(scale)
+        session.delete(scale)
 
         session.commit()
-
-        session.refresh(scale)
-    return scale
+    return {"message": "Escala deletada com sucesso"}
 
 
-@app.delete("/scale/reset/worker/{worker_id}/month/{month_id}")
-def delete_scale(worker_id: int, month_id: int):
-    return handle_delete_scale(worker_id, month_id)
+@app.get("/scale/signature/worker/{worker_id}/scale/{scale_id}")
+def get_scale_signature(worker_id: int, scale_id: int):
+    with Session(engine) as session:
+        scale_signature = session.exec(
+            select(ScaleSignature).where(
+                ScaleSignature.worker_id == worker_id,
+                ScaleSignature.scale_id == scale_id,
+            )
+        ).first()
+
+        if scale_signature:
+            return True
+        else:
+            return False
+
+
+@app.post("/scale/signature")
+def post_scale_signature(scale_signature: ScaleSignature):
+    with Session(engine) as session:
+        session.add(scale_signature)
+        session.commit()
+        session.refresh(scale_signature)
+    return scale_signature
+
+
+# @app.put("/scale/{id}")
+# def put_scale(id: int, formData: Scale):
+#     with Session(engine) as session:
+#         scale = session.get(Scale, id)
+
+#         scale.date = formData.date
+
+#         scale.worker_id = formData.worker_id
+
+#         scale.month_id = formData.month_id
+
+#         session.add(scale)
+
+#         session.commit()
+
+#         session.refresh(scale)
+#     return scale
+
+
+# @app.delete("/scale/reset/worker/{worker_id}/month/{month_id}")
+# def delete_scale(worker_id: int, month_id: int):
+#     return handle_delete_scale(worker_id, month_id)
 
 
 # subsidiaries

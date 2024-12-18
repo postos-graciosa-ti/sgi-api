@@ -1,15 +1,16 @@
+from datetime import time
+
 from passlib.hash import pbkdf2_sha256
 from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.candidate_status import CandidateStatus
 from models.function import Function
+from models.month import Month
 from models.role import Role
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
-from models.month import Month
-from datetime import time
 from models.workers import Workers
 
 
@@ -89,11 +90,38 @@ def seed_users():
         if not existing_users:
             users = [
                 User(
-                    email="administrador@gmail.com",
+                    email="regiane@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
-                    name="Administrador",
+                    name="Regiane",
                     role_id=1,
                     function_id=1,
+                    is_active=True,
+                    subsidiaries_id="[1,2,3,4,5,6]",
+                ),
+                User(
+                    email="mauricio@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Mauricio",
+                    role_id=1,
+                    function_id=4,
+                    is_active=True,
+                    subsidiaries_id="[1,2,3,4,5,6]",
+                ),
+                User(
+                    email="mariele@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Mariele",
+                    role_id=1,
+                    function_id=4,
+                    is_active=True,
+                    subsidiaries_id="[1,2,3,4,5,6]",
+                ),
+                User(
+                    email="thiago@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Thiago",
+                    role_id=1,
+                    function_id=5,
                     is_active=True,
                     subsidiaries_id="[1,2,3,4,5,6]",
                 ),
@@ -101,8 +129,8 @@ def seed_users():
                     email="michel@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
                     name="Michel",
-                    role_id=2,
-                    function_id=1,
+                    role_id=1,
+                    function_id=2,
                     is_active=True,
                     subsidiaries_id="[1,4,5,6]",
                 ),
@@ -111,7 +139,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Nilson",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[1]",
                 ),
@@ -120,7 +148,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Daniel",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[2]",
                 ),
@@ -129,7 +157,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Rudinick",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[3]",
                 ),
@@ -138,7 +166,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Marcia",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[4]",
                 ),
@@ -147,7 +175,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Tiago",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[5]",
                 ),
@@ -156,7 +184,7 @@ def seed_users():
                     password=pbkdf2_sha256.hash("teste"),
                     name="Luciano",
                     role_id=2,
-                    function_id=2,
+                    function_id=3,
                     is_active=True,
                     subsidiaries_id="[6]",
                 ),
@@ -171,6 +199,10 @@ def seed_functions():
         if not existing_functions:
             functions = [
                 Function(
+                    name="Diretor",
+                    description="Diretor do posto de combustível",
+                ),
+                Function(
                     name="Gerente",
                     description="Gerente do posto de combustível",
                 ),
@@ -179,12 +211,24 @@ def seed_functions():
                     description="Coordenador do posto de combustível",
                 ),
                 Function(
+                    name="Analista de RH",
+                    description="Analista de RH do posto de combustível",
+                ),
+                Function(
+                    name="Analista de TI",
+                    description="Analista de TI do posto de combustível",
+                ),
+                Function(
                     name="Frentista",
                     description="Atendimento ao cliente no posto de combustível",
                 ),
                 Function(
                     name="Caixa",
                     description="Responsável por realizar transações financeiras no caixa",
+                ),
+                Function(
+                    name="Trocador de óleo",
+                    description="Trocador de óleo do posto de combustível",
                 ),
             ]
             session.add_all(functions)

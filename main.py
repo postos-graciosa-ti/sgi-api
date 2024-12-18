@@ -12,15 +12,34 @@ from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel
 from sqlmodel import Session, select, text
 
+from controllers.months import handle_get_months
+from controllers.scale import handle_delete_scale
 from controllers.scales_controller import (
     handle_get_scales_history,
     handle_get_week_scale,
 )
 from controllers.subsidiaries import (
+    handle_delete_subsidiarie,
     handle_get_subsidiaries,
     handle_post_subsidiaries,
     handle_put_subsidiarie,
-    handle_delete_subsidiarie,
+)
+from controllers.turn import (
+    handle_delete_turn,
+    handle_get_turns,
+    handle_post_turns,
+    handle_put_turns,
+)
+from controllers.users import (
+    handle_delete_user,
+    handle_get_users,
+    handle_post_user,
+    handle_put_user,
+    handle_user_login,
+)
+from controllers.workers import (
+    handle_get_active_workers_by_turn_and_subsidiarie,
+    handle_get_workers_by_turn_and_subsidiarie,
 )
 from database.sqlite import create_db_and_tables, engine
 from functions.scale import is_valid_scale
@@ -30,6 +49,7 @@ from models.candidate_status import CandidateStatus
 from models.default_scale import DefaultScale
 from models.function import Function
 from models.jobs import Jobs
+from models.month import Month
 from models.role import Role
 from models.scale import Scale
 from models.subsidiarie import Subsidiarie
@@ -46,26 +66,6 @@ from seeds.seed_all import (
     seed_subsidiaries,
     seed_users,
 )
-from controllers.turn import (
-    handle_get_turns,
-    handle_post_turns,
-    handle_put_turns,
-    handle_delete_turn,
-)
-from controllers.workers import (
-    handle_get_workers_by_turn_and_subsidiarie,
-    handle_get_active_workers_by_turn_and_subsidiarie,
-)
-from models.month import Month
-from controllers.months import handle_get_months
-from controllers.users import (
-    handle_user_login,
-    handle_get_users,
-    handle_post_user,
-    handle_put_user,
-    handle_delete_user,
-)
-from controllers.scale import handle_delete_scale
 
 load_dotenv()
 
@@ -79,23 +79,19 @@ def on_startup():
     create_db_and_tables()
     seed_database()
 
+# root
 
 @app.get("/")
 def docs():
     return {"docs": "acess /docs", "redocs": "access /redocs"}
 
 
-# default standart get, get by id, post, put, delete
-
-# auth routes
+# users
 
 
 @app.post("/users/login")
 def user_login(user: User):
     return handle_user_login(user)
-
-
-# users routes
 
 
 @app.get("/users")
@@ -118,7 +114,7 @@ def delete_user(id: int):
     return handle_delete_user(id)
 
 
-# months routes
+# months
 
 
 @app.get("/months")
@@ -126,7 +122,7 @@ def get_months():
     return handle_get_months()
 
 
-# scale routes
+# scale
 
 
 @app.get("/scales")
@@ -193,7 +189,7 @@ def delete_scale(worker_id: int, month_id: int):
     return handle_delete_scale(worker_id, month_id)
 
 
-# subsidiaries routes
+# subsidiaries
 
 
 @app.get("/subsidiaries")
@@ -223,7 +219,7 @@ def delete_subsidiaries(id: int):
     return handle_delete_subsidiarie(id)
 
 
-# turn routes
+# turn
 
 
 @app.get("/turns")
@@ -284,7 +280,7 @@ def delete_turn(id: int):
     return handle_delete_turn(id)
 
 
-# workers routes
+# workers
 
 
 @app.get("/workers/turns/{turn_id}/subsidiarie/{subsidiarie_id}")

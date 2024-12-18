@@ -12,6 +12,12 @@ from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel
 from sqlmodel import Session, select, text
 
+from controllers.functions import (
+    handle_delete_function,
+    handle_get_functions,
+    handle_post_function,
+    handle_put_function,
+)
 from controllers.months import handle_get_months
 from controllers.scale import handle_delete_scale
 from controllers.scales_controller import (
@@ -79,7 +85,9 @@ def on_startup():
     create_db_and_tables()
     seed_database()
 
+
 # root
+
 
 @app.get("/")
 def docs():
@@ -327,11 +335,30 @@ def get_active_workers_by_subsidiarie_and_function(
     return active_workers
 
 
+# functions
+
+
 @app.get("/functions")
 def get_functions():
-    with Session(engine) as session:
-        functions = session.exec(select(Function)).all()
-    return functions
+    return handle_get_functions()
+
+
+@app.post("/functions")
+def post_function(function: Function):
+    return handle_post_function(function)
+
+
+@app.put("/functions/{id}")
+def put_function(id: int, function: Function):
+    return handle_put_function(id, function)
+
+
+@app.delete("/functions/{id}")
+def delete_function(id: int):
+    return handle_delete_function(id)
+
+
+# workers
 
 
 @app.post("/workers")

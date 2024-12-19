@@ -50,6 +50,8 @@ from controllers.users import (
     handle_user_login,
 )
 from controllers.workers import (
+    handle_get_workers_by_subsidiarie,
+    handle_put_worker,
     handle_get_active_workers_by_turn_and_subsidiarie,
     handle_get_workers_by_turn_and_subsidiarie,
 )
@@ -164,44 +166,109 @@ def get_months():
 # scale
 
 
+# @app.get("/scales/subsidiaries/{subsidiarie_id}")
+# def get_scales(subsidiarie_id: int):
+#     with Session(engine) as session:
+#         statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
+
+#         scales = session.exec(statement).all()
+
+#         result = []
+
+#         for scale in scales:
+#             # Converte strings para listas usando `eval`, mas é melhor usar JSON (ajuste no modelo recomendado)
+#             workers_on = eval(scale.workers_on)
+
+#             workers_off = eval(scale.workers_off)
+
+#             # Obtem os detalhes dos trabalhadores de acordo com os IDs
+#             workers_on_data = [
+#                 session.get(Workers, worker_on) for worker_on in workers_on
+#             ]
+
+#             workers_off_data = [
+#                 session.get(Workers, worker_off) for worker_off in workers_off
+#             ]
+
+#             # Monta o dicionário para exibir os dados
+#             result.append(
+#                 {
+#                     "scale_id": scale.id,
+#                     "date": scale.date,  # Certifique-se de que o modelo Scale tenha o campo `date`
+#                     "workers_on": [
+#                         {"id": worker.id, "name": worker.name}
+#                         for worker in workers_on_data
+#                         if worker
+#                     ],
+#                     "workers_off": [
+#                         {"id": worker.id, "name": worker.name}
+#                         for worker in workers_off_data
+#                         if worker
+#                     ],
+#                 }
+#             )
+
+#         return result
+
+
 @app.get("/scales/subsidiaries/{subsidiarie_id}")
 def get_scales(subsidiarie_id: int):
     with Session(engine) as session:
+        # Busca as escalas associadas à subsidiária
         statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
-
         scales = session.exec(statement).all()
+
+        if not scales:
+            raise HTTPException(
+                status_code=404, detail="No scales found for the given subsidiary."
+            )
 
         result = []
 
         for scale in scales:
-            # Converte strings para listas usando `eval`, mas é melhor usar JSON (ajuste no modelo recomendado)
-            workers_on = eval(scale.workers_on)
+            # Deserializa as listas de IDs de trabalhadores
+            workers_on = json.loads(scale.workers_on)
+            workers_off = json.loads(scale.workers_off)
 
-            workers_off = eval(scale.workers_off)
-
-            # Obtem os detalhes dos trabalhadores de acordo com os IDs
+            # Busca detalhes dos trabalhadores no banco de dados
             workers_on_data = [
-                session.get(Workers, worker_on) for worker_on in workers_on
+                session.get(Workers, worker_id) for worker_id in workers_on
             ]
-
             workers_off_data = [
-                session.get(Workers, worker_off) for worker_off in workers_off
+                session.get(Workers, worker_id) for worker_id in workers_off
             ]
 
-            # Monta o dicionário para exibir os dados
+            # Monta os dados dos trabalhadores com suas respectivas funções e turnos
+            def format_worker(worker):
+                if worker:
+                    # Busca a função associada
+                    function = session.get(Function, worker.function_id)
+                    # Busca o turno associado
+                    turn = session.get(Turn, worker.turn_id)
+                    return {
+                        "id": worker.id,
+                        "name": worker.name,
+                        "function": {
+                            "id": function.id if function else None,
+                            "name": function.name if function else "Unknown",
+                        },
+                        "turn": {
+                            "id": turn.id if turn else None,
+                            "name": turn.name if turn else "Unknown",
+                        },
+                    }
+                return None
+
+            # Monta o dicionário com os dados formatados
             result.append(
                 {
                     "scale_id": scale.id,
-                    "date": scale.date,  # Certifique-se de que o modelo Scale tenha o campo `date`
+                    "date": scale.date,  # Verifique se o modelo Scale possui o campo `date`
                     "workers_on": [
-                        {"id": worker.id, "name": worker.name}
-                        for worker in workers_on_data
-                        if worker
+                        format_worker(worker) for worker in workers_on_data if worker
                     ],
                     "workers_off": [
-                        {"id": worker.id, "name": worker.name}
-                        for worker in workers_off_data
-                        if worker
+                        format_worker(worker) for worker in workers_off_data if worker
                     ],
                 }
             )
@@ -504,13 +571,26 @@ def create_worker(worker: Workers):
     return worker
 
 
+# @app.get("/workers/subsidiarie/{subsidiarie_id}")
+# def get_workers_by_subsidiarie(subsidiarie_id: int):
+#     with Session(engine) as session:
+#         workers = session.exec(
+#             select(Workers).where(Workers.subsidiarie_id == subsidiarie_id)
+#         ).all()
+#     return workers
+
+
 @app.get("/workers/subsidiarie/{subsidiarie_id}")
 def get_workers_by_subsidiarie(subsidiarie_id: int):
-    with Session(engine) as session:
-        workers = session.exec(
-            select(Workers).where(Workers.subsidiarie_id == subsidiarie_id)
-        ).all()
-    return workers
+    return handle_get_workers_by_subsidiarie(subsidiarie_id)
+
+
+@app.put("/workers/{id}")
+def update_worker(id: int, worker: Workers):
+    return handle_put_worker(id, worker)
+
+
+# jobs
 
 
 @app.get("/jobs")

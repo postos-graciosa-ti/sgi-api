@@ -12,6 +12,12 @@ from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel
 from sqlmodel import Session, select, text
 
+from controllers.candidato import (
+    handle_delete_candidato,
+    handle_get_candidato,
+    handle_get_candidato_by_id,
+    handle_post_candidato,
+)
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
@@ -52,6 +58,7 @@ from functions.scale import is_valid_scale
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidate_status import CandidateStatus
+from models.candidato import Candidato
 from models.default_scale import DefaultScale
 from models.function import Function
 from models.jobs import Jobs
@@ -93,6 +100,29 @@ def on_startup():
 @app.get("/")
 def docs():
     return {"docs": "acess /docs", "redocs": "access /redocs"}
+
+
+# candidato
+
+
+@app.get("/candidato")
+def get_candidato():
+    return handle_get_candidato()
+
+
+@app.get("/candidato/{id}")
+def get_candidato_by_id(id: int):
+    return handle_get_candidato_by_id(id)
+
+
+@app.post("/candidato")
+def post_candidato(candidato: Candidato):
+    return handle_post_candidato(candidato)
+
+
+@app.delete("/candidato/{id}")
+def delete_candidato(id: int):
+    return handle_delete_candidato(id)
 
 
 # users
@@ -177,35 +207,37 @@ def get_scales(subsidiarie_id: int):
             )
 
         return result
-    
+
+
 class GetScalesByDate(BaseModel):
     initial_date: str
     end_date: str
 
+
 @app.post("/scales/date")
 def get_scales_by_date(formData: GetScalesByDate):
     initial = datetime.strptime(formData.initial_date, "%d/%m/%Y").date()
-    
+
     end = datetime.strptime(formData.end_date, "%d/%m/%Y").date()
-    
+
     with Session(engine) as session:
         statement = select(Scale).where(Scale.date >= initial, Scale.date <= end)
         scales = session.exec(statement).all()
-        
+
         result = []
-        
+
         for scale in scales:
             workers_on = eval(scale.workers_on)
             workers_off = eval(scale.workers_off)
-            
+
             workers_on_data = [
                 session.get(Workers, worker_on) for worker_on in workers_on
             ]
-            
+
             workers_off_data = [
                 session.get(Workers, worker_off) for worker_off in workers_off
             ]
-            
+
             result.append(
                 {
                     "scale_id": scale.id,
@@ -222,9 +254,8 @@ def get_scales_by_date(formData: GetScalesByDate):
                     ],
                 }
             )
-            
-        return result
 
+        return result
 
 
 @app.post("/scales")

@@ -4,6 +4,7 @@ from sqlmodel import Session, select, update
 
 from database.sqlite import engine
 from models.function import Function
+from models.jobs import Jobs
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
@@ -66,9 +67,6 @@ def handle_put_worker(id: int, worker: Workers):
             return {"error": "Worker not found"}
 
 
-# xx
-
-
 def handle_get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
     with Session(engine) as session:
         statement = select(Workers).where(
@@ -121,3 +119,56 @@ def handle_get_active_workers_by_turn_and_subsidiarie(
                 )
 
         return workers_with_no_today_scales
+
+
+def handle_get_active_workers_by_subsidiarie_and_function(
+    subsidiarie_id: int, function_id: int
+):
+    with Session(engine) as session:
+        active_workers = session.exec(
+            select(Workers).where(
+                Workers.subsidiarie_id == subsidiarie_id,
+                Workers.function_id == function_id,
+                Workers.is_active == True,
+            )
+        ).all()
+
+        return active_workers
+
+
+def handle_post_worker(worker: Workers):
+    with Session(engine) as session:
+        session.add(worker)
+
+        session.commit()
+
+        session.refresh(worker)
+    return worker
+
+
+def handle_deactivate_worker(worker_id: int):
+    with Session(engine) as session:
+        worker = session.get(Workers, worker_id)
+
+        if worker:
+            worker.is_active = False
+
+            session.commit()
+
+            session.refresh(worker)
+
+            new_job = session.get(Function, worker.function_id)
+
+            job = Jobs(
+                name=new_job.name,
+                description=new_job.description,
+                subsidiarie_id=worker.subsidiarie_id,
+            )
+
+            session.add(job)
+
+            session.commit()
+
+            session.refresh(job)
+
+            return job

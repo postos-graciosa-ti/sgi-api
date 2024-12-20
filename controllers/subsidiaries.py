@@ -1,13 +1,17 @@
-from sqlmodel import Session, select
-from models.subsidiarie import Subsidiarie
-from database.sqlite import engine
-from pydantic import BaseModel
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlmodel import Session, select
+
+from database.sqlite import engine
+from models.subsidiarie import Subsidiarie
+from pyhints.subsidiaries import PutSubsidiarie
+
 
 def handle_get_subsidiaries():
     with Session(engine) as session:
         subsidiaries = session.exec(select(Subsidiarie)).all()
     return subsidiaries
+
 
 def handle_post_subsidiaries(formData: Subsidiarie):
     with Session(engine) as session:
@@ -18,15 +22,12 @@ def handle_post_subsidiaries(formData: Subsidiarie):
         session.refresh(formData)
     return formData
 
-class PutSubsidiarie(BaseModel):
-    name: str
-    adress: str
-    phone: str
-    email: str
 
 def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
     with Session(engine) as session:
-        subsidiarie = session.exec(select(Subsidiarie).where(Subsidiarie.id == id)).first()
+        subsidiarie = session.exec(
+            select(Subsidiarie).where(Subsidiarie.id == id)
+        ).first()
 
         if subsidiarie:
             subsidiarie.name = formData.name
@@ -38,21 +39,23 @@ def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
             subsidiarie.email = formData.email
 
             session.add(subsidiarie)
-            
+
             session.commit()
-            
+
             session.refresh(subsidiarie)
-            
+
             return subsidiarie
-        return JSONResponse(status_code=404, content={"message": "Subsidiarie not found"})
+        return JSONResponse(
+            status_code=404, content={"message": "Subsidiarie not found"}
+        )
+
 
 def handle_delete_subsidiarie(id: int):
-        with Session(engine) as session:
-            subsidiarie = session.get(Subsidiarie, id)
+    with Session(engine) as session:
+        subsidiarie = session.get(Subsidiarie, id)
 
-            if subsidiarie:
-                session.delete(subsidiarie)
+        if subsidiarie:
+            session.delete(subsidiarie)
 
-                session.commit()
-            return {"message": "Subsidiarie deleted successfully"}
-        
+            session.commit()
+        return {"message": "Subsidiarie deleted successfully"}

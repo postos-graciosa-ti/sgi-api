@@ -426,3 +426,13 @@ def post_scale(scale: Scale):
         session.refresh(scale)
 
     return scale
+
+
+@app.delete("/scales/{id}")
+def delete_scale(id: int):
+    with Session(engine) as session:
+        session.delete(session.get(Scale, id))
+
+        session.commit()
+
+    return {"message": "Scale deleted successfully"}

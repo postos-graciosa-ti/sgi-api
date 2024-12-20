@@ -4,8 +4,7 @@ from datetime import date
 
 class Scale(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
-    date: date
+    worker_id: int = Field(default=None, foreign_key="workers.id")
     subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
-    workers_on: str = Field(default="[]")
-    workers_off: str = Field(default="[]")
-    
+    days_on: str = Field(default="[]")
+    days_off: str = Field(default="[]")

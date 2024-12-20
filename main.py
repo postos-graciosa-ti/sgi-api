@@ -78,6 +78,7 @@ from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import ConfirmPassword, Test, VerifyEmail
 from seeds.seed_all import seed_database
+import json
 
 # pre settings
 
@@ -189,24 +190,24 @@ def get_months():
 # scale
 
 
-@app.get("/scales/subsidiaries/{subsidiarie_id}")
-def get_scales(subsidiarie_id: int):
-    return handle_get_scale_by_subsidiarie_id(subsidiarie_id)
+# @app.get("/scales/subsidiaries/{subsidiarie_id}")
+# def get_scales(subsidiarie_id: int):
+#     return handle_get_scale_by_subsidiarie_id(subsidiarie_id)
 
 
-@app.post("/scales/date")
-def get_scales_by_date(formData: GetScalesByDate):
-    return handle_get_scale_by_date(formData)
+# @app.post("/scales/date")
+# def get_scales_by_date(formData: GetScalesByDate):
+#     return handle_get_scale_by_date(formData)
 
 
-@app.post("/scales")
-def post_scale(formData: Scale):
-    return handle_post_scale(formData)
+# @app.post("/scales")
+# def post_scale(formData: Scale):
+#     return handle_post_scale(formData)
 
 
-@app.delete("/scales/{id}")
-def delete_scale(id: int):
-    return handle_delete_scale(id)
+# @app.delete("/scales/{id}")
+# def delete_scale(id: int):
+#     return handle_delete_scale(id)
 
 
 # subsidiaries
@@ -389,4 +390,39 @@ def post_candidate(candidate: Candidate):
     return new_candidate
 
 
-# xx
+# scales
+
+
+@app.get("/scales/subsidiaries/{subsidiarie_id}")
+def get_scales_by_subsidiarie_id(subsidiarie_id: int):
+    with Session(engine) as session:
+        statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
+
+        scales_by_subsidiarie = session.exec(statement).all()
+
+        format_scales = []
+
+        for scale in scales_by_subsidiarie:
+            format_scale = {
+                "id": scale.id,
+                # 'worker_id': scale.worker_id,
+                "worker": session.get(Workers, scale.worker_id),
+                "days_on": eval(scale.days_on),
+                "days_off": eval(scale.days_off),
+            }
+
+            format_scales.append(format_scale)
+
+    return format_scales
+
+
+@app.post("/scales")
+def post_scale(scale: Scale):
+    with Session(engine) as session:
+        session.add(scale)
+
+        session.commit()
+
+        session.refresh(scale)
+
+    return scale

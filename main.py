@@ -409,6 +409,8 @@ def get_scales_by_subsidiarie_id(subsidiarie_id: int):
                 "worker": session.get(Workers, scale.worker_id),
                 "days_on": eval(scale.days_on),
                 "days_off": eval(scale.days_off),
+                "need_alert": scale.need_alert,
+                "proportion": scale.proportion,
             }
 
             format_scales.append(format_scale)

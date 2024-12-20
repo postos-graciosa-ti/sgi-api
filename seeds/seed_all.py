@@ -248,14 +248,30 @@ def seed_turns():
                     end_interval_time=time(12, 0),
                 ),
                 Turn(
+                    name="Tarde",
+                    start_time=time(12, 0),
+                    start_interval_time=time(12, 0),
+                    end_time=time(16, 0),
+                    end_interval_time=time(16, 0),
+                ),
+                Turn(
                     name="Noite",
-                    start_time=time(14, 0),
-                    start_interval_time=time(14, 0),
-                    end_time=time(18, 0),
-                    end_interval_time=time(18, 0),
+                    start_time=time(16, 0),
+                    start_interval_time=time(16, 0),
+                    end_time=time(20, 0),
+                    end_interval_time=time(20, 0),
+                ),
+                Turn(
+                    name="Volante",
+                    start_time=time(8, 0),
+                    start_interval_time=time(8, 0),
+                    end_time=time(16, 0),
+                    end_interval_time=time(16, 0),
                 ),
             ]
+
             session.add_all(turns)
+            
             session.commit()
 
 
@@ -291,56 +307,56 @@ def seed_workers():
         if not existing_workers:
             workers = [
                 Workers(
-                    name="Frentista 01 - manhã",
+                    name="Frentista 01",
                     subsidiarie_id=1,
                     function_id=6,
                     turn_id=1,
                     is_active=True,
                 ),
                 Workers(
-                    name="Frentista 02 - manhã",
+                    name="Frentista 02",
                     subsidiarie_id=1,
                     function_id=6,
                     turn_id=1,
                     is_active=True,
                 ),
                 Workers(
-                    name="Frentista 03 - noite",
-                    subsidiarie_id=1,
-                    function_id=6,
-                    turn_id=2,
-                    is_active=True,
-                ),
-                Workers(
-                    name="Frentista 04 - noite",
+                    name="Frentista 03",
                     subsidiarie_id=1,
                     function_id=6,
                     turn_id=2,
                     is_active=True,
                 ),
                 Workers(
-                    name="Caixa 01 - manhã",
+                    name="Frentista 04",
+                    subsidiarie_id=1,
+                    function_id=6,
+                    turn_id=2,
+                    is_active=True,
+                ),
+                Workers(
+                    name="Caixa 01",
                     subsidiarie_id=1,
                     function_id=7,
                     turn_id=1,
                     is_active=True,
                 ),
                 Workers(
-                    name="Caixa 02 - manhã",
+                    name="Caixa 02",
                     subsidiarie_id=1,
                     function_id=7,
                     turn_id=1,
                     is_active=True,
                 ),
                 Workers(
-                    name="Caixa 03 - noite",
+                    name="Caixa 03",
                     subsidiarie_id=1,
                     function_id=7,
                     turn_id=2,
                     is_active=True,
                 ),
                 Workers(
-                    name="Caixa 04 - noite",
+                    name="Caixa 04",
                     subsidiarie_id=1,
                     function_id=7,
                     turn_id=2,

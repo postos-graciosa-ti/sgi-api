@@ -1,3 +1,5 @@
+import json
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from sqlmodel import Session, select
@@ -78,7 +80,6 @@ from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import ConfirmPassword, Test, VerifyEmail
 from seeds.seed_all import seed_database
-import json
 
 # pre settings
 
@@ -427,33 +428,57 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
             .where(Scale.worker_id == worker_id)
         )
 
-        scales_by_subsidiarie_and_worker_id = session.exec(statement).all()
+        scales_by_subsidiarie_and_worker_id = session.exec(statement).first()
 
-    return [
-        {
-            "days_off": eval(scale.days_off),
-        }
-        for scale in scales_by_subsidiarie_and_worker_id
-    ]
+        return eval(scales_by_subsidiarie_and_worker_id.days_off)
 
 
 @app.post("/scales")
 def post_scale(scale: Scale):
     with Session(engine) as session:
-        session.add(scale)
+        statement = select(Scale).where(Scale.worker_id == scale.worker_id)
 
-        session.commit()
+        scales_by_worker_id = session.exec(statement).first()
 
-        session.refresh(scale)
+        if scales_by_worker_id:
+            current_days_off = eval(scales_by_worker_id.days_off)
 
-    return scale
+            new_days_off = eval(scale.days_off)
+
+            merged_days_off = list(set(current_days_off + new_days_off))
+
+            scales_by_worker_id.days_off = str(merged_days_off)
+
+            scales_by_worker_id.days_on = scale.days_on
+
+            scales_by_worker_id.need_alert = scale.need_alert
+
+            scales_by_worker_id.proportion = scale.proportion
+
+            session.commit()
+
+            session.refresh(scales_by_worker_id)
+
+            return eval(scales_by_worker_id.days_off)
+        else:
+            session.add(scale)
+
+            session.commit()
+
+            session.refresh(scale)
+
+            return eval(scale.days_off)
 
 
-@app.delete("/scales/{id}")
-def delete_scale(id: int):
+@app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
+def delete_scale(scale_id: int, subsidiarie_id: int):
     with Session(engine) as session:
-        session.delete(session.get(Scale, id))
+        session.delete(session.get(Scale, scale_id))
 
         session.commit()
 
-    return {"message": "Scale deleted successfully"}
+        statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
+
+        all_scales_by_subsidiarie = session.exec(statement).all()
+
+    return all_scales_by_subsidiarie

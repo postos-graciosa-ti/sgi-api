@@ -504,12 +504,22 @@ def get_scales_by_worker_id(worker_id: int, formData: Date):
         worker_scale_dates_on.sort()
 
         worker_scale_dates_off.sort()
-        
+
         worker_scale.days_off = str(worker_scale_dates_off)
 
         worker_scale_dates_on.sort()
-        
+
         worker_scale.days_on = str(worker_scale_dates_on)
+
+        worker_scale_proportion = json.loads(worker_scale.proportion)
+
+        updated_proportion = [
+            proportion
+            for proportion in worker_scale_proportion
+            if proportion["data"] != formData.date
+        ]
+
+        worker_scale.proportion = json.dumps(updated_proportion)
 
         session.commit()
 

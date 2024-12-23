@@ -418,6 +418,25 @@ def get_scales_by_subsidiarie_id(subsidiarie_id: int):
     return format_scales
 
 
+@app.get("/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int):
+    with Session(engine) as session:
+        statement = (
+            select(Scale)
+            .where(Scale.subsidiarie_id == subsidiarie_id)
+            .where(Scale.worker_id == worker_id)
+        )
+
+        scales_by_subsidiarie_and_worker_id = session.exec(statement).all()
+
+    return [
+        {
+            "days_off": eval(scale.days_off),
+        }
+        for scale in scales_by_subsidiarie_and_worker_id
+    ]
+
+
 @app.post("/scales")
 def post_scale(scale: Scale):
     with Session(engine) as session:

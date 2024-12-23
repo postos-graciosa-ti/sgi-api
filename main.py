@@ -435,78 +435,6 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
 
         return eval(scales_by_subsidiarie_and_worker_id.days_off)
 
-# class PostScale(BaseModel):
-#     current_month_first_day: str
-#     current_month_last_day: str
-#     worker_id: int
-#     subsidiarie_id: int
-#     days_off: str
-
-# @app.post("/scales")
-# def post_scale(formData: PostScale):
-#     first_day = datetime.datetime.strptime(formData.current_month_first_day, "%d-%m-%Y").date()
-    
-#     last_day = datetime.datetime.strptime(formData.current_month_last_day, "%d-%m-%Y").date()
-
-#     dias_do_mes = []
-    
-#     data_atual = first_day
-
-#     while data_atual <= last_day:
-#         dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-    
-#         data_atual += datetime.timedelta(days=1)
-
-#     days_off = eval(formData.days_off)
-
-#     dias_sem_folga = [dia for dia in dias_do_mes if dia not in days_off]
-
-#     proporcao = len(dias_sem_folga) / len(days_off) if len(days_off) > 0 else float('inf')
-    
-#     proportion = f"{len(dias_sem_folga)}:{len(days_off)}"
-
-#     need_alert = proporcao > 8
-
-#     with Session(engine) as session:
-#         statement = select(Scale).where(Scale.worker_id == formData.worker_id).where(Scale.subsidiarie_id == formData.subsidiarie_id)
-        
-#         existing_scale = session.exec(statement).first()
-        
-#         if existing_scale:
-#             existing_scale.days_on = str(dias_sem_folga)
-
-#             existing_scale.days_off = formData.days_off
-
-#             existing_scale.need_alert = need_alert
-
-#             existing_scale.proportion = proportion
-
-#             session.add(existing_scale)
-
-#             session.commit()
-
-#             session.refresh(existing_scale)
-
-#             return eval(existing_scale.days_off)
-#         else:
-#             new_scale = Scale(
-#                 worker_id=formData.worker_id,
-#                 subsidiarie_id=formData.subsidiarie_id, 
-#                 days_on=str(dias_sem_folga),
-#                 days_off=formData.days_off,
-#                 need_alert=need_alert,
-#                 proportion=proportion
-#             )
-
-#             session.add(new_scale)
-
-#             session.commit()
-
-#             session.refresh(new_scale)
-
-#             return eval(new_scale.days_off)
-
-
 
 @app.post("/scales")
 def post_scale(scale: Scale):
@@ -522,9 +450,15 @@ def post_scale(scale: Scale):
 
             merged_days_off = list(set(current_days_off + new_days_off))
 
+            merged_days_off.sort()
+
             scales_by_worker_id.days_off = str(merged_days_off)
 
-            scales_by_worker_id.days_on = scale.days_on
+            days_on = eval(scale.days_on)
+
+            days_on.sort()
+
+            scales_by_worker_id.days_on = str(days_on)
 
             scales_by_worker_id.need_alert = scale.need_alert
 
@@ -557,19 +491,23 @@ def get_scales_by_worker_id(worker_id: int, formData: Date):
         ).first()
 
         worker_scale_dates_off = eval(worker_scale.days_off)
-        
+
         worker_scale_dates_on = eval(worker_scale.days_on)
 
         if formData.date in worker_scale_dates_off:
             worker_scale_dates_off.remove(formData.date)
-            
+
             worker_scale_dates_on.append(formData.date)
 
         worker_scale_dates_off.sort()
-        
+
         worker_scale_dates_on.sort()
 
+        worker_scale_dates_off.sort()
+        
         worker_scale.days_off = str(worker_scale_dates_off)
+
+        worker_scale_dates_on.sort()
         
         worker_scale.days_on = str(worker_scale_dates_on)
 

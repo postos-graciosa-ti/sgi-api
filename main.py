@@ -1,9 +1,9 @@
 import calendar
-import datetime
 import json
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -436,47 +436,153 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
         return eval(scales_by_subsidiarie_and_worker_id.days_off)
 
 
+class FormData(BaseModel):
+    worker_id: int
+    subsidiarie_id: int
+    days_off: str
+    first_day: str
+    last_day: str
+
+
 @app.post("/scales")
-def post_scale(scale: Scale):
-    with Session(engine) as session:
-        statement = select(Scale).where(Scale.worker_id == scale.worker_id)
+async def save_or_update_days_off(form_data: FormData):
+    try:
+        form_data.days_off = eval(form_data.days_off)
 
-        scales_by_worker_id = session.exec(statement).first()
+        first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
+        
+        last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
+        
+        dias_do_mes = []
+        
+        data_atual = first_day
+        
+        while data_atual <= last_day:
+            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+            data_atual += timedelta(days=1)
+        
+        # Dias sem folga
+        dias_sem_folga = [
+            dia for dia in dias_do_mes if dia not in form_data.days_off
+        ]
+        
+        # Calcula proporção e verifica se há mais de 8 dias consecutivos sem folga
+        all_dates = sorted(dias_sem_folga + form_data.days_off)
+        options = [
+            {"dayOff": date in form_data.days_off, "value": date}
+            for date in all_dates
+        ]
 
-        if scales_by_worker_id:
-            current_days_off = eval(scales_by_worker_id.days_off)
+        dias_consecutivos = []
+        contador = 0
+        tem_mais_de_oito_dias_consecutivos = False
 
-            new_days_off = eval(scale.days_off)
+        for dia in options:
+            if dia["dayOff"]:
+                dias_consecutivos.append({
+                    "dias": contador,
+                    "dataFolga": dia["value"]
+                })
+                contador = 0
+            else:
+                contador += 1
+                if contador > 8:
+                    tem_mais_de_oito_dias_consecutivos = True
 
-            merged_days_off = list(set(current_days_off + new_days_off))
+        proporcoes = [
+            {
+                "folga": idx + 1,
+                "data": item["dataFolga"],
+                "proporcao": f"{item['dias']}x1"
+            }
+            for idx, item in enumerate(dias_consecutivos)
+        ]
 
-            merged_days_off.sort()
+        # Verificação de erro se não houver dias de folga
+        if not form_data.days_off:
+            raise HTTPException(status_code=400, detail="Não é possível salvar sem dias de folga.")
 
-            scales_by_worker_id.days_off = str(merged_days_off)
+        # Gerenciamento da sessão com contexto `with`
+        with Session(engine) as session:
+            # Verifica se já existe um registro com o mesmo worker_id e subsidiarie_id
+            existing_scale = session.exec(
+                select(Scale).where(
+                    Scale.worker_id == form_data.worker_id,
+                    Scale.subsidiarie_id == form_data.subsidiarie_id
+                )
+            ).first()
 
-            days_on = eval(scale.days_on)
+            if existing_scale:
+                # Atualiza os dados do registro existente
+                existing_scale.days_on = json.dumps(dias_sem_folga)
+                existing_scale.days_off = json.dumps(form_data.days_off)
+                existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
+                existing_scale.proportion = json.dumps(proporcoes)
+            else:
+                # Cria um novo registro
+                existing_scale = Scale(
+                    worker_id=form_data.worker_id,
+                    subsidiarie_id=form_data.subsidiarie_id,
+                    days_on=json.dumps(dias_sem_folga),
+                    days_off=json.dumps(form_data.days_off),
+                    need_alert=tem_mais_de_oito_dias_consecutivos,
+                    proportion=json.dumps(proporcoes)
+                )
+                session.add(existing_scale)
 
-            days_on.sort()
-
-            scales_by_worker_id.days_on = str(days_on)
-
-            scales_by_worker_id.need_alert = scale.need_alert
-
-            scales_by_worker_id.proportion = scale.proportion
-
+            # Salva as mudanças no banco
             session.commit()
+            session.refresh(existing_scale)
 
-            session.refresh(scales_by_worker_id)
+        # Retorna os dados atualizados ou inseridos
+        return eval(existing_scale.days_off)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-            return eval(scales_by_worker_id.days_off)
-        else:
-            session.add(scale)
 
-            session.commit()
 
-            session.refresh(scale)
 
-            return eval(scale.days_off)
+# @app.post("/scales")
+# def post_scale(scale: Scale):
+#     with Session(engine) as session:
+#         statement = select(Scale).where(Scale.worker_id == scale.worker_id)
+
+#         scales_by_worker_id = session.exec(statement).first()
+
+#         if scales_by_worker_id:
+#             current_days_off = eval(scales_by_worker_id.days_off)
+
+#             new_days_off = eval(scale.days_off)
+
+#             merged_days_off = list(set(current_days_off + new_days_off))
+
+#             merged_days_off.sort()
+
+#             scales_by_worker_id.days_off = str(merged_days_off)
+
+#             days_on = eval(scale.days_on)
+
+#             days_on.sort()
+
+#             scales_by_worker_id.days_on = str(days_on)
+
+#             scales_by_worker_id.need_alert = scale.need_alert
+
+#             scales_by_worker_id.proportion = scale.proportion
+
+#             session.commit()
+
+#             session.refresh(scales_by_worker_id)
+
+#             return eval(scales_by_worker_id.days_off)
+#         else:
+#             session.add(scale)
+
+#             session.commit()
+
+#             session.refresh(scale)
+
+#             return eval(scale.days_off)
 
 
 class Date(BaseModel):

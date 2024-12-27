@@ -1,4 +1,5 @@
 import json
+import locale
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
@@ -10,6 +11,8 @@ from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
 from pyhints.scales import GetScalesByDate, PostScaleInput
+
+# locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
 
 def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
@@ -58,18 +61,17 @@ def handle_post_scale(form_data: PostScaleInput):
         last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
 
         dias_do_mes = []
-
+        
         data_atual = first_day
 
         while data_atual <= last_day:
             dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
             data_atual += timedelta(days=1)
 
-        # Dias sem folga
         dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
 
-        # Calcula proporção e verifica se há mais de 8 dias consecutivos sem folga
         all_dates = sorted(dias_sem_folga + form_data.days_off)
+
         options = [
             {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
         ]
@@ -91,20 +93,36 @@ def handle_post_scale(form_data: PostScaleInput):
             {
                 "folga": idx + 1,
                 "data": item["dataFolga"],
+                "weekday": datetime.strptime(item["dataFolga"], "%d-%m-%Y").strftime(
+                    "%A"
+                ),
                 "proporcao": f"{item['dias']}x1",
             }
             for idx, item in enumerate(dias_consecutivos)
         ]
 
-        # Verificação de erro se não houver dias de folga
         if not form_data.days_off:
             raise HTTPException(
                 status_code=400, detail="Não é possível salvar sem dias de folga."
             )
 
-        # Gerenciamento da sessão com contexto `with`
+        days_off_with_weekday = [
+            {
+                "date": date,
+                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+            }
+            for date in form_data.days_off
+        ]
+
+        days_on_with_weekday = [
+            {
+                "date": date,
+                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+            }
+            for date in dias_sem_folga
+        ]
+
         with Session(engine) as session:
-            # Verifica se já existe um registro com o mesmo worker_id e subsidiarie_id
             existing_scale = session.exec(
                 select(Scale).where(
                     Scale.worker_id == form_data.worker_id,
@@ -113,29 +131,35 @@ def handle_post_scale(form_data: PostScaleInput):
             ).first()
 
             if existing_scale:
-                # Atualiza os dados do registro existente
-                existing_scale.days_on = json.dumps(dias_sem_folga)
-                existing_scale.days_off = json.dumps(form_data.days_off)
+                existing_scale.days_on = json.dumps(days_on_with_weekday)
+                existing_scale.days_off = json.dumps(days_off_with_weekday)
                 existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
                 existing_scale.proportion = json.dumps(proporcoes)
             else:
-                # Cria um novo registro
                 existing_scale = Scale(
                     worker_id=form_data.worker_id,
                     subsidiarie_id=form_data.subsidiarie_id,
-                    days_on=json.dumps(dias_sem_folga),
-                    days_off=json.dumps(form_data.days_off),
+                    days_on=json.dumps(days_on_with_weekday),
+                    days_off=json.dumps(days_off_with_weekday),
                     need_alert=tem_mais_de_oito_dias_consecutivos,
                     proportion=json.dumps(proporcoes),
                 )
+
                 session.add(existing_scale)
 
-            # Salva as mudanças no banco
             session.commit()
+            
             session.refresh(existing_scale)
 
-        # Retorna os dados atualizados ou inseridos
-        return eval(existing_scale.days_off)
+        sla = []
+
+        existing_scale_days_off = json.loads(existing_scale.days_off)
+
+        for day_off in existing_scale_days_off:
+            sla.append(day_off["date"])
+
+        return sla
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

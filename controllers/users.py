@@ -1,6 +1,7 @@
 import json
 
 from fastapi import HTTPException
+from jose import jwt
 from passlib.hash import pbkdf2_sha256
 from sqlmodel import Session, select
 
@@ -26,13 +27,15 @@ def handle_user_login(user: User):
 
         db_user = session.exec(statement).first()
 
+        token = jwt.encode({"key": "value"}, "secret", algorithm="HS256")
+
         if not db_user:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
         if not pbkdf2_sha256.verify(user.password, db_user.password):
             raise HTTPException(status_code=400, detail="Senha incorreta")
 
-        return db_user
+        return {"data": db_user, "token": token}
 
 
 def handle_get_users():

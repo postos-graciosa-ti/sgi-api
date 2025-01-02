@@ -3,7 +3,8 @@ import json
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
+from jose import jwt
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -28,6 +29,12 @@ from controllers.jobs import (
 )
 from controllers.months import handle_get_months
 from controllers.roles import handle_get_roles
+from controllers.scale import (
+    handle_delete_scale,
+    handle_get_scales_by_subsidiarie_and_worker_id,
+    handle_get_scales_by_subsidiarie_id,
+    handle_post_scale,
+)
 from controllers.subsidiaries import (
     handle_delete_subsidiarie,
     handle_get_subsidiaries,
@@ -41,7 +48,9 @@ from controllers.turn import (
     handle_put_turn,
 )
 from controllers.users import (
+    handle_change_password,
     handle_confirm_password,
+    handle_create_user_password,
     handle_delete_user,
     handle_get_test,
     handle_get_user_by_id,
@@ -51,8 +60,6 @@ from controllers.users import (
     handle_put_user,
     handle_user_login,
     handle_verify_email,
-    handle_change_password,
-    handle_create_user_password,
 )
 from controllers.workers import (
     handle_deactivate_worker,
@@ -64,6 +71,7 @@ from controllers.workers import (
     handle_put_worker,
 )
 from database.sqlite import create_db_and_tables, engine
+from functions.auth import verify_token
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
@@ -78,19 +86,13 @@ from pyhints.scales import GetScalesByDate, PostScaleInput
 from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
+    ChangeUserPasswordInput,
     ConfirmPassword,
+    CreateUserPasswordInput,
     Test,
     VerifyEmail,
-    ChangeUserPasswordInput,
-    CreateUserPasswordInput,
 )
 from seeds.seed_all import seed_database
-from controllers.scale import (
-    handle_get_scales_by_subsidiarie_id,
-    handle_get_scales_by_subsidiarie_and_worker_id,
-    handle_post_scale,
-    handle_delete_scale,
-)
 
 # pre settings
 
@@ -154,7 +156,7 @@ def delete_candidato(id: int):
 
 
 @app.get("/users")
-def get_users():
+def get_users(token: dict = Depends(verify_token)):
     return handle_get_users()
 
 

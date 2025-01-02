@@ -14,7 +14,7 @@ API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
 
 #### Composição:
 
-- <categoria>/<o que a branch faz em si>
+- ```<categoria>/<o que a branch faz em si>```
 
 #### Categorias
 
@@ -46,7 +46,7 @@ API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
 
 #### Composição:
 
-- <categoria>: <o que a branch faz em si>
+- ```<categoria>: <o que a branch faz em si>```
 
 #### Categorias:
 

@@ -10,6 +10,12 @@ API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
 
 - Uvicorn, um servidor web ASGI para Python
 
+### Padrão de projeto:
+
+- models: define as tabelas do banco de dados
+
+- controllers: intermediário entre os dados que vem do front 
+
 # Iniciando
 
 ### Clonando o projeto:

@@ -52,6 +52,7 @@ from controllers.users import (
     handle_user_login,
     handle_verify_email,
     handle_change_password,
+    handle_create_user_password,
 )
 from controllers.workers import (
     handle_deactivate_worker,
@@ -76,7 +77,13 @@ from models.workers import Workers
 from pyhints.scales import GetScalesByDate, PostScaleInput
 from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
-from pyhints.users import ConfirmPassword, Test, VerifyEmail, ChangeUserPasswordInput
+from pyhints.users import (
+    ConfirmPassword,
+    Test,
+    VerifyEmail,
+    ChangeUserPasswordInput,
+    CreateUserPasswordInput,
+)
 from seeds.seed_all import seed_database
 from controllers.scale import (
     handle_get_scales_by_subsidiarie_id,
@@ -186,9 +193,9 @@ def test(arr: Test):
     return handle_get_test(arr)
 
 
-@app.post("/verify-email")
-def verify_email(userData: VerifyEmail):
-    return handle_verify_email(userData)
+@app.post("/users/create-password")
+def create_user_password(userData: CreateUserPasswordInput):
+    return handle_create_user_password(userData)
 
 
 @app.post("/confirm-password")

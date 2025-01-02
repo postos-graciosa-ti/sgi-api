@@ -61,7 +61,7 @@ def handle_post_scale(form_data: PostScaleInput):
         last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
 
         dias_do_mes = []
-        
+
         data_atual = first_day
 
         while data_atual <= last_day:
@@ -123,6 +123,41 @@ def handle_post_scale(form_data: PostScaleInput):
         ]
 
         with Session(engine) as session:
+            # Obter o turno do trabalhador atual
+            worker = session.exec(
+                select(Workers).where(Workers.id == form_data.worker_id)
+            ).first()
+
+            if not worker:
+                raise HTTPException(
+                    status_code=400, detail="Trabalhador não encontrado."
+                )
+
+            worker_turn_id = worker.turn_id  # Obtém o turn_id do trabalhador
+
+            for day_off in form_data.days_off:
+                existing_workers = session.exec(
+                    select(Scale)
+                    .join(
+                        Workers, Scale.worker_id == Workers.id
+                    )  # Juntar com a tabela Worker
+                    .where(
+                        Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
+                        Workers.turn_id == worker_turn_id,  # Mesmo turno
+                        Scale.days_off.contains(
+                            f'"{day_off}"'
+                        ),  # Dia de folga em comum
+                        Scale.worker_id
+                        != form_data.worker_id,  # Ignorar o próprio trabalhador
+                    )
+                ).all()
+
+                if existing_workers:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
+                    )
+
             existing_scale = session.exec(
                 select(Scale).where(
                     Scale.worker_id == form_data.worker_id,
@@ -148,7 +183,7 @@ def handle_post_scale(form_data: PostScaleInput):
                 session.add(existing_scale)
 
             session.commit()
-            
+
             session.refresh(existing_scale)
 
         sla = []

@@ -10,11 +10,12 @@ from models.role import Role
 from models.subsidiarie import Subsidiarie
 from models.user import User
 from pyhints.users import (
+    ChangeUserPasswordInput,
+    ConfirmPassword,
+    CreateUserPasswordInput,
     GetUserRoles,
     Test,
     VerifyEmail,
-    ConfirmPassword,
-    ChangeUserPasswordInput,
 )
 from repository.functions import create, delete, update
 
@@ -170,12 +171,36 @@ def handle_get_test(arr: Test):
 
 def handle_verify_email(userData: VerifyEmail):
     with Session(engine) as session:
-        user = session.exec(select(User).where(User.email == userData.email)).first()
+        user = session.exec(
+            select(User)
+            .where(User.email == userData.email)
+            .where(User.password == None)
+        ).first()
 
     if user:
         return {"status": "true", "message": "Email existe no banco de dados."}
     else:
         return {"status": "false", "message": "Email não encontrado no banco de dados."}
+
+
+def handle_create_user_password(userData: CreateUserPasswordInput):
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == userData.email)).first()
+
+        userHasPassword = bool(user.password)
+
+        if userHasPassword:
+            raise HTTPException(status_code=400, detail="Usuário já possui senha")
+        else:
+            user.password = pbkdf2_sha256.hash(userData.password)
+
+            session.add(user)
+
+            session.commit()
+
+            session.refresh(user)
+
+            return user
 
 
 def handle_confirm_password(userData: ConfirmPassword):

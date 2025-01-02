@@ -25,3 +25,8 @@ class ChangeUserPasswordInput(BaseModel):
     email: str
     currentPassword: str
     newPassword: str
+
+
+class CreateUserPasswordInput(BaseModel):
+    email: str
+    password: str

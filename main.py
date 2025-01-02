@@ -106,6 +106,16 @@ def on_startup():
 def get_docs_info():
     return handle_get_docs_info()
 
+@app.get("/render-server/activate")
+def activate_render_server():
+    with Session(engine) as session:
+        has_users = session.exec(select(User)).all()
+
+        # result = True if has_users else False
+
+        result = bool(has_users)
+
+        return result
 
 # candidato
 

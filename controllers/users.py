@@ -9,7 +9,13 @@ from models.function import Function
 from models.role import Role
 from models.subsidiarie import Subsidiarie
 from models.user import User
-from pyhints.users import GetUserRoles, Test, VerifyEmail, ConfirmPassword
+from pyhints.users import (
+    GetUserRoles,
+    Test,
+    VerifyEmail,
+    ConfirmPassword,
+    ChangeUserPasswordInput,
+)
 from repository.functions import create, delete, update
 
 
@@ -189,3 +195,21 @@ def handle_confirm_password(userData: ConfirmPassword):
         session.refresh(user)
 
         return user
+
+
+def handle_change_password(userData: ChangeUserPasswordInput):
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == userData.email)).first()
+
+        if not pbkdf2_sha256.verify(userData.currentPassword, user.password):
+            raise HTTPException(status_code=400, detail="Senha incorreta")
+
+        user.password = pbkdf2_sha256.hash(userData.newPassword)
+
+        session.add(user)
+
+        session.commit()
+
+        session.refresh(user)
+
+    return user

@@ -19,3 +19,9 @@ class VerifyEmail(BaseModel):
 class ConfirmPassword(BaseModel):
     email: str
     password: str
+
+
+class ChangeUserPasswordInput(BaseModel):
+    email: str
+    currentPassword: str
+    newPassword: str

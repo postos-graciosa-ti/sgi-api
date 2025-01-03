@@ -21,6 +21,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
                 Turn.name.label("turn_name"),
+                Turn.start_time.label("turn_start_time"),
+                Turn.end_time.label("turn_end_time")
             )
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .join(Function, Function.id == Workers.function_id)
@@ -36,6 +38,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
                 "turn_name": worker.turn_name,
+                "turn_start_time": worker.turn_start_time,
+                "turn_end_time": worker.turn_end_time
             }
             for worker in workers
         ]

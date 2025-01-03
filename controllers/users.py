@@ -1,5 +1,7 @@
 import json
+import os
 
+from dotenv import load_dotenv
 from fastapi import HTTPException
 from jose import jwt
 from passlib.hash import pbkdf2_sha256
@@ -20,6 +22,14 @@ from pyhints.users import (
 )
 from repository.functions import create, delete, update
 
+load_dotenv()
+
+payload = {"key": "value"}
+
+secret = os.environ.get("SECRET")
+
+algorithm = os.environ.get("ALGORITHM")
+
 
 def handle_user_login(user: User):
     with Session(engine) as session:
@@ -27,7 +37,7 @@ def handle_user_login(user: User):
 
         db_user = session.exec(statement).first()
 
-        token = jwt.encode({"key": "value"}, "secret", algorithm="HS256")
+        token = jwt.encode(payload, secret, algorithm)
 
         if not db_user:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")

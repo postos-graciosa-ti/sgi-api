@@ -3,6 +3,7 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from jose import jwt
 from passlib.hash import pbkdf2_sha256
 from sqlmodel import Session, select
@@ -24,8 +25,6 @@ from repository.functions import create, delete, update
 
 load_dotenv()
 
-payload = {"key": "value"}
-
 secret = os.environ.get("SECRET")
 
 algorithm = os.environ.get("ALGORITHM")
@@ -37,15 +36,46 @@ def handle_user_login(user: User):
 
         db_user = session.exec(statement).first()
 
-        token = jwt.encode(payload, secret, algorithm)
-
         if not db_user:
-            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
         if not pbkdf2_sha256.verify(user.password, db_user.password):
-            raise HTTPException(status_code=400, detail="Senha incorreta")
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-        return {"data": db_user, "token": token}
+        payload = {"id": db_user.id, "email": db_user.email}
+
+        token = jwt.encode(payload, secret, algorithm)
+
+        db_user_subsidiaries_ids = json.loads(db_user.subsidiaries_id)
+
+        if not db_user_subsidiaries_ids:
+            raise HTTPException(status_code=400, detail="Erro ao processar filiais")
+
+        user_subsidiaries = []
+
+        for subsidiarie_id in db_user_subsidiaries_ids:
+            user_subsidiarie = session.get(Subsidiarie, subsidiarie_id)
+
+            if user_subsidiarie:
+                user_subsidiaries.append(
+                    {"label": user_subsidiarie.name, "value": user_subsidiarie.id}
+                )
+
+        return JSONResponse(
+            {
+                "data": {
+                    "id": db_user.id,
+                    "email": db_user.email,
+                    "name": db_user.name,
+                    "role_id": db_user.role_id,
+                    "subsidiaries_id": db_user.subsidiaries_id,
+                    "user_subsidiaries": user_subsidiaries,
+                    "function_id": db_user.function_id,
+                    "is_active": db_user.is_active,
+                },
+                "token": token,
+            }
+        )
 
 
 def handle_get_users():

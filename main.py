@@ -1,19 +1,5 @@
-import calendar
-import json
-import mimetypes
-import os
-import re
-from datetime import datetime, time, timedelta
-from io import BytesIO
-from pathlib import Path
-
-import pandas as pd
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse
-from jose import jwt
-from openpyxl import load_workbook
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, File, UploadFile
 from sqlmodel import Session, select
 
 from controllers.candidato import (
@@ -67,7 +53,6 @@ from controllers.users import (
     handle_post_user,
     handle_put_user,
     handle_user_login,
-    handle_verify_email,
 )
 from controllers.workers import (
     handle_deactivate_worker,
@@ -85,12 +70,11 @@ from models.candidate import Candidate
 from models.candidato import Candidato
 from models.function import Function
 from models.jobs import Jobs
-from models.scale import Scale
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
-from pyhints.scales import GetScalesByDate, PostScaleInput
+from pyhints.scales import PostScaleInput
 from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
@@ -98,8 +82,8 @@ from pyhints.users import (
     ConfirmPassword,
     CreateUserPasswordInput,
     Test,
-    VerifyEmail,
 )
+from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
 
 # pre settings
@@ -439,263 +423,9 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
 
 
-# ~~
+# scrips
 
 
-def convert_to_time(time_string):
-    if time_string:
-        return time(*map(int, time_string.split(":")))
-    return time(0, 0)  # Retorna 00:00:00 se o horário for None ou vazio
-
-
-# Função para extrair os horários de início, fim e intervalos
-def extract_turn_info(turn_string):
-    # Regex para extrair os horários no formato "08:00 - 18:00"
-    pattern = r"(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})"
-    match = re.match(pattern, turn_string)
-    if match:
-        start_time = match.group(1)
-        end_time = match.group(2)
-        # Como não há intervalos na string de entrada, podemos assumir valores padrão para os intervalos
-        return (
-            start_time,
-            None,
-            end_time,
-            None,
-        )  # start_interval_time e end_interval_time como None
-    return None, None, None, None  # Caso não consiga fazer o match
-
-
-# excel_file = r"C:\Users\posto\Downloads\Novo(a) Planilha do Microsoft Excel.xlsx"
-
-
-# @app.post("/generate-seed")
-# def generate_seed():
-#     # Ler o arquivo Excel
-#     df = pd.read_excel(excel_file)
-
-#     # Filtrar os colaboradores da unidade "Posto Graciosa" e com status "Ativo"
-#     colaboradores_posto_graciosa = df[
-#         (df["Unidade"] == "Posto Graciosa") & (df["Status(F)"] == "Ativo")
-#     ]
-
-#     # Selecionar as colunas "Nome do Colaborador", "Cargo Atual", "Descrição do Cargo", "Turno de Trabalho"
-#     colaboradores_nome_email = colaboradores_posto_graciosa[
-#         ["Nome do Colaborador", "Cargo Atual", "Turno de Trabalho"]
-#     ]
-
-#     # Substituir NaN por None
-#     colaboradores_nome_email = colaboradores_nome_email.where(
-#         pd.notna(colaboradores_nome_email), None
-#     )
-
-#     # Converter o DataFrame para uma lista de dicionários
-#     colaboradores_list = colaboradores_nome_email.to_dict(orient="records")
-
-#     # Inserir os dados na tabela 'turn' e 'function', removendo duplicatas durante a inserção
-#     with Session(engine) as session:
-#         for colaborador in colaboradores_list:
-#             name = colaborador["Cargo Atual"]
-#             description = colaborador["Cargo Atual"]  # Obtendo a descrição da função
-#             turn_string = colaborador["Turno de Trabalho"]
-
-#             # Passo 1: Inserir a função na tabela 'function' (se não existir)
-#             existing_function = session.exec(
-#                 select(Function).where(Function.name == name)
-#             ).first()
-
-#             if not existing_function:
-#                 new_function = Function(
-#                     name=name, description=description
-#                 )  # Incluindo a descrição
-#                 session.add(new_function)
-#                 session.commit()  # Comitar para salvar a função
-#                 function_id = new_function.id
-#             else:
-#                 function_id = existing_function.id
-
-#             # Passo 2: Extrair os horários de turno
-#             (
-#                 start_time_str,
-#                 start_interval_time_str,
-#                 end_time_str,
-#                 end_interval_time_str,
-#             ) = extract_turn_info(turn_string)
-
-#             # Converte os horários de string para objetos time
-#             start_time = convert_to_time(start_time_str)
-#             end_time = convert_to_time(end_time_str)
-
-#             # Verificar e substituir None por um objeto datetime.time('00:00:00') para os intervalos de tempo
-#             start_interval_time = (
-#                 convert_to_time(start_interval_time_str)
-#                 if start_interval_time_str
-#                 else time(0, 0)
-#             )
-#             end_interval_time = (
-#                 convert_to_time(end_interval_time_str)
-#                 if end_interval_time_str
-#                 else time(0, 0)
-#             )
-
-#             # Passo 3: Verificar se o turno já existe na tabela 'turn'
-#             existing_turn = session.exec(
-#                 select(Turn).where(
-#                     Turn.name == name,
-#                     Turn.start_time == start_time,
-#                     Turn.end_time == end_time,
-#                 )
-#             ).first()
-
-#             if not existing_turn:
-#                 # Criar um novo objeto Turn e adicionar à sessão, caso não exista duplicata
-#                 new_turn = Turn(
-#                     name=name,
-#                     start_time=start_time,
-#                     start_interval_time=start_interval_time,
-#                     end_time=end_time,
-#                     end_interval_time=end_interval_time,
-#                 )
-#                 session.add(new_turn)
-#                 session.commit()  # Comitar para salvar o turno
-
-#             # Agora, pegar o ID do turno inserido ou existente
-#             turn_id = existing_turn.id if existing_turn else new_turn.id
-
-#             # Passo 4: Criar e adicionar o Worker com o turn_id e function_id corretos
-#             new_worker = Workers(
-#                 name=colaborador["Nome do Colaborador"],
-#                 function_id=function_id,  # Atribuindo o function_id da função associada
-#                 subsidiarie_id=1,  # Supondo que você tenha um ID de subsidiária válido
-#                 turn_id=turn_id,
-#             )
-#             session.add(new_worker)
-
-#         # Comitar as alterações no banco de dados
-#         session.commit()
-
-#     # Retornar os dados em formato JSON
-#     return {"data": colaboradores_list}
-
-
-# Diretório onde os arquivos serão salvos
-UPLOAD_DIR = "uploads"  # Define o diretório como "uploads"
-
-# Cria o diretório se ele não existir
-Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-
-@app.post("/uploadfile/")
-async def upload_file(file: UploadFile = File(...)):
-    # Caminho completo para salvar o arquivo
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
-    
-    # Salva o arquivo
-    with open(file_location, "wb") as f:
-        f.write(await file.read())
-
-        df = pd.read_excel(file_location)
-
-        # Filtrar os colaboradores da unidade "Posto Graciosa" e com status "Ativo"
-        colaboradores_posto_graciosa = df[
-            (df["Unidade"] == "Posto Graciosa") & (df["Status(F)"] == "Ativo")
-        ]
-
-        # Selecionar as colunas "Nome do Colaborador", "Cargo Atual", "Descrição do Cargo", "Turno de Trabalho"
-        colaboradores_nome_email = colaboradores_posto_graciosa[
-            ["Nome do Colaborador", "Cargo Atual", "Turno de Trabalho"]
-        ]
-
-        # Substituir NaN por None
-        colaboradores_nome_email = colaboradores_nome_email.where(
-            pd.notna(colaboradores_nome_email), None
-        )
-
-        # Converter o DataFrame para uma lista de dicionários
-        colaboradores_list = colaboradores_nome_email.to_dict(orient="records")
-
-            # Inserir os dados na tabela 'turn' e 'function', removendo duplicatas durante a inserção
-    with Session(engine) as session:
-        for colaborador in colaboradores_list:
-            name = colaborador["Cargo Atual"]
-            description = colaborador["Cargo Atual"]  # Obtendo a descrição da função
-            turn_string = colaborador["Turno de Trabalho"]
-
-            # Passo 1: Inserir a função na tabela 'function' (se não existir)
-            existing_function = session.exec(
-                select(Function).where(Function.name == name)
-            ).first()
-
-            if not existing_function:
-                new_function = Function(
-                    name=name, description=description
-                )  # Incluindo a descrição
-                session.add(new_function)
-                session.commit()  # Comitar para salvar a função
-                function_id = new_function.id
-            else:
-                function_id = existing_function.id
-
-            # Passo 2: Extrair os horários de turno
-            (
-                start_time_str,
-                start_interval_time_str,
-                end_time_str,
-                end_interval_time_str,
-            ) = extract_turn_info(turn_string)
-
-            # Converte os horários de string para objetos time
-            start_time = convert_to_time(start_time_str)
-            end_time = convert_to_time(end_time_str)
-
-            # Verificar e substituir None por um objeto datetime.time('00:00:00') para os intervalos de tempo
-            start_interval_time = (
-                convert_to_time(start_interval_time_str)
-                if start_interval_time_str
-                else time(0, 0)
-            )
-            end_interval_time = (
-                convert_to_time(end_interval_time_str)
-                if end_interval_time_str
-                else time(0, 0)
-            )
-
-            # Passo 3: Verificar se o turno já existe na tabela 'turn'
-            existing_turn = session.exec(
-                select(Turn).where(
-                    Turn.name == name,
-                    Turn.start_time == start_time,
-                    Turn.end_time == end_time,
-                )
-            ).first()
-
-            if not existing_turn:
-                # Criar um novo objeto Turn e adicionar à sessão, caso não exista duplicata
-                new_turn = Turn(
-                    name=name,
-                    start_time=start_time,
-                    start_interval_time=start_interval_time,
-                    end_time=end_time,
-                    end_interval_time=end_interval_time,
-                )
-                session.add(new_turn)
-                session.commit()  # Comitar para salvar o turno
-
-            # Agora, pegar o ID do turno inserido ou existente
-            turn_id = existing_turn.id if existing_turn else new_turn.id
-
-            # Passo 4: Criar e adicionar o Worker com o turn_id e function_id corretos
-            new_worker = Workers(
-                name=colaborador["Nome do Colaborador"],
-                function_id=function_id,  # Atribuindo o function_id da função associada
-                subsidiarie_id=1,  # Supondo que você tenha um ID de subsidiária válido
-                turn_id=turn_id,
-            )
-            session.add(new_worker)
-
-        # Comitar as alterações no banco de dados
-        session.commit()
-
-    os.remove(file_location)
-    
-    return colaboradores_list
-    
+@app.post("/scripts/excel-scraping")
+async def excel_scraping(file: UploadFile = File(...)):
+    return await handle_excel_scraping(file)

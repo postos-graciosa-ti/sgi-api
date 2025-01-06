@@ -12,6 +12,7 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
+from scripts.cities_states import get_cities_from_ibge, get_states_from_ibge
 
 
 def seed_roles():
@@ -271,7 +272,7 @@ def seed_turns():
             ]
 
             session.add_all(turns)
-            
+
             session.commit()
 
 
@@ -378,3 +379,6 @@ def seed_database():
     seed_turns()
     seed_months()
     seed_workers()
+
+    get_states_from_ibge()
+    get_cities_from_ibge()

@@ -1,6 +1,8 @@
+from aiocache import Cache, cached
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from controllers.candidato import (
@@ -97,6 +99,8 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
+cache = Cache(Cache.MEMORY, ttl=3600)
+
 # root
 
 
@@ -116,8 +120,6 @@ def get_docs_info():
 def activate_render_server():
     with Session(engine) as session:
         has_users = session.exec(select(User)).all()
-
-        # result = True if has_users else False
 
         result = bool(has_users)
 
@@ -467,12 +469,18 @@ async def excel_scraping(file: UploadFile = File(...)):
 # states
 
 
+class GetStatesOutput(BaseModel):
+    label: str
+    value: int
+
+
 @app.get("/states")
-def get_states():
+@cached(ttl=3600, cache=Cache.MEMORY)
+async def get_states():
     with Session(engine) as session:
         states = session.exec(select(States)).all()
 
-        return states
+        return [GetStatesOutput(label=state.name, value=state.id) for state in states]
 
 
 @app.get("/states/{id}")
@@ -486,12 +494,18 @@ def get_states_by_id(id: int):
 # cities
 
 
+class GetCitiesOutput(BaseModel):
+    label: str
+    value: int
+
+
 @app.get("/cities")
-def get_cities():
+@cached(ttl=3600, cache=Cache.MEMORY)
+async def get_cities():
     with Session(engine) as session:
         cities = session.exec(select(Cities)).all()
 
-        return cities
+        return [GetCitiesOutput(label=city.name, value=city.id) for city in cities]
 
 
 @app.get("/cities/{id}")

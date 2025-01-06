@@ -23,7 +23,7 @@ def get_states_from_ibge():
 
 
 def get_cities_from_ibge():
-    url = f"https://servicodados.ibge.gov.br/api/v1/localidades/estados"
+    url = f"https://servicodados.ibge.gov.br/api/v1/localidades/distritos"
 
     with httpx.Client() as client:
         response = client.get(url)

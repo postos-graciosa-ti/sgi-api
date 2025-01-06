@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from aiocache import Cache, cached
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
@@ -446,6 +448,51 @@ def get_scales_by_subsidiarie_id(subsidiarie_id: int):
 @app.get("/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
 def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int):
     return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
+
+
+class NeedAlertInput(BaseModel):
+    days_off: str
+    first_day: str
+    last_day: str
+
+@app.post("/scales/need-alert")
+def teste(form_data: NeedAlertInput):
+    form_data.days_off = eval(form_data.days_off)
+
+    first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
+
+    last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
+
+    dias_do_mes = []
+
+    data_atual = first_day
+
+    while data_atual <= last_day:
+        dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+        data_atual += timedelta(days=1)
+
+    dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
+
+    all_dates = sorted(dias_sem_folga + form_data.days_off)
+
+    options = [
+        {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
+    ]
+
+    dias_consecutivos = []
+    contador = 0
+    tem_mais_de_oito_dias_consecutivos = False
+
+    for dia in options:
+        if dia["dayOff"]:
+            dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
+            contador = 0
+        else:
+            contador += 1
+            if contador > 8:
+                tem_mais_de_oito_dias_consecutivos = True
+
+    return tem_mais_de_oito_dias_consecutivos
 
 
 @app.post("/scales")

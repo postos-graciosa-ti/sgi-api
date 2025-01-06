@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
 from controllers.candidato import (
@@ -68,8 +69,10 @@ from functions.auth import verify_token
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
+from models.cities import Cities
 from models.function import Function
 from models.jobs import Jobs
+from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
@@ -375,8 +378,38 @@ def get_candidates():
 @app.get("/candidates/status/{id}")
 def get_candidates_by_status(id: int):
     with Session(engine) as session:
-        candidates = session.exec(select(Candidate).where(Candidate.status == id)).all()
-    return candidates
+        statement = (
+            select(
+                Candidate.id,
+                Candidate.name,
+                Candidate.date_of_birth,
+                Candidate.adress,
+                Candidate.resume,
+                Candidate.status,
+                Jobs.id.label("job_id"),
+                Jobs.name.label("job_name"),
+            )
+            .join(Jobs, Candidate.job_id == Jobs.id)
+            .where(Candidate.status == id)
+        )
+
+        candidates = session.exec(statement).all()
+
+        return JSONResponse(
+            [
+                {
+                    "candidate_id": candidate[0],
+                    "name": candidate[1],
+                    "date_of_birth": candidate[2],
+                    "adress": candidate[3],
+                    "resume": candidate[4],
+                    "status": candidate[5],
+                    "job_id": candidate[6],
+                    "job_name": candidate[7],
+                }
+                for candidate in candidates
+            ]
+        )
 
 
 @app.post("/candidates")
@@ -429,3 +462,41 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 @app.post("/scripts/excel-scraping")
 async def excel_scraping(file: UploadFile = File(...)):
     return await handle_excel_scraping(file)
+
+
+# states
+
+
+@app.get("/states")
+def get_states():
+    with Session(engine) as session:
+        states = session.exec(select(States)).all()
+
+        return states
+
+
+@app.get("/states/{id}")
+def get_states_by_id(id: int):
+    with Session(engine) as session:
+        state = session.exec(select(States).where(States.id == id)).all()
+
+        return state
+
+
+# cities
+
+
+@app.get("/cities")
+def get_cities():
+    with Session(engine) as session:
+        cities = session.exec(select(Cities)).all()
+
+        return cities
+
+
+@app.get("/cities/{id}")
+def get_city_by_id(id: int):
+    with Session(engine) as session:
+        city = session.exec(select(Cities).where(Cities.id == id)).one()
+
+        return city

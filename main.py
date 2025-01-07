@@ -455,6 +455,7 @@ class NeedAlertInput(BaseModel):
     first_day: str
     last_day: str
 
+
 @app.post("/scales/need-alert")
 def teste(form_data: NeedAlertInput):
     form_data.days_off = eval(form_data.days_off)
@@ -493,6 +494,22 @@ def teste(form_data: NeedAlertInput):
                 tem_mais_de_oito_dias_consecutivos = True
 
     return tem_mais_de_oito_dias_consecutivos
+
+
+class TestingInput(BaseModel):
+    date_from_calendar: str
+    date_to_compare: str
+
+
+@app.post("/testing")
+def testing(form_data: TestingInput):
+    date_from_calendar = datetime.strptime(form_data.date_from_calendar, "%d-%m-%Y")
+
+    date_to_compare = datetime.strptime(form_data.date_to_compare, "%d-%m-%Y")
+
+    date_difference = date_to_compare - date_from_calendar
+
+    return {"date_difference": date_difference.days}
 
 
 @app.post("/scales")

@@ -49,7 +49,12 @@ def handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_i
 
         scales_by_subsidiarie_and_worker_id = session.exec(statement).first()
 
-    return eval(scales_by_subsidiarie_and_worker_id.days_off)
+    # return eval(scales_by_subsidiarie_and_worker_id.days_off)
+
+    return {
+        "days_off": eval(scales_by_subsidiarie_and_worker_id.days_off),
+        "ilegal_dates": eval(scales_by_subsidiarie_and_worker_id.ilegal_dates)
+    }
 
 
 def handle_post_scale(form_data: PostScaleInput):
@@ -170,6 +175,7 @@ def handle_post_scale(form_data: PostScaleInput):
                 existing_scale.days_off = json.dumps(days_off_with_weekday)
                 existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
                 existing_scale.proportion = json.dumps(proporcoes)
+                existing_scale.ilegal_dates = form_data.ilegal_dates
             else:
                 existing_scale = Scale(
                     worker_id=form_data.worker_id,
@@ -178,6 +184,7 @@ def handle_post_scale(form_data: PostScaleInput):
                     days_off=json.dumps(days_off_with_weekday),
                     need_alert=tem_mais_de_oito_dias_consecutivos,
                     proportion=json.dumps(proporcoes),
+                    ilegal_dates=form_data.ilegal_dates,
                 )
 
                 session.add(existing_scale)
@@ -193,7 +200,12 @@ def handle_post_scale(form_data: PostScaleInput):
         for day_off in existing_scale_days_off:
             sla.append(day_off["date"])
 
-        return sla
+        # return sla
+
+        return {
+            "days_off": sla,
+            "ilegal_dates": eval(existing_scale.ilegal_dates)
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

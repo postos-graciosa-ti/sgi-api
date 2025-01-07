@@ -8,5 +8,6 @@ class Scale(SQLModel, table=True):
     subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
     days_on: str = Field(default="[]")
     days_off: str = Field(default="[]")
+    ilegal_dates: str = Field(default="[]")
     need_alert: bool = Field(default=False)
     proportion: str

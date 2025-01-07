@@ -17,3 +17,4 @@ class PostScaleInput(BaseModel):
     days_off: str
     first_day: str
     last_day: str
+    ilegal_dates: str

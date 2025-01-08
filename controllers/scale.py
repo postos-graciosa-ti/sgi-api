@@ -32,6 +32,7 @@ def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
                 "days_off": eval(scale.days_off),
                 "need_alert": scale.need_alert,
                 "proportion": scale.proportion,
+                "ilegal_dates": eval(scale.ilegal_dates)
             }
 
             format_scales.append(format_scale)

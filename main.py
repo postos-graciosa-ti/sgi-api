@@ -7,13 +7,23 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from controllers.candidates import (
+    handle_get_candidates,
+    handle_get_candidates_by_status,
+    handle_post_candidate,
+)
 from controllers.candidato import (
     handle_delete_candidato,
     handle_get_candidato,
     handle_get_candidato_by_id,
     handle_post_candidato,
 )
-from controllers.docs import handle_get_docs_info
+from controllers.cities_states import (
+    handle_get_cities,
+    handle_get_city_by_id,
+    handle_get_states,
+    handle_get_states_by_id,
+)
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
@@ -28,6 +38,7 @@ from controllers.jobs import (
 )
 from controllers.months import handle_get_months
 from controllers.roles import handle_get_roles
+from controllers.root import handle_activate_render_server, handle_get_docs_info
 from controllers.scale import (
     handle_delete_scale,
     handle_get_scales_by_subsidiarie_and_worker_id,
@@ -36,6 +47,7 @@ from controllers.scale import (
 )
 from controllers.subsidiaries import (
     handle_delete_subsidiarie,
+    handle_get_subsidiarie_by_id,
     handle_get_subsidiaries,
     handle_post_subsidiaries,
     handle_put_subsidiarie,
@@ -120,12 +132,7 @@ def get_docs_info():
 
 @app.get("/render-server/activate")
 def activate_render_server():
-    with Session(engine) as session:
-        has_users = session.exec(select(User)).all()
-
-        result = bool(has_users)
-
-        return result
+    handle_activate_render_server()
 
 
 # candidato
@@ -227,12 +234,7 @@ def get_subsidiaries():
 
 @app.get("/subsidiaries/{id}")
 def get_subsidiarie_by_id(id: int):
-    with Session(engine) as session:
-        subsidiarie = session.exec(
-            select(Subsidiarie).where(Subsidiarie.id == id)
-        ).one()
-
-        return subsidiarie
+    return handle_get_subsidiarie_by_id(id)
 
 
 @app.post("/subsidiaries")
@@ -374,67 +376,17 @@ def get_roles():
 
 @app.get("/candidates")
 def get_candidates():
-    with Session(engine) as session:
-        candidates = session.exec(select(Candidate)).all()
-    return candidates
+    return handle_get_candidates()
 
 
 @app.get("/candidates/status/{id}")
 def get_candidates_by_status(id: int):
-    with Session(engine) as session:
-        statement = (
-            select(
-                Candidate.id,
-                Candidate.name,
-                Candidate.date_of_birth,
-                Candidate.adress,
-                Candidate.resume,
-                Candidate.status,
-                Jobs.id.label("job_id"),
-                Jobs.name.label("job_name"),
-            )
-            .join(Jobs, Candidate.job_id == Jobs.id)
-            .where(Candidate.status == id)
-        )
-
-        candidates = session.exec(statement).all()
-
-        return JSONResponse(
-            [
-                {
-                    "candidate_id": candidate[0],
-                    "name": candidate[1],
-                    "date_of_birth": candidate[2],
-                    "adress": candidate[3],
-                    "resume": candidate[4],
-                    "status": candidate[5],
-                    "job_id": candidate[6],
-                    "job_name": candidate[7],
-                }
-                for candidate in candidates
-            ]
-        )
+    return handle_get_candidates_by_status(id)
 
 
 @app.post("/candidates")
 def post_candidate(candidate: Candidate):
-    with Session(engine) as session:
-        new_candidate = Candidate(
-            name=candidate.name,
-            date_of_birth=candidate.date_of_birth,
-            adress="candidate.adress",
-            resume=candidate.resume,
-            job_id=candidate.job_id,
-            status=2,
-        )
-
-        session.add(new_candidate)
-
-        session.commit()
-
-        session.refresh(new_candidate)
-
-    return new_candidate
+    return handle_post_candidate(candidate)
 
 
 # scales
@@ -450,66 +402,66 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
     return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
 
 
-class NeedAlertInput(BaseModel):
-    days_off: str
-    first_day: str
-    last_day: str
+# class NeedAlertInput(BaseModel):
+#     days_off: str
+#     first_day: str
+#     last_day: str
 
 
-@app.post("/scales/need-alert")
-def teste(form_data: NeedAlertInput):
-    form_data.days_off = eval(form_data.days_off)
+# @app.post("/scales/need-alert")
+# def teste(form_data: NeedAlertInput):
+#     form_data.days_off = eval(form_data.days_off)
 
-    first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
+#     first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
 
-    last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
+#     last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
 
-    dias_do_mes = []
+#     dias_do_mes = []
 
-    data_atual = first_day
+#     data_atual = first_day
 
-    while data_atual <= last_day:
-        dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-        data_atual += timedelta(days=1)
+#     while data_atual <= last_day:
+#         dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+#         data_atual += timedelta(days=1)
 
-    dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
+#     dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
 
-    all_dates = sorted(dias_sem_folga + form_data.days_off)
+#     all_dates = sorted(dias_sem_folga + form_data.days_off)
 
-    options = [
-        {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
-    ]
+#     options = [
+#         {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
+#     ]
 
-    dias_consecutivos = []
-    contador = 0
-    tem_mais_de_oito_dias_consecutivos = False
+#     dias_consecutivos = []
+#     contador = 0
+#     tem_mais_de_oito_dias_consecutivos = False
 
-    for dia in options:
-        if dia["dayOff"]:
-            dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
-            contador = 0
-        else:
-            contador += 1
-            if contador > 8:
-                tem_mais_de_oito_dias_consecutivos = True
+#     for dia in options:
+#         if dia["dayOff"]:
+#             dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
+#             contador = 0
+#         else:
+#             contador += 1
+#             if contador > 8:
+#                 tem_mais_de_oito_dias_consecutivos = True
 
-    return tem_mais_de_oito_dias_consecutivos
-
-
-class TestingInput(BaseModel):
-    date_from_calendar: str
-    date_to_compare: str
+#     return tem_mais_de_oito_dias_consecutivos
 
 
-@app.post("/testing")
-def testing(form_data: TestingInput):
-    date_from_calendar = datetime.strptime(form_data.date_from_calendar, "%d-%m-%Y")
+# class TestingInput(BaseModel):
+#     date_from_calendar: str
+#     date_to_compare: str
 
-    date_to_compare = datetime.strptime(form_data.date_to_compare, "%d-%m-%Y")
 
-    date_difference = date_to_compare - date_from_calendar
+# @app.post("/testing")
+# def testing(form_data: TestingInput):
+#     date_from_calendar = datetime.strptime(form_data.date_from_calendar, "%d-%m-%Y")
 
-    return {"date_difference": date_difference.days}
+#     date_to_compare = datetime.strptime(form_data.date_to_compare, "%d-%m-%Y")
+
+#     date_difference = date_to_compare - date_from_calendar
+
+#     return {"date_difference": date_difference.days}
 
 
 @app.post("/scales")
@@ -533,48 +485,26 @@ async def excel_scraping(file: UploadFile = File(...)):
 # states
 
 
-class GetStatesOutput(BaseModel):
-    label: str
-    value: int
-
-
 @app.get("/states")
 @cached(ttl=3600, cache=Cache.MEMORY)
 async def get_states():
-    with Session(engine) as session:
-        states = session.exec(select(States)).all()
-
-        return [GetStatesOutput(label=state.name, value=state.id) for state in states]
+    return await handle_get_states()
 
 
 @app.get("/states/{id}")
-def get_states_by_id(id: int):
-    with Session(engine) as session:
-        state = session.exec(select(States).where(States.id == id)).all()
-
-        return state
+async def get_states_by_id(id: int):
+    return await handle_get_states_by_id(id)
 
 
 # cities
 
 
-class GetCitiesOutput(BaseModel):
-    label: str
-    value: int
-
-
 @app.get("/cities")
 @cached(ttl=3600, cache=Cache.MEMORY)
 async def get_cities():
-    with Session(engine) as session:
-        cities = session.exec(select(Cities)).all()
-
-        return [GetCitiesOutput(label=city.name, value=city.id) for city in cities]
+    return await handle_get_cities()
 
 
 @app.get("/cities/{id}")
-def get_city_by_id(id: int):
-    with Session(engine) as session:
-        city = session.exec(select(Cities).where(Cities.id == id)).one()
-
-        return city
+async def get_city_by_id(id: int):
+    return await handle_get_city_by_id(id)

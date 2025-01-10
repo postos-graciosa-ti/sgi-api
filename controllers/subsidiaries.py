@@ -13,6 +13,13 @@ def handle_get_subsidiaries():
     return subsidiaries
 
 
+def handle_get_subsidiarie_by_id(id: int):
+    with Session(engine) as session:
+        subsidiarie = session.exec(select(Subsidiarie).where(Subsidiarie.id == id))
+
+        return subsidiarie
+
+
 def handle_post_subsidiaries(formData: Subsidiarie):
     with Session(engine) as session:
         session.add(formData)

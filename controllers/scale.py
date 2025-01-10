@@ -16,23 +16,57 @@ from pyhints.scales import GetScalesByDate, PostScaleInput
 
 
 def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
+    # with Session(engine) as session:
+    #     results = session.exec(
+    #         select(Scale, Workers)
+    #         .join(Workers, Workers.id == Scale.worker_id)
+    #         .where(Scale.subsidiarie_id == subsidiarie_id)
+    #     ).all()
+
+    #     options = []
+
+    #     for result in results:
+    #         options.append({"scale": result[0], "worker": result[1]})
+
+    #     for option in options:
+    #         option["worker"].function_id = session.get(
+    #             Function, option["worker"].function_id
+    #         )
+
+    #     return options
+
     with Session(engine) as session:
-        statement = select(Scale).where(Scale.subsidiarie_id == subsidiarie_id)
+        statement = select(Scale).join(Workers, Workers.id == Scale.worker_id).where(Scale.subsidiarie_id == subsidiarie_id)
 
         scales_by_subsidiarie = session.exec(statement).all()
 
         format_scales = []
 
         for scale in scales_by_subsidiarie:
+            worker = session.get(Workers, scale.worker_id)
+            worker_function = session.get(Function, worker.function_id)
+            worker_turn = session.get(Turn, worker.turn_id)
+            
             format_scale = {
                 "id": scale.id,
-                # 'worker_id': scale.worker_id,
-                "worker": session.get(Workers, scale.worker_id),
+                "worker": {
+                    "id": worker.id,
+                    "name": worker.name,
+                    "function": {
+                        "id": worker_function.id,
+                        "name": worker_function.name
+                    },
+                    "turn": {
+                        "id": worker_turn.id,
+                        "start_time": worker_turn.start_time,
+                        "end_time": worker_turn.end_time
+                    }
+                },
                 "days_on": eval(scale.days_on),
                 "days_off": eval(scale.days_off),
                 "need_alert": scale.need_alert,
                 "proportion": scale.proportion,
-                "ilegal_dates": eval(scale.ilegal_dates)
+                "ilegal_dates": eval(scale.ilegal_dates),
             }
 
             format_scales.append(format_scale)
@@ -54,7 +88,7 @@ def handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_i
 
     return {
         "days_off": eval(scales_by_subsidiarie_and_worker_id.days_off),
-        "ilegal_dates": eval(scales_by_subsidiarie_and_worker_id.ilegal_dates)
+        "ilegal_dates": eval(scales_by_subsidiarie_and_worker_id.ilegal_dates),
     }
 
 
@@ -203,10 +237,7 @@ def handle_post_scale(form_data: PostScaleInput):
 
         # return sla
 
-        return {
-            "days_off": sla,
-            "ilegal_dates": eval(existing_scale.ilegal_dates)
-        }
+        return {"days_off": sla, "ilegal_dates": eval(existing_scale.ilegal_dates)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

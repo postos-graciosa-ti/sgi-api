@@ -1,9 +1,19 @@
 services:
-  # A Docker web service
   - type: web
-    name: fastapi-example
+    name: sgi-api
     runtime: python
     plan: free
     autoDeploy: true
+    envVars:
+    - key: VITE_API_URL
+      sync: false
+    - key: SQLITE_URL
+      sync: false
+    - key: FRONT_URL
+      sync: false
+    - key: SECRET
+      sync: false
+    - key: ALGORITHM
+      sync: false
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT

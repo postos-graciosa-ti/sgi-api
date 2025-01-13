@@ -15,7 +15,9 @@ def handle_get_subsidiaries():
 
 def handle_get_subsidiarie_by_id(id: int):
     with Session(engine) as session:
-        subsidiarie = session.exec(select(Subsidiarie).where(Subsidiarie.id == id))
+        subsidiarie = session.exec(
+            select(Subsidiarie).where(Subsidiarie.id == id)
+        ).one()
 
         return subsidiarie
 

@@ -173,30 +173,30 @@ def handle_post_scale(form_data: PostScaleInput):
                     status_code=400, detail="Trabalhador não encontrado."
                 )
 
-            worker_turn_id = worker.turn_id  # Obtém o turn_id do trabalhador
+            # worker_turn_id = worker.turn_id  # Obtém o turn_id do trabalhador
 
-            for day_off in form_data.days_off:
-                existing_workers = session.exec(
-                    select(Scale)
-                    .join(
-                        Workers, Scale.worker_id == Workers.id
-                    )  # Juntar com a tabela Worker
-                    .where(
-                        Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
-                        Workers.turn_id == worker_turn_id,  # Mesmo turno
-                        Scale.days_off.contains(
-                            f'"{day_off}"'
-                        ),  # Dia de folga em comum
-                        Scale.worker_id
-                        != form_data.worker_id,  # Ignorar o próprio trabalhador
-                    )
-                ).all()
+            # for day_off in form_data.days_off:
+                # existing_workers = session.exec(
+                #     select(Scale)
+                #     .join(
+                #         Workers, Scale.worker_id == Workers.id
+                #     )  # Juntar com a tabela Worker
+                #     .where(
+                #         Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
+                #         Workers.turn_id == worker_turn_id,  # Mesmo turno
+                #         Scale.days_off.contains(
+                #             f'"{day_off}"'
+                #         ),  # Dia de folga em comum
+                #         Scale.worker_id
+                #         != form_data.worker_id,  # Ignorar o próprio trabalhador
+                #     )
+                # ).all()
 
-                if existing_workers:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
-                    )
+                # if existing_workers:
+                #     raise HTTPException(
+                #         status_code=400,
+                #         detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
+                #     )
 
             existing_scale = session.exec(
                 select(Scale).where(

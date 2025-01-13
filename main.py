@@ -264,6 +264,12 @@ def delete_subsidiaries(id: int):
 def get_turns():
     return handle_get_turns()
 
+@app.get("/turns/{id}")
+def handle_get_turn_by_id(id: int):
+    with Session(engine) as session:
+        turn = session.exec(select(Turn).where(Turn.id == id)).one()
+
+        return turn
 
 @app.post("/turns")
 def post_turns(formData: Turn):
@@ -282,6 +288,12 @@ def delete_turn(id: int):
 
 # workers
 
+@app.get("/workers/{id}")
+def get_worker_by_id(id: int):
+    with Session(engine) as session:
+        worker = session.exec(select(Workers).where(Workers.id == id)).one()
+
+        return worker
 
 @app.get("/workers/turns/{turn_id}/subsidiarie/{subsidiarie_id}")
 def get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):

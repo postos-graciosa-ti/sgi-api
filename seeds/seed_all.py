@@ -91,6 +91,15 @@ def seed_users():
         if not existing_users:
             users = [
                 User(
+                    email="admin@gmail.com",
+                    password=pbkdf2_sha256.hash("teste"),
+                    name="Admin",
+                    role_id=1,
+                    function_id=1,
+                    is_active=True,
+                    subsidiaries_id="[1,2,3,4,5,6]",
+                ),
+                User(
                     email="regiane@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
                     name="Regiane",

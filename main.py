@@ -1,11 +1,14 @@
+import json
 from datetime import datetime, timedelta
 
+import cloudinary
+import cloudinary.uploader
 from aiocache import Cache, cached
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from controllers.candidates import (
     handle_get_candidates,
@@ -105,6 +108,13 @@ from pyhints.users import (
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
 
+
+class Test(SQLModel, Table=True):
+    id: int = Field(default=None, primary_key=True)
+    station_attendant: str = Field(default="[]")
+    operator: str = Field(default="[]")
+
+
 # pre settings
 
 load_dotenv()
@@ -114,6 +124,13 @@ app = FastAPI()
 add_cors_middleware(app)
 
 cache = Cache(Cache.MEMORY, ttl=3600)
+
+cloudinary.config(
+    cloud_name="drvzslkwn",
+    api_key="526373414174189",
+    api_secret="9NsMrkZPADrJIbSzd1JgfAKQnyI",
+    secure=True,
+)
 
 # root
 
@@ -138,6 +155,42 @@ def activate_render_server():
         result = bool(has_users)
 
         return result
+
+
+@app.post("/upload")
+async def upload_file(
+    name: str = Form(...),
+    date_of_birth: str = Form(...),
+    adress: str = Form(...),
+    resume: UploadFile = File(...),
+    status: int = Form(...),
+    job_id: int = Form(...),
+):
+    date_of_birth = datetime.strptime(date_of_birth, "%d-%m-%Y")
+
+    file_content = await resume.read()
+
+    upload_result = cloudinary.uploader.upload(
+        file_content, resource_type="raw", public_id=resume.filename
+    )
+
+    candidate = Candidate(
+        name=name,
+        date_of_birth=date_of_birth.strftime("%d-%m-%Y"),
+        adress=adress,
+        resume=upload_result["secure_url"],
+        status=status,
+        job_id=job_id,
+    )
+
+    with Session(engine) as session:
+        session.add(candidate)
+
+        session.commit()
+
+        session.refresh(candidate)
+
+    return candidate
 
 
 # candidato
@@ -264,12 +317,14 @@ def delete_subsidiaries(id: int):
 def get_turns():
     return handle_get_turns()
 
+
 @app.get("/turns/{id}")
 def handle_get_turn_by_id(id: int):
     with Session(engine) as session:
         turn = session.exec(select(Turn).where(Turn.id == id)).one()
 
         return turn
+
 
 @app.post("/turns")
 def post_turns(formData: Turn):
@@ -288,12 +343,14 @@ def delete_turn(id: int):
 
 # workers
 
+
 @app.get("/workers/{id}")
 def get_worker_by_id(id: int):
     with Session(engine) as session:
         worker = session.exec(select(Workers).where(Workers.id == id)).one()
 
         return worker
+
 
 @app.get("/workers/turns/{turn_id}/subsidiarie/{subsidiarie_id}")
 def get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
@@ -525,3 +582,125 @@ async def get_cities():
 @app.get("/cities/{id}")
 async def get_city_by_id(id: int):
     return await handle_get_city_by_id(id)
+
+
+@app.get("/subsidiaries/{id}/frentistas")
+def get_frentistas(id: int):
+    with Session(engine) as session:
+        frentistas = session.exec(
+            select(Workers)
+            .where(Workers.function_id == 6)
+            .where(Workers.subsidiarie_id == id)
+        ).all()
+
+        return frentistas
+
+
+@app.get("/subsidiaries/{id}/caixas")
+def get_caixas(id: int):
+    with Session(engine) as session:
+        caixas = session.exec(
+            select(Workers)
+            .where(Workers.function_id == 7)
+            .where(Workers.subsidiarie_id == id)
+        ).all()
+
+        return caixas
+
+
+@app.get("/subsidiaries/{id}/trocadores-de-oleo")
+def get_trocadores_de_oleo(id: int):
+    with Session(engine) as session:
+        trocadores_de_oleo = session.exec(
+            select(Workers)
+            .where(Workers.function_id == 8)
+            .where(Workers.subsidiarie_id == id)
+        ).all()
+
+        return trocadores_de_oleo
+
+
+class SlaScale(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    date: str = Field(index=True)
+    weekday: str = Field(index=True)
+    subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
+    turn_id: int = Field(default=None, foreign_key="turn.id")
+    workers_on_ids: str = Field(default="[]")
+    workers_off_ids: str = Field(default="[]")
+
+
+@app.get("/subsidiaries/{id}/sla-scale")
+def get_sla_scale(id: int):
+    with Session(engine) as session:
+        scales = session.exec(
+            select(
+                SlaScale.id,
+                SlaScale.date,
+                SlaScale.weekday,
+                SlaScale.subsidiarie_id,
+                SlaScale.turn_id,
+                SlaScale.workers_on_ids,
+                SlaScale.workers_off_ids,
+                Turn.id.label("turn_id"),
+                Turn.start_time.label("turn_start_time"),
+                Turn.end_time.label("turn_end_time"),
+            )
+            .join(Turn, Turn.id == SlaScale.turn_id)
+            .where(SlaScale.subsidiarie_id == id)
+        ).all()
+
+        result = []
+
+        for scale in scales:
+            workers_on_ids = json.loads(scale.workers_on_ids)
+
+            workers_off_ids = json.loads(scale.workers_off_ids)
+
+            workers_on = [
+                session.get(Workers, worker_on_id) for worker_on_id in workers_on_ids
+            ]
+
+            workers_off = [
+                session.get(Workers, worker_off_id) for worker_off_id in workers_off_ids
+            ]
+
+            result.append(
+                {
+                    "sla_scale_id": scale.id,
+                    "date": scale.date,
+                    "weekday": scale.weekday,
+                    "workers_on": [worker for worker in workers_on if worker],
+                    "workers_off": [worker for worker in workers_off if worker],
+                    "turn_id": scale.turn_id,
+                    "turn_start_time": scale.turn_start_time,
+                    "turn_end_time": scale.turn_end_time,
+                }
+            )
+
+        return result
+
+
+@app.post("/sla-scale")
+def post_sla_scale(scale: SlaScale):
+    with Session(engine) as session:
+        session.add(scale)
+
+        session.commit()
+
+        session.refresh(scale)
+    return scale
+
+
+# ~~
+
+
+@app.post("/scale")
+def post_scale(scale: Test):
+    with Session(engine) as session:
+        session.add(scale)
+
+        session.commit()
+
+        session.refresh(scale)
+    return scale

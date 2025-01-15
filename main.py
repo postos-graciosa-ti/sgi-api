@@ -91,6 +91,7 @@ from models.candidato import Candidato
 from models.cities import Cities
 from models.function import Function
 from models.jobs import Jobs
+from models.scale import Scale
 from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
@@ -546,6 +547,75 @@ def post_scale(form_data: PostScaleInput):
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
+
+
+from pydantic import BaseModel
+
+
+# Modelo para o corpo da requisição
+class ValidateScaleRequest(BaseModel):
+    first_day: str
+    last_day: str
+
+
+@app.post("/validate_monthly_scale/{subsidiarie_id}")
+def validate_monthly_scale(subsidiarie_id: int, request: ValidateScaleRequest):
+    try:
+        first_day_date = datetime.strptime(request.first_day, "%d-%m-%Y")
+        last_day_date = datetime.strptime(request.last_day, "%d-%m-%Y")
+
+        # Gera os dias do mês
+        dias_do_mes = []
+        data_atual = first_day_date
+        while data_atual <= last_day_date:
+            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+            data_atual += timedelta(days=1)
+
+        validation_results = []
+
+        with Session(engine) as session:
+            for dia in dias_do_mes:
+                # Obtém os trabalhadores escalados para o dia
+                workers_on_day = session.exec(
+                    select(Workers)
+                    .join(Scale, Workers.id == Scale.worker_id)
+                    .where(
+                        Scale.subsidiarie_id == subsidiarie_id,
+                        Scale.days_on.contains(f'"{dia}"'),
+                    )
+                ).all()
+
+                # Conta os trabalhadores por função
+                frentistas = sum(
+                    1 for worker in workers_on_day if worker.function_id == 6
+                )
+                trocadores = sum(
+                    1 for worker in workers_on_day if worker.function_id == 8
+                )
+
+                if frentistas < 3 or trocadores < 1:
+                    validation_results.append(
+                        {
+                            "date": dia,
+                            "frentistas": frentistas,
+                            "trocadores": trocadores,
+                            "status": "Insufficient workers",
+                        }
+                    )
+                else:
+                    validation_results.append(
+                        {
+                            "date": dia,
+                            "frentistas": frentistas,
+                            "trocadores": trocadores,
+                            "status": "Sufficient workers",
+                        }
+                    )
+
+        return {"validation_results": validation_results}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # scrips

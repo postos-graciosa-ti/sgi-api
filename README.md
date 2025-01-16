@@ -2,6 +2,12 @@
 
 API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
 
+### Ambientes:
+
+- Homologação: https://sgi-api-homologacao.onrender.com
+
+- Produção: https://sgi-api-producao.onrender.com
+
 ### Tech stack:
 
 - FastApi, um framework web para construir APIs

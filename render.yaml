@@ -13,7 +13,6 @@ services:
       - key: SERVICE_ACCOUNT_KEY
       - key: PROJECT_ID
 
-services:
   - type: web
     name: sgi-api-producao
     plan: free

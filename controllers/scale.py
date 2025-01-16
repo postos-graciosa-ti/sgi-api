@@ -220,6 +220,8 @@ def handle_post_scale(form_data: PostScaleInput):
                     need_alert=tem_mais_de_oito_dias_consecutivos,
                     proportion=json.dumps(proporcoes),
                     ilegal_dates=form_data.ilegal_dates,
+                    worker_function_id=form_data.worker_function_id,
+                    worker_turn_id=form_data.worker_turn_id
                 )
 
                 session.add(existing_scale)

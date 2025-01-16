@@ -13,6 +13,8 @@ class GetScalesByDate(BaseModel):
 
 class PostScaleInput(BaseModel):
     worker_id: int
+    worker_turn_id: int
+    worker_function_id: int
     subsidiarie_id: int
     days_off: str
     first_day: str

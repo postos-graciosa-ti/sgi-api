@@ -1003,3 +1003,87 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
         #     "primeiro_turno_report": primeiro_turno_report,
         #     "segundo_turno_report": segundo_turno_report,
         # }
+
+
+class PrintScaleInput(BaseModel):
+    initial_date: str
+    end_date: str
+
+
+@app.post("/subsidiaries/{subsidiarie_id}/prints/{print_id}/scales")
+def print_scales(
+    subsidiarie_id: int, print_id: int, print_scales_input: PrintScaleInput
+):
+    if print_id == 1:
+        with Session(engine) as session:
+            primeiro_turno_info = session.get(Turn, 1)
+            segundo_turno_info = session.get(Turn, 2)
+            terceiro_turno_info = session.get(Turn, 3)
+
+            first_day_date = datetime.strptime(
+                print_scales_input.initial_date, "%d-%m-%Y"
+            )
+
+            last_day_date = datetime.strptime(print_scales_input.end_date, "%d-%m-%Y")
+
+            dias_do_mes = []
+            data_atual = first_day_date
+
+            while data_atual <= last_day_date:
+                dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+                data_atual += timedelta(days=1)
+
+            def get_folgas(turno_id, turno_info):
+                folgas = [
+                    {
+                        "turn_info": {
+                            "start_time": turno_info.start_time,
+                            "end_time": turno_info.end_time,
+                        }
+                    }
+                ]
+
+                for dia_do_mes in dias_do_mes:
+                    frentistas_de_folga = session.exec(
+                        select(Workers)
+                        .join(Scale, Scale.worker_id == Workers.id)
+                        .where(Scale.subsidiarie_id == subsidiarie_id)
+                        .where(Scale.days_off.contains(dia_do_mes))
+                        .where(Scale.worker_turn_id == turno_id)
+                        .where(Scale.worker_function_id == 6)
+                    ).all()
+
+                    trocadores_de_folga = session.exec(
+                        select(Workers)
+                        .join(Scale, Scale.worker_id == Workers.id)
+                        .where(Scale.subsidiarie_id == subsidiarie_id)
+                        .where(Scale.days_off.contains(dia_do_mes))
+                        .where(Scale.worker_turn_id == turno_id)
+                        .where(Scale.worker_function_id == 8)
+                    ).all()
+
+                    frentistas_turno = [worker for worker in frentistas_de_folga]
+                    trocadores_turno = [worker for worker in trocadores_de_folga]
+
+                    folgas.append(
+                        {
+                            "date": dia_do_mes,
+                            "frentistas": frentistas_turno,
+                            "trocadores": trocadores_turno,
+                        }
+                    )
+
+                return folgas
+
+            primeiro_turno_folgas = get_folgas(1, primeiro_turno_info)
+            segundo_turno_folgas = get_folgas(2, segundo_turno_info)
+            terceiro_turno_folgas = get_folgas(3, terceiro_turno_info)
+
+            return {
+                "primeiro_turno_folgas": primeiro_turno_folgas,
+                "segundo_turno_folgas": segundo_turno_folgas,
+                "terceiro_turno_folgas": terceiro_turno_folgas,
+            }
+    else:
+        return {"nothing": "nothing"}
+

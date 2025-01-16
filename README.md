@@ -8,6 +8,8 @@ API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
 
 - Produção: https://sgi-api-producao.onrender.com
 
+#### O que muda?
+
 ### Tech stack:
 
 - FastApi, um framework web para construir APIs

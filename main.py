@@ -1064,6 +1064,7 @@ def get_scales_logs():
             select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
             .join(Workers, ScaleLogs.worker_id == Workers.id)
             .join(User, ScaleLogs.user_id == User.id)
+            .order_by(ScaleLogs.id.desc())  # Ordenando por 'id', por exemplo
         ).all()
 
         return [

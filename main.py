@@ -48,6 +48,7 @@ from controllers.scale import (
     handle_get_scales_by_subsidiarie_id,
     handle_post_scale,
 )
+from controllers.scales_logs import handle_get_scales_logs
 from controllers.subsidiaries import (
     handle_delete_subsidiarie,
     handle_get_subsidiarie_by_id,
@@ -85,6 +86,7 @@ from controllers.workers import (
 )
 from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
+from functions.handle_operation import handle_database_operation
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
@@ -1058,24 +1060,8 @@ def print_scales(
 
 
 @app.get("/logs/scales")
-def get_scales_logs():
-    with Session(engine) as session:
-        scales_logs = session.exec(
-            select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
-            .join(Workers, ScaleLogs.worker_id == Workers.id)
-            .join(User, ScaleLogs.user_id == User.id)
-            .order_by(ScaleLogs.id.desc())  # Ordenando por 'id', por exemplo
-        ).all()
-
-        return [
-            {
-                "inserted_at": scale_log[0],
-                "at_time": scale_log[1],
-                "worker_name": scale_log[2],
-                "user_name": scale_log[3],
-            }
-            for scale_log in scales_logs
-        ]
+async def get_scales_logs():
+    return await handle_database_operation(handle_get_scales_logs)
 
 
 @app.post("/logs/scales")

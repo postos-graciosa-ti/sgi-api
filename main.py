@@ -779,25 +779,23 @@ class ScalesReportInput(BaseModel):
 @app.post("/subsidiaries/{id}/scales/report")
 def get_scales_report(id: int, scale_report_input: ScalesReportInput):
     with Session(engine) as session:
+        # Obtém as informações dos turnos
         primeiro_turno_info = session.get(Turn, 1)
-
         segundo_turno_info = session.get(Turn, 2)
-
         terceiro_turno_info = session.get(Turn, 3)
 
+        # Converte as datas de entrada
         first_day_date = datetime.strptime(scale_report_input.initial_date, "%d-%m-%Y")
-
         last_day_date = datetime.strptime(scale_report_input.final_date, "%d-%m-%Y")
 
+        # Cria a lista de dias do mês entre a data inicial e final
         dias_do_mes = []
-
         data_atual = first_day_date
-
         while data_atual <= last_day_date:
             dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-
             data_atual += timedelta(days=1)
 
+        # Relatórios para cada turno
         primeiro_turno_report = [
             {
                 "turno_info": {
@@ -825,7 +823,9 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
             }
         ]
 
+        # Itera sobre os dias do mês e coleta os dados de escalados
         for dia_do_mes in dias_do_mes:
+            # Busca os dados de frentistas e trocadores por turno
             frentistas_escalados_primeiro_turno_ao_dia = session.exec(
                 select(Scale)
                 .where(Scale.subsidiarie_id == id)
@@ -874,6 +874,38 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                 .where(Scale.worker_function_id == 8)
             ).all()
 
+            # Coleta os dados de frentistas e trocadores para cada turno
+            dados_frentistas_primeiro_turno = [
+                {"dados": session.get(Workers, frentista.worker_id)}
+                for frentista in frentistas_escalados_primeiro_turno_ao_dia
+            ]
+
+            dados_trocadores_primeiro_turno = [
+                {"dados": session.get(Workers, trocador.worker_id)}
+                for trocador in trocadores_escalados_primeiro_turno_ao_dia
+            ]
+
+            dados_frentistas_segundo_turno = [
+                {"dados": session.get(Workers, frentista.worker_id)}
+                for frentista in frentistas_escalados_segundo_turno_ao_dia
+            ]
+
+            dados_trocadores_segundo_turno = [
+                {"dados": session.get(Workers, trocador.worker_id)}
+                for trocador in trocadores_escalados_segundo_turno_ao_dia
+            ]
+
+            dados_frentistas_terceiro_turno = [
+                {"dados": session.get(Workers, frentista.worker_id)}
+                for frentista in frentistas_escalados_terceiro_turno_ao_dia
+            ]
+
+            dados_trocadores_terceiro_turno = [
+                {"dados": session.get(Workers, trocador.worker_id)}
+                for trocador in trocadores_escalados_terceiro_turno_ao_dia
+            ]
+
+            # Adiciona as informações dos relatórios
             primeiro_turno_report.append(
                 {
                     "date": dia_do_mes,
@@ -883,12 +915,10 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                         and len(trocadores_escalados_primeiro_turno_ao_dia) > 1
                         else "trabalhadores insuficientes"
                     ),
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_primeiro_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_primeiro_turno_ao_dia
-                    ),
+                    "dados_frentistas": dados_frentistas_primeiro_turno,
+                    "dados_trocadores": dados_trocadores_primeiro_turno,
+                    "quantidade_frentistas": len(frentistas_escalados_primeiro_turno_ao_dia),
+                    "quantidade_trocadores": len(trocadores_escalados_primeiro_turno_ao_dia),
                 }
             )
 
@@ -901,12 +931,10 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                         and len(trocadores_escalados_segundo_turno_ao_dia) > 1
                         else "trabalhadores insuficientes"
                     ),
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_segundo_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_segundo_turno_ao_dia
-                    ),
+                    "dados_frentistas": dados_frentistas_segundo_turno,
+                    "dados_trocadores": dados_trocadores_segundo_turno,
+                    "quantidade_frentistas": len(frentistas_escalados_segundo_turno_ao_dia),
+                    "quantidade_trocadores": len(trocadores_escalados_segundo_turno_ao_dia),
                 }
             )
 
@@ -919,12 +947,10 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                         and len(trocadores_escalados_terceiro_turno_ao_dia) > 1
                         else "trabalhadores insuficientes"
                     ),
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_terceiro_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_terceiro_turno_ao_dia
-                    ),
+                    "dados_frentistas": dados_frentistas_terceiro_turno,
+                    "dados_trocadores": dados_trocadores_terceiro_turno,
+                    "quantidade_frentistas": len(frentistas_escalados_terceiro_turno_ao_dia),
+                    "quantidade_trocadores": len(trocadores_escalados_terceiro_turno_ao_dia),
                 }
             )
 
@@ -934,70 +960,6 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
             "terceiro_turno_report": terceiro_turno_report,
         }
 
-        # frentistas_escalados_primeiro_turno = session.exec(
-        #     select(Scale)
-        #     .where(Scale.subsidiarie_id == id)
-        #     .where(Scale.worker_turn_id == 1)
-        #     .where(Scale.worker_function_id == 6)
-        # ).all()
-
-        # trocadores_escalados_primeiro_turno = session.exec(
-        #     select(Scale)
-        #     .where(Scale.subsidiarie_id == id)
-        #     .where(Scale.worker_turn_id == 1)
-        #     .where(Scale.worker_function_id == 8)
-        # ).all()
-
-        # primeiro_turno_report = {
-        #     "turno_info": {
-        #         "start_time": primeiro_turno_info.start_time,
-        #         "end_time": primeiro_turno_info.end_time,
-        #     },
-        #     "status": (
-        #         "trabalhadores suficientes"
-        #         if len(frentistas_escalados_primeiro_turno) >= 3
-        #         and len(trocadores_escalados_primeiro_turno) >= 1
-        #         else "trabalhadores insuficientes"
-        #     ),
-        #     "numero_frentistas": len(frentistas_escalados_primeiro_turno),
-        #     "numero_trocadores": len(trocadores_escalados_primeiro_turno),
-        # }
-
-        # segundo_turno_info = session.get(Turn, 2)
-
-        # frentistas_escalados_segundo_turno = session.exec(
-        #     select(Scale)
-        #     .where(Scale.subsidiarie_id == id)
-        #     .where(Scale.worker_turn_id == 2)
-        #     .where(Scale.worker_function_id == 6)
-        # ).all()
-
-        # trocadores_escalados_segundo_turno = session.exec(
-        #     select(Scale)
-        #     .where(Scale.subsidiarie_id == id)
-        #     .where(Scale.worker_turn_id == 2)
-        #     .where(Scale.worker_function_id == 6)
-        # ).all()
-
-        # segundo_turno_report = {
-        #     "turno_info": {
-        #         "start_time": segundo_turno_info.start_time,
-        #         "end_time": segundo_turno_info.end_time,
-        #     },
-        #     "status": (
-        #         "trabalhadores suficientes"
-        #         if len(frentistas_escalados_segundo_turno) >= 3
-        #         and len(trocadores_escalados_segundo_turno) >= 1
-        #         else "trabalhadores insuficientes"
-        #     ),
-        #     "numero_frentistas": len(frentistas_escalados_segundo_turno),
-        #     "numero_trocadores": len(trocadores_escalados_segundo_turno),
-        # }
-
-        # return {
-        #     "primeiro_turno_report": primeiro_turno_report,
-        #     "segundo_turno_report": segundo_turno_report,
-        # }
 
 
 class PrintScaleInput(BaseModel):

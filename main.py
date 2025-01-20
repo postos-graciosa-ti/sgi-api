@@ -92,6 +92,7 @@ from models.cities import Cities
 from models.function import Function
 from models.jobs import Jobs
 from models.scale import Scale
+from models.scale_logs import ScaleLogs
 from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
@@ -917,8 +918,12 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                     ),
                     "dados_frentistas": dados_frentistas_primeiro_turno,
                     "dados_trocadores": dados_trocadores_primeiro_turno,
-                    "quantidade_frentistas": len(frentistas_escalados_primeiro_turno_ao_dia),
-                    "quantidade_trocadores": len(trocadores_escalados_primeiro_turno_ao_dia),
+                    "quantidade_frentistas": len(
+                        frentistas_escalados_primeiro_turno_ao_dia
+                    ),
+                    "quantidade_trocadores": len(
+                        trocadores_escalados_primeiro_turno_ao_dia
+                    ),
                 }
             )
 
@@ -933,8 +938,12 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                     ),
                     "dados_frentistas": dados_frentistas_segundo_turno,
                     "dados_trocadores": dados_trocadores_segundo_turno,
-                    "quantidade_frentistas": len(frentistas_escalados_segundo_turno_ao_dia),
-                    "quantidade_trocadores": len(trocadores_escalados_segundo_turno_ao_dia),
+                    "quantidade_frentistas": len(
+                        frentistas_escalados_segundo_turno_ao_dia
+                    ),
+                    "quantidade_trocadores": len(
+                        trocadores_escalados_segundo_turno_ao_dia
+                    ),
                 }
             )
 
@@ -949,8 +958,12 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                     ),
                     "dados_frentistas": dados_frentistas_terceiro_turno,
                     "dados_trocadores": dados_trocadores_terceiro_turno,
-                    "quantidade_frentistas": len(frentistas_escalados_terceiro_turno_ao_dia),
-                    "quantidade_trocadores": len(trocadores_escalados_terceiro_turno_ao_dia),
+                    "quantidade_frentistas": len(
+                        frentistas_escalados_terceiro_turno_ao_dia
+                    ),
+                    "quantidade_trocadores": len(
+                        trocadores_escalados_terceiro_turno_ao_dia
+                    ),
                 }
             )
 
@@ -959,7 +972,6 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
             "segundo_turno_report": segundo_turno_report,
             "terceiro_turno_report": terceiro_turno_report,
         }
-
 
 
 class PrintScaleInput(BaseModel):
@@ -1043,3 +1055,34 @@ def print_scales(
             }
     else:
         return {"nothing": "nothing"}
+
+
+@app.get("/logs/scales")
+def get_scales_logs():
+    with Session(engine) as session:
+        scales_logs = session.exec(
+            select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
+            .join(Workers, ScaleLogs.worker_id == Workers.id)
+            .join(User, ScaleLogs.user_id == User.id)
+        ).all()
+
+        return [
+            {
+                "inserted_at": scale_log[0],
+                "at_time": scale_log[1],
+                "worker_name": scale_log[2],
+                "user_name": scale_log[3],
+            }
+            for scale_log in scales_logs
+        ]
+
+
+@app.post("/logs/scales")
+def post_scales_logs(scales_logs_input: ScaleLogs):
+    with Session(engine) as session:
+        session.add(scales_logs_input)
+
+        session.commit()
+
+        session.refresh(scales_logs_input)
+    return scales_logs_input

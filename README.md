@@ -1,131 +1,88 @@
-# Overview
+Claro! Aqui está um exemplo de um README.md para o repositório `postos-graciosa-ti/sgi-front`. Certifique-se de personalizá-lo de acordo com as necessidades específicas do seu projeto.
 
-API do SGI (Sistema de Gestão Integrado) da rede de postos Graciosa
+```markdown
+# SGI-Front
 
-### Ambientes:
+Bem-vindo ao repositório do SGI-Front! Este projeto é a interface front-end do Sistema de Gestão Integrada (SGI) dos Postos Graciosa.
 
-- Homologação: https://sgi-api-homologacao.onrender.com
+## Índice
 
-- Produção: https://sgi-api-producao.onrender.com
+- [Visão Geral](#visão-geral)
+- [Tecnologias Utilizadas](#tecnologias-utilizadas)
+- [Instalação](#instalação)
+- [Uso](#uso)
+- [Contribuição](#contribuição)
+- [Licença](#licença)
+- [Contato](#contato)
 
-#### O que muda?
+## Visão Geral
 
-### Tech stack:
+O SGI-Front é responsável pela interface do usuário do Sistema de Gestão Integrada, proporcionando uma experiência amigável e intuitiva para gerenciar as operações dos postos de combustível. Este projeto consome APIs fornecidas pelo backend para exibir e manipular dados em tempo real.
 
-- FastApi, um framework web para construir APIs
+## Tecnologias Utilizadas
 
-- SQLModel, uma biblioteca para interagir com bancos de dados SQL a partir de código Python
+- **React**: Biblioteca JavaScript para construção de interfaces de usuário.
+- **Redux**: Biblioteca para gerenciamento de estado.
+- **Axios**: Cliente HTTP para fazer requisições à API.
+- **Bootstrap**: Framework CSS para design responsivo e componentes de UI.
+- **Jest**: Framework de testes em JavaScript.
+- **ESLint**: Ferramenta de linting para identificar e corrigir problemas no código JavaScript.
 
-- Uvicorn, um servidor web ASGI para Python
+## Instalação
 
-### Padrões nos nomes de branches:
+Siga os passos abaixo para configurar o ambiente de desenvolvimento:
 
-#### Composição:
+1. **Clone o repositório**:
 
-- ```<categoria>/<o que a branch faz em si>```
+   ```bash
+   git clone https://github.com/postos-graciosa-ti/sgi-front.git
+   cd sgi-front
+   ```
 
-#### Categorias
+2. **Instale as dependências**:
 
-- docs/ apenas mudanças de documentação;
+   ```bash
+   npm install
+   ```
 
-- feature/ O nome já diz também o que é, uma nova feature que será adicionada ao projeto, componente e afins;
+3. **Inicie o servidor de desenvolvimento**:
 
-- fix/ a correção de um bug;
+   ```bash
+   npm start
+   ```
 
-- perf/ mudança de código focada em melhorar performance;
+   O aplicativo estará disponível em `http://localhost:3000`.
 
-- refactor/ mudança de código que não adiciona uma funcionalidade e também não corrigi um bug;
+## Uso
 
-- style/ mudanças no código que não afetam seu significado (espaço em branco, formatação, ponto e vírgula, etc);
+Após iniciar o servidor de desenvolvimento, você poderá acessar o aplicativo via navegador. A interface permite a interação com diversas funcionalidades, como gestão de estoque, vendas, relatórios e muito mais.
 
-- test/ adicionar ou corrigir testes.
+## Contribuição
 
-- improvement/ Uma melhoria em algo já existente, seja de performance, de escrita, de layout, etc.
+Contribuições são bem-vindas! Siga os passos abaixo para contribuir:
 
-#### exemplos:
+1. **Fork o repositório**
+2. **Crie uma branch feature** (`git checkout -b feature/nova-funcionalidade`)
+3. **Commit suas mudanças** (`git commit -m 'Adiciona nova funcionalidade'`)
+4. **Faça o push para a branch** (`git push origin feature/nova-funcionalidade`)
+5. **Abra um Pull Request**
 
-- refactor/create-password
+Por favor, certifique-se de seguir as [guidelines de contribuição](CONTRIBUTING.md).
 
-- feature/insert-or-update-scales
+## Licença
 
-- fix/scale-calculate
+Este projeto está licenciado sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-### Padrões nos nomes dos Commits:
+## Contato
 
-#### Composição:
+Para mais informações, entre em contato com a equipe de desenvolvimento:
 
-- ```<categoria>: <o que a branch faz em si>```
+- **Email**: suporteti@postosgraciosa.com.br
+- **Site**: [www.postosgraciosa.com.br](http://www.postosgraciosa.com.br)
 
-#### Categorias:
+---
 
-- docs: apenas mudanças de documentação;
-
-- feat: O nome já diz também o que é, uma nova feature que será adicionada ao projeto, componente e afins;
-
-- fix: a correção de um bug;
-
-- perf: mudança de código focada em melhorar performance;
-
-- refactor: mudança de código que não adiciona uma funcionalidade e também não corrigi um bug;
-
-- style: mudanças no código que não afetam seu significado (espaço em branco, formatação, ponto e vírgula, etc);
-
-- test: adicionar ou corrigir testes.
-
-- improvement: Uma melhoria em algo já existente, seja de performance, de escrita, de layout, etc.
-
-#### Exemplos:
-
-- refactor: create password
-
-- feature: insert or update scales
-
-- fix: scale calculate
-
-### Padrão de projeto:
-
-
-
-# Iniciando
-
-### Clonando o projeto:
-
-```bash
-git clone https://github.com/postos-graciosa-ti/sgi-api.git
+Obrigado por usar o SGI-Front! Juntos, melhoramos a eficiência dos Postos Graciosa.
 ```
 
-### Adicionando o arquivo .env:
-
-```bash
-SQLITE_URL=your_sqlite_connection_string
-
-FRONT_URL=your_front_url
-```
-
-### Criando um ambiente virtual:
-
-```bash
-cd sgi-api
-```
-
-```bash
-py -m venv venv
-```
-
-### Ativando o ambiente virtual:
-
-```bash
-.\venv\Scripts\activate
-```
-
-### Instalando as dependências:
-
-```bash
-py -m pip install -r requirements.txt
-```
-
-### Rodando o projeto localmente:
-
-```bash
-py -m uvicorn main:app --reload
-```
+Certifique-se de ajustar os detalhes conforme necessário, como links, informações de contato e quaisquer outras especificidades do seu projeto.

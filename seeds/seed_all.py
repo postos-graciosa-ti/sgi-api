@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.candidate_status import CandidateStatus
+from models.cost_center import CostCenter
 from models.function import Function
 from models.month import Month
 from models.role import Role
@@ -449,6 +450,24 @@ def seed_workers():
             session.commit()
 
 
+def create_cost_centers():
+    cost_centers = [
+        {"name": "Vendas", "description": "Departamento de Vendas"},
+        {"name": "Administrativo", "description": "Departamento Administrativo"},
+        {"name": "Serviços Gerais", "description": "Departamento de Serviços Gerais"},
+    ]
+
+    with Session(engine) as session:
+        for center in cost_centers:
+            cost_center = CostCenter(
+                name=center["name"], description=center["description"]
+            )
+
+            session.add(cost_center)
+
+        session.commit()
+
+
 def seed_database():
     seed_roles()
     seed_subsidiaries()
@@ -461,3 +480,5 @@ def seed_database():
 
     get_states_from_ibge()
     get_cities_from_ibge()
+
+    create_cost_centers()

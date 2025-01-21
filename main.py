@@ -27,6 +27,13 @@ from controllers.cities_states import (
     handle_get_states,
     handle_get_states_by_id,
 )
+from controllers.cost_center import (
+    handle_delete_cost_center,
+    handle_get_cost_center,
+    handle_get_cost_center_by_id,
+    handle_post_cost_center,
+    handle_put_cost_center,
+)
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
@@ -91,6 +98,8 @@ from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
 from models.cities import Cities
+from models.cost_center import CostCenter
+from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
 from models.scale import Scale
@@ -1073,3 +1082,33 @@ def post_scales_logs(scales_logs_input: ScaleLogs):
 
         session.refresh(scales_logs_input)
     return scales_logs_input
+
+
+# cost center
+
+
+@app.get("/cost-center")
+async def get_cost_center():
+    return await handle_database_operation(handle_get_cost_center)
+
+
+@app.get("/cost-center/{id}")
+async def get_cost_center_by_id(id: int):
+    return await handle_database_operation(handle_get_cost_center_by_id, id)
+
+
+@app.post("/cost-center")
+async def post_cost_center(cost_center_input: CostCenter):
+    return await handle_database_operation(handle_post_cost_center, cost_center_input)
+
+
+@app.put("/cost-center/{id}")
+async def put_cost_center(id: int, cost_center_input: CostCenter):
+    return await handle_database_operation(
+        handle_put_cost_center, id, cost_center_input
+    )
+
+
+@app.delete("/cost-center/{id}")
+async def delete_cost_center(id: int):
+    return await handle_database_operation(handle_delete_cost_center, id)

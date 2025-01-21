@@ -26,7 +26,7 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
         df = pd.read_excel(file_location)
 
         colaboradores_posto_graciosa = df[
-            (df["Unidade"] == "Posto Graciosa") & (df["Status(F)"] == "Ativo")
+            (df["Unidade"] == "Posto Graciosa (1º)") & (df["Status(F)"] == "Ativo")
         ]
 
         colaboradores_nome_email = colaboradores_posto_graciosa[

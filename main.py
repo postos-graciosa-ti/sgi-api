@@ -34,6 +34,13 @@ from controllers.cost_center import (
     handle_post_cost_center,
     handle_put_cost_center,
 )
+from controllers.departments import (
+    handle_delete_department,
+    handle_get_department_by_id,
+    handle_get_departments,
+    handle_post_department,
+    handle_put_department,
+)
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
@@ -1112,3 +1119,31 @@ async def put_cost_center(id: int, cost_center_input: CostCenter):
 @app.delete("/cost-center/{id}")
 async def delete_cost_center(id: int):
     return await handle_database_operation(handle_delete_cost_center, id)
+
+
+# department
+
+
+@app.get("/departments")
+async def get_departments():
+    return await handle_database_operation(handle_get_departments)
+
+
+@app.get("/departments/{id}")
+async def get_department_by_id(id: int):
+    return await handle_database_operation(handle_get_department_by_id, id)
+
+
+@app.post("/departments")
+async def post_department(department_input: Department):
+    return await handle_database_operation(handle_post_department, department_input)
+
+
+@app.put("/departments/{id}")
+async def put_department(id: int, department_input: Department):
+    return handle_database_operation(handle_put_department, id, department_input)
+
+
+@app.delete("/departments/{id}")
+async def delete_department(id: int):
+    return await handle_database_operation(handle_delete_department, id)

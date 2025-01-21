@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from database.sqlite import engine
 from models.candidate_status import CandidateStatus
 from models.cost_center import CostCenter
+from models.department import Department
 from models.function import Function
 from models.month import Month
 from models.role import Role
@@ -468,6 +469,32 @@ def create_cost_centers():
         session.commit()
 
 
+def create_departments():
+    departments = [
+        {"name": "Pista", "description": "Setor de Pista"},
+        {
+            "name": "Loja de Conveniência",
+            "description": "Setor da Loja de Conveniência",
+        },
+        {"name": "Compras", "description": "Setor de Compras"},
+        {"name": "Comercial", "description": "Setor Comercial"},
+        {"name": "Serviços Gerais", "description": "Setor de Serviços Gerais"},
+        {"name": "Administrativo", "description": "Setor Administrativo"},
+        {"name": "Recursos Humanos", "description": "Setor de Recursos Humanos"},
+        {"name": "Financeiro", "description": "Setor Financeiro"},
+    ]
+
+    with Session(engine) as session:
+        for department in departments:
+            department_instance = Department(
+                name=department["name"], description=department["description"]
+            )
+
+            session.add(department_instance)
+
+        session.commit()
+
+
 def seed_database():
     seed_roles()
     seed_subsidiaries()
@@ -477,8 +504,7 @@ def seed_database():
     seed_turns()
     seed_months()
     seed_workers()
-
     get_states_from_ibge()
     get_cities_from_ibge()
-
     create_cost_centers()
+    create_departments()

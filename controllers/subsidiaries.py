@@ -34,29 +34,25 @@ def handle_post_subsidiaries(formData: Subsidiarie):
 
 def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
     with Session(engine) as session:
-        subsidiarie = session.exec(
-            select(Subsidiarie).where(Subsidiarie.id == id)
-        ).first()
+        subsidiarie = session.get(Subsidiarie, id)
 
-        if subsidiarie:
+        if formData.name:
             subsidiarie.name = formData.name
 
+        if formData.adress:
             subsidiarie.adress = formData.adress
 
+        if formData.phone:
             subsidiarie.phone = formData.phone
 
+        if formData.email:
             subsidiarie.email = formData.email
 
-            session.add(subsidiarie)
+        session.commit()
 
-            session.commit()
+        session.refresh(subsidiarie)
 
-            session.refresh(subsidiarie)
-
-            return subsidiarie
-        return JSONResponse(
-            status_code=404, content={"message": "Subsidiarie not found"}
-        )
+        return subsidiarie
 
 
 def handle_delete_subsidiarie(id: int):

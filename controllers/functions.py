@@ -11,6 +11,32 @@ def handle_get_functions():
     return functions
 
 
+def handle_get_functions_for_users():
+    with Session(engine) as session:
+        functions = session.exec(select(Function)).all()
+
+        target_names = {"Gerente", "Coordenador", "Analista de RH", "Analista de TI"}
+
+        functions_for_users = [
+            function for function in functions if function.name in target_names
+        ]
+
+        return functions_for_users
+
+
+def handle_get_functions_for_workers():
+    with Session(engine) as session:
+        functions = session.exec(select(Function)).all()
+
+        target_names = {"Frentista", "Caixa", "Trocador de óleo"}
+
+        functions_for_workers = [
+            function for function in functions if function.name in target_names
+        ]
+
+        return functions_for_workers
+
+
 def handle_post_function(function: Function):
     result = create(function)
 

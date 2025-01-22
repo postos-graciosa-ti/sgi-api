@@ -280,6 +280,20 @@ def seed_turns():
                     end_time=time(0, 0),
                     end_interval_time=time(0, 0),
                 ),
+                Turn(
+                    name="Comercial",
+                    start_time=time(8, 0),
+                    start_interval_time=time(12, 0),
+                    end_time=time(18, 0),
+                    end_interval_time=time(13, 0),
+                ),
+                Turn(
+                    name="Meia madrugada",
+                    start_time=time(18, 0),
+                    start_interval_time=time(0, 0),
+                    end_time=time(0, 0),
+                    end_interval_time=time(13, 0),
+                ),
             ]
 
             session.add_all(turns)
@@ -324,6 +338,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Frentista 02",
@@ -331,6 +347,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Frentista 03",
@@ -338,6 +356,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Frentista 04",
@@ -345,6 +365,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Frentista 05",
@@ -352,6 +374,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Frentista 06",
@@ -359,6 +383,8 @@ def seed_workers():
                     function_id=6,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Caixa 01",
@@ -366,6 +392,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Caixa 02",
@@ -373,6 +401,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Caixa 03",
@@ -380,6 +410,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Caixa 04",
@@ -387,6 +419,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Caixa 05",
@@ -394,6 +428,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Caixa 06",
@@ -401,6 +437,8 @@ def seed_workers():
                     function_id=7,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=2
                 ),
                 Workers(
                     name="Trocador de óleo 01",
@@ -408,6 +446,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Trocador de óleo 02",
@@ -415,6 +455,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=1,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Trocador de óleo 03",
@@ -422,6 +464,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Trocador de óleo 04",
@@ -429,6 +473,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=2,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Trocador de óleo 05",
@@ -436,6 +482,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
                 Workers(
                     name="Trocador de óleo 06",
@@ -443,6 +491,8 @@ def seed_workers():
                     function_id=8,
                     turn_id=3,
                     is_active=True,
+                    cost_center_id=1,
+                    department_id=1
                 ),
             ]
 
@@ -503,7 +553,7 @@ def seed_database():
     seed_functions()
     seed_turns()
     seed_months()
-    seed_workers()
+    # seed_workers()
     get_states_from_ibge()
     get_cities_from_ibge()
     create_cost_centers()

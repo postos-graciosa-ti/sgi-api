@@ -44,6 +44,8 @@ from controllers.departments import (
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
+    handle_get_functions_for_users,
+    handle_get_functions_for_workers,
     handle_post_function,
     handle_put_function,
 )
@@ -412,6 +414,16 @@ def deactivate_worker(worker_id: int):
 @app.get("/functions")
 def get_functions():
     return handle_get_functions()
+
+
+@app.get("/functions/for-users")
+def get_functions_for_users():
+    return handle_get_functions_for_users()
+
+
+@app.get("/functions/for-workers")
+def get_functions_for_users():
+    return handle_get_functions_for_workers()
 
 
 @app.post("/functions")

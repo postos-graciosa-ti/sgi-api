@@ -3,6 +3,8 @@ from datetime import date
 from sqlmodel import Session, select, update
 
 from database.sqlite import engine
+from models.cost_center import CostCenter
+from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
 from models.scale import Scale
@@ -22,11 +24,15 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Turn.id.label("turn_id"),
                 Turn.name.label("turn_name"),
                 Turn.start_time.label("turn_start_time"),
-                Turn.end_time.label("turn_end_time")
+                Turn.end_time.label("turn_end_time"),
+                CostCenter.name.label("cost_center"),
+                Department.name.label("department"),
             )
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .join(Function, Function.id == Workers.function_id)
             .join(Turn, Workers.turn_id == Turn.id)
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .join(Department, Workers.department_id == Department.id)
         ).all()
 
         return [
@@ -39,7 +45,9 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "turn_id": worker.turn_id,
                 "turn_name": worker.turn_name,
                 "turn_start_time": worker.turn_start_time,
-                "turn_end_time": worker.turn_end_time
+                "turn_end_time": worker.turn_end_time,
+                "cost_center": worker.cost_center,
+                "department": worker.department,
             }
             for worker in workers
         ]
@@ -59,6 +67,21 @@ def handle_put_worker(id: int, worker: Workers):
             db_worker.turn_id = worker.turn_id
 
             db_worker.is_active = worker.is_active
+
+            if db_worker.function_id == 6:
+                db_worker.cost_center_id = 1
+
+                db_worker.department_id = 1
+
+            elif db_worker.function_id == 7:
+                db_worker.cost_center_id = 1
+
+                db_worker.department_id = 2
+
+            elif db_worker.function_id == 8:
+                db_worker.cost_center_id = 1
+
+                db_worker.department_id = 1
 
             session.add(db_worker)
 
@@ -142,12 +165,37 @@ def handle_get_active_workers_by_subsidiarie_and_function(
 
 def handle_post_worker(worker: Workers):
     with Session(engine) as session:
-        session.add(worker)
+        worker_data = Workers(
+            name=worker.name,
+            function_id=worker.function_id,
+            subsidiarie_id=worker.subsidiarie_id,
+            turn_id=worker.turn_id,
+            cost_center_id=0,
+            department_id=0,
+        )
+
+        if worker.function_id == 6:
+            worker_data.cost_center_id = 1
+
+            worker_data.department_id = 1
+
+        elif worker.function_id == 7:
+            worker_data.cost_center_id = 1
+
+            worker_data.department_id = 2
+
+        elif worker.function_id == 8:
+            worker_data.cost_center_id = 1
+
+            worker_data.department_id = 1
+
+        session.add(worker_data)
 
         session.commit()
 
-        session.refresh(worker)
-    return worker
+        session.refresh(worker_data)
+
+    return worker_data
 
 
 def handle_deactivate_worker(worker_id: int):

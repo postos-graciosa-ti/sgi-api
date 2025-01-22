@@ -1,3 +1,4 @@
+import calendar
 import json
 import locale
 from datetime import datetime, timedelta
@@ -36,7 +37,11 @@ def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
     #     return options
 
     with Session(engine) as session:
-        statement = select(Scale).join(Workers, Workers.id == Scale.worker_id).where(Scale.subsidiarie_id == subsidiarie_id)
+        statement = (
+            select(Scale)
+            .join(Workers, Workers.id == Scale.worker_id)
+            .where(Scale.subsidiarie_id == subsidiarie_id)
+        )
 
         scales_by_subsidiarie = session.exec(statement).all()
 
@@ -46,7 +51,7 @@ def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
             worker = session.get(Workers, scale.worker_id)
             worker_function = session.get(Function, worker.function_id)
             worker_turn = session.get(Turn, worker.turn_id)
-            
+
             format_scale = {
                 "id": scale.id,
                 "worker": {
@@ -54,13 +59,13 @@ def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
                     "name": worker.name,
                     "function": {
                         "id": worker_function.id,
-                        "name": worker_function.name
+                        "name": worker_function.name,
                     },
                     "turn": {
                         "id": worker_turn.id,
                         "start_time": worker_turn.start_time,
-                        "end_time": worker_turn.end_time
-                    }
+                        "end_time": worker_turn.end_time,
+                    },
                 },
                 "days_on": eval(scale.days_on),
                 "days_off": eval(scale.days_off),
@@ -90,6 +95,20 @@ def handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_i
         "days_off": eval(scales_by_subsidiarie_and_worker_id.days_off),
         "ilegal_dates": eval(scales_by_subsidiarie_and_worker_id.ilegal_dates),
     }
+
+
+async def handle_get_days_off_quantity():
+    data_atual = datetime.now()
+
+    ano_atual = data_atual.year
+
+    mes_atual = data_atual.month
+
+    semanas_no_mes = len(calendar.monthcalendar(ano_atual, mes_atual))
+
+    folgas = semanas_no_mes * 1
+
+    return folgas
 
 
 def handle_post_scale(form_data: PostScaleInput):
@@ -176,27 +195,27 @@ def handle_post_scale(form_data: PostScaleInput):
             # worker_turn_id = worker.turn_id  # Obtém o turn_id do trabalhador
 
             # for day_off in form_data.days_off:
-                # existing_workers = session.exec(
-                #     select(Scale)
-                #     .join(
-                #         Workers, Scale.worker_id == Workers.id
-                #     )  # Juntar com a tabela Worker
-                #     .where(
-                #         Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
-                #         Workers.turn_id == worker_turn_id,  # Mesmo turno
-                #         Scale.days_off.contains(
-                #             f'"{day_off}"'
-                #         ),  # Dia de folga em comum
-                #         Scale.worker_id
-                #         != form_data.worker_id,  # Ignorar o próprio trabalhador
-                #     )
-                # ).all()
+            # existing_workers = session.exec(
+            #     select(Scale)
+            #     .join(
+            #         Workers, Scale.worker_id == Workers.id
+            #     )  # Juntar com a tabela Worker
+            #     .where(
+            #         Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
+            #         Workers.turn_id == worker_turn_id,  # Mesmo turno
+            #         Scale.days_off.contains(
+            #             f'"{day_off}"'
+            #         ),  # Dia de folga em comum
+            #         Scale.worker_id
+            #         != form_data.worker_id,  # Ignorar o próprio trabalhador
+            #     )
+            # ).all()
 
-                # if existing_workers:
-                #     raise HTTPException(
-                #         status_code=400,
-                #         detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
-                #     )
+            # if existing_workers:
+            #     raise HTTPException(
+            #         status_code=400,
+            #         detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
+            #     )
 
             existing_scale = session.exec(
                 select(Scale).where(
@@ -221,7 +240,7 @@ def handle_post_scale(form_data: PostScaleInput):
                     proportion=json.dumps(proporcoes),
                     ilegal_dates=form_data.ilegal_dates,
                     worker_function_id=form_data.worker_function_id,
-                    worker_turn_id=form_data.worker_turn_id
+                    worker_turn_id=form_data.worker_turn_id,
                 )
 
                 session.add(existing_scale)

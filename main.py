@@ -60,6 +60,7 @@ from controllers.roles import handle_get_roles
 from controllers.root import handle_activate_render_server, handle_get_docs_info
 from controllers.scale import (
     handle_delete_scale,
+    handle_get_days_off_quantity,
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
     handle_post_scale,
@@ -503,6 +504,11 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
     return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
 
 
+@app.get("/scales/day-off/quantity")
+async def get_days_off_quantity():
+    return await handle_database_operation(handle_get_days_off_quantity)
+
+
 # class NeedAlertInput(BaseModel):
 #     days_off: str
 #     first_day: str
@@ -573,9 +579,6 @@ def post_scale(form_data: PostScaleInput):
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
-
-
-from pydantic import BaseModel
 
 
 # Modelo para o corpo da requisição

@@ -1147,4 +1147,5 @@ async def put_department(id: int, department_input: Department):
 
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
-    return await handle_database_operation(handle_delete_department, id)
+    # return await handle_database_operation(handle_delete_department, id)
+    return await handle_delete_department(id)

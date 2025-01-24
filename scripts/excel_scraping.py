@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime, time
+from functools import reduce
 from pathlib import Path
 
 import pandas as pd
@@ -65,7 +66,7 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
                     ).time()
 
                     turn_start_interval_time = time(0, 0)
-                    
+
                     turn_end_interval_time = time(0, 0)
 
                     turn = Turn(
@@ -75,7 +76,7 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
                         end_time=turn_end_time,
                         end_interval_time=turn_end_interval_time,
                     )
-                    
+
                     session.add(turn)
 
             # Verifica se a função já existe
@@ -119,10 +120,26 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
 
         session.commit()
 
+    def remove_repeated_turns(all_turns):
+        with Session(engine) as session:
+            # Ordenar todos os turnos por start_time e end_time para garantir que duplicatas estejam consecutivas
+            all_turns = sorted(all_turns, key=lambda turn: (turn.start_time, turn.end_time))
+            
+            previous_turn = None
+            for turn in all_turns:
+                if previous_turn and previous_turn.start_time == turn.start_time and previous_turn.end_time == turn.end_time:
+                    session.delete(turn)
+                else:
+                    previous_turn = turn
+
+            session.commit()
+
     with Session(engine) as session:
         all_turns = session.execute(select(Turn)).scalars().all()
         all_functions = session.execute(select(Function)).scalars().all()
         all_workers = session.execute(select(Workers)).scalars().all()
+
+    remove_repeated_turns(all_turns)
 
     os.remove(file_location)
 

@@ -1164,3 +1164,7 @@ async def put_department(id: int, department_input: Department):
 async def delete_department(id: int):
     # return await handle_database_operation(handle_delete_department, id)
     return await handle_delete_department(id)
+
+@app.get("/setting-up-staging-branch")
+def staging():
+    return "staging"

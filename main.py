@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, or_, select
 
 from controllers.candidates import (
     handle_get_candidates,
@@ -130,13 +130,6 @@ from pyhints.users import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
-
-
-class Test(SQLModel, Table=True):
-    id: int = Field(default=None, primary_key=True)
-    station_attendant: str = Field(default="[]")
-    operator: str = Field(default="[]")
-
 
 # pre settings
 
@@ -509,68 +502,6 @@ async def get_days_off_quantity():
     return await handle_database_operation(handle_get_days_off_quantity)
 
 
-# class NeedAlertInput(BaseModel):
-#     days_off: str
-#     first_day: str
-#     last_day: str
-
-
-# @app.post("/scales/need-alert")
-# def teste(form_data: NeedAlertInput):
-#     form_data.days_off = eval(form_data.days_off)
-
-#     first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
-
-#     last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
-
-#     dias_do_mes = []
-
-#     data_atual = first_day
-
-#     while data_atual <= last_day:
-#         dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-#         data_atual += timedelta(days=1)
-
-#     dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
-
-#     all_dates = sorted(dias_sem_folga + form_data.days_off)
-
-#     options = [
-#         {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
-#     ]
-
-#     dias_consecutivos = []
-#     contador = 0
-#     tem_mais_de_oito_dias_consecutivos = False
-
-#     for dia in options:
-#         if dia["dayOff"]:
-#             dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
-#             contador = 0
-#         else:
-#             contador += 1
-#             if contador > 8:
-#                 tem_mais_de_oito_dias_consecutivos = True
-
-#     return tem_mais_de_oito_dias_consecutivos
-
-
-# class TestingInput(BaseModel):
-#     date_from_calendar: str
-#     date_to_compare: str
-
-
-# @app.post("/testing")
-# def testing(form_data: TestingInput):
-#     date_from_calendar = datetime.strptime(form_data.date_from_calendar, "%d-%m-%Y")
-
-#     date_to_compare = datetime.strptime(form_data.date_to_compare, "%d-%m-%Y")
-
-#     date_difference = date_to_compare - date_from_calendar
-
-#     return {"date_difference": date_difference.days}
-
-
 @app.post("/scales")
 def post_scale(form_data: PostScaleInput):
     return handle_post_scale(form_data)
@@ -579,72 +510,6 @@ def post_scale(form_data: PostScaleInput):
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
-
-
-# Modelo para o corpo da requisição
-class ValidateScaleRequest(BaseModel):
-    first_day: str
-    last_day: str
-
-
-@app.post("/validate_monthly_scale/{subsidiarie_id}")
-def validate_monthly_scale(subsidiarie_id: int, request: ValidateScaleRequest):
-    try:
-        first_day_date = datetime.strptime(request.first_day, "%d-%m-%Y")
-        last_day_date = datetime.strptime(request.last_day, "%d-%m-%Y")
-
-        # Gera os dias do mês
-        dias_do_mes = []
-        data_atual = first_day_date
-        while data_atual <= last_day_date:
-            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-            data_atual += timedelta(days=1)
-
-        validation_results = []
-
-        with Session(engine) as session:
-            for dia in dias_do_mes:
-                # Obtém os trabalhadores escalados para o dia
-                workers_on_day = session.exec(
-                    select(Workers)
-                    .join(Scale, Workers.id == Scale.worker_id)
-                    .where(
-                        Scale.subsidiarie_id == subsidiarie_id,
-                        Scale.days_on.contains(f'"{dia}"'),
-                    )
-                ).all()
-
-                # Conta os trabalhadores por função
-                frentistas = sum(
-                    1 for worker in workers_on_day if worker.function_id == 6
-                )
-                trocadores = sum(
-                    1 for worker in workers_on_day if worker.function_id == 8
-                )
-
-                if frentistas < 3 or trocadores < 1:
-                    validation_results.append(
-                        {
-                            "date": dia,
-                            "frentistas": frentistas,
-                            "trocadores": trocadores,
-                            "status": "Insufficient workers",
-                        }
-                    )
-                else:
-                    validation_results.append(
-                        {
-                            "date": dia,
-                            "frentistas": frentistas,
-                            "trocadores": trocadores,
-                            "status": "Sufficient workers",
-                        }
-                    )
-
-        return {"validation_results": validation_results}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # scrips
@@ -683,128 +548,6 @@ async def get_city_by_id(id: int):
     return await handle_get_city_by_id(id)
 
 
-@app.get("/subsidiaries/{id}/frentistas")
-def get_frentistas(id: int):
-    with Session(engine) as session:
-        frentistas = session.exec(
-            select(Workers)
-            .where(Workers.function_id == 6)
-            .where(Workers.subsidiarie_id == id)
-        ).all()
-
-        return frentistas
-
-
-@app.get("/subsidiaries/{id}/caixas")
-def get_caixas(id: int):
-    with Session(engine) as session:
-        caixas = session.exec(
-            select(Workers)
-            .where(Workers.function_id == 7)
-            .where(Workers.subsidiarie_id == id)
-        ).all()
-
-        return caixas
-
-
-@app.get("/subsidiaries/{id}/trocadores-de-oleo")
-def get_trocadores_de_oleo(id: int):
-    with Session(engine) as session:
-        trocadores_de_oleo = session.exec(
-            select(Workers)
-            .where(Workers.function_id == 8)
-            .where(Workers.subsidiarie_id == id)
-        ).all()
-
-        return trocadores_de_oleo
-
-
-class SlaScale(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    date: str = Field(index=True)
-    weekday: str = Field(index=True)
-    subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
-    turn_id: int = Field(default=None, foreign_key="turn.id")
-    workers_on_ids: str = Field(default="[]")
-    workers_off_ids: str = Field(default="[]")
-
-
-@app.get("/subsidiaries/{id}/sla-scale")
-def get_sla_scale(id: int):
-    with Session(engine) as session:
-        scales = session.exec(
-            select(
-                SlaScale.id,
-                SlaScale.date,
-                SlaScale.weekday,
-                SlaScale.subsidiarie_id,
-                SlaScale.turn_id,
-                SlaScale.workers_on_ids,
-                SlaScale.workers_off_ids,
-                Turn.id.label("turn_id"),
-                Turn.start_time.label("turn_start_time"),
-                Turn.end_time.label("turn_end_time"),
-            )
-            .join(Turn, Turn.id == SlaScale.turn_id)
-            .where(SlaScale.subsidiarie_id == id)
-        ).all()
-
-        result = []
-
-        for scale in scales:
-            workers_on_ids = json.loads(scale.workers_on_ids)
-
-            workers_off_ids = json.loads(scale.workers_off_ids)
-
-            workers_on = [
-                session.get(Workers, worker_on_id) for worker_on_id in workers_on_ids
-            ]
-
-            workers_off = [
-                session.get(Workers, worker_off_id) for worker_off_id in workers_off_ids
-            ]
-
-            result.append(
-                {
-                    "sla_scale_id": scale.id,
-                    "date": scale.date,
-                    "weekday": scale.weekday,
-                    "workers_on": [worker for worker in workers_on if worker],
-                    "workers_off": [worker for worker in workers_off if worker],
-                    "turn_id": scale.turn_id,
-                    "turn_start_time": scale.turn_start_time,
-                    "turn_end_time": scale.turn_end_time,
-                }
-            )
-
-        return result
-
-
-@app.post("/sla-scale")
-def post_sla_scale(scale: SlaScale):
-    with Session(engine) as session:
-        session.add(scale)
-
-        session.commit()
-
-        session.refresh(scale)
-    return scale
-
-
-# ~~
-
-
-@app.post("/scale")
-def post_scale(scale: Test):
-    with Session(engine) as session:
-        session.add(scale)
-
-        session.commit()
-
-        session.refresh(scale)
-    return scale
-
-
 class ScalesReportInput(BaseModel):
     initial_date: str
     final_date: str
@@ -812,199 +555,82 @@ class ScalesReportInput(BaseModel):
 
 @app.post("/subsidiaries/{id}/scales/report")
 def get_scales_report(id: int, scale_report_input: ScalesReportInput):
-    with Session(engine) as session:
-        # Obtém as informações dos turnos
-        primeiro_turno_info = session.get(Turn, 1)
-        segundo_turno_info = session.get(Turn, 2)
-        terceiro_turno_info = session.get(Turn, 3)
-
-        # Converte as datas de entrada
-        first_day_date = datetime.strptime(scale_report_input.initial_date, "%d-%m-%Y")
-        last_day_date = datetime.strptime(scale_report_input.final_date, "%d-%m-%Y")
-
-        # Cria a lista de dias do mês entre a data inicial e final
-        dias_do_mes = []
-        data_atual = first_day_date
-        while data_atual <= last_day_date:
-            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-            data_atual += timedelta(days=1)
-
-        # Relatórios para cada turno
-        primeiro_turno_report = [
-            {
-                "turno_info": {
-                    "start_time": primeiro_turno_info.start_time,
-                    "end_time": primeiro_turno_info.end_time,
-                }
-            }
-        ]
-
-        segundo_turno_report = [
-            {
-                "turno_info": {
-                    "start_time": segundo_turno_info.start_time,
-                    "end_time": segundo_turno_info.end_time,
-                }
-            }
-        ]
-
-        terceiro_turno_report = [
-            {
-                "turno_info": {
-                    "start_time": terceiro_turno_info.start_time,
-                    "end_time": terceiro_turno_info.end_time,
-                }
-            }
-        ]
-
-        # Itera sobre os dias do mês e coleta os dados de escalados
-        for dia_do_mes in dias_do_mes:
-            # Busca os dados de frentistas e trocadores por turno
-            frentistas_escalados_primeiro_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 1)
-                .where(Scale.worker_function_id == 6)
-            ).all()
-
-            trocadores_escalados_primeiro_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 1)
-                .where(Scale.worker_function_id == 8)
-            ).all()
-
-            frentistas_escalados_segundo_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 2)
-                .where(Scale.worker_function_id == 6)
-            ).all()
-
-            trocadores_escalados_segundo_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 2)
-                .where(Scale.worker_function_id == 8)
-            ).all()
-
-            frentistas_escalados_terceiro_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 3)
-                .where(Scale.worker_function_id == 6)
-            ).all()
-
-            trocadores_escalados_terceiro_turno_ao_dia = session.exec(
-                select(Scale)
-                .where(Scale.subsidiarie_id == id)
-                .where(Scale.days_on.contains(dia_do_mes))
-                .where(Scale.worker_turn_id == 3)
-                .where(Scale.worker_function_id == 8)
-            ).all()
-
-            # Coleta os dados de frentistas e trocadores para cada turno
-            dados_frentistas_primeiro_turno = [
-                {"dados": session.get(Workers, frentista.worker_id)}
-                for frentista in frentistas_escalados_primeiro_turno_ao_dia
-            ]
-
-            dados_trocadores_primeiro_turno = [
-                {"dados": session.get(Workers, trocador.worker_id)}
-                for trocador in trocadores_escalados_primeiro_turno_ao_dia
-            ]
-
-            dados_frentistas_segundo_turno = [
-                {"dados": session.get(Workers, frentista.worker_id)}
-                for frentista in frentistas_escalados_segundo_turno_ao_dia
-            ]
-
-            dados_trocadores_segundo_turno = [
-                {"dados": session.get(Workers, trocador.worker_id)}
-                for trocador in trocadores_escalados_segundo_turno_ao_dia
-            ]
-
-            dados_frentistas_terceiro_turno = [
-                {"dados": session.get(Workers, frentista.worker_id)}
-                for frentista in frentistas_escalados_terceiro_turno_ao_dia
-            ]
-
-            dados_trocadores_terceiro_turno = [
-                {"dados": session.get(Workers, trocador.worker_id)}
-                for trocador in trocadores_escalados_terceiro_turno_ao_dia
-            ]
-
-            # Adiciona as informações dos relatórios
-            primeiro_turno_report.append(
-                {
-                    "date": dia_do_mes,
-                    "status": (
-                        "trabalhadores suficientes"
-                        if len(frentistas_escalados_primeiro_turno_ao_dia) > 3
-                        and len(trocadores_escalados_primeiro_turno_ao_dia) > 1
-                        else "trabalhadores insuficientes"
-                    ),
-                    "dados_frentistas": dados_frentistas_primeiro_turno,
-                    "dados_trocadores": dados_trocadores_primeiro_turno,
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_primeiro_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_primeiro_turno_ao_dia
-                    ),
-                }
+    # graciosa matriz report
+    if id == 1:
+        with Session(engine) as session:
+            first_day_date = datetime.strptime(
+                scale_report_input.initial_date, "%d-%m-%Y"
             )
+            last_day_date = datetime.strptime(scale_report_input.final_date, "%d-%m-%Y")
 
-            segundo_turno_report.append(
-                {
-                    "date": dia_do_mes,
-                    "status": (
-                        "trabalhadores suficientes"
-                        if len(frentistas_escalados_segundo_turno_ao_dia) > 3
-                        and len(trocadores_escalados_segundo_turno_ao_dia) > 1
-                        else "trabalhadores insuficientes"
-                    ),
-                    "dados_frentistas": dados_frentistas_segundo_turno,
-                    "dados_trocadores": dados_trocadores_segundo_turno,
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_segundo_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_segundo_turno_ao_dia
-                    ),
-                }
-            )
+            dias_do_mes = []
+            data_atual = first_day_date
 
-            terceiro_turno_report.append(
-                {
-                    "date": dia_do_mes,
-                    "status": (
-                        "trabalhadores suficientes"
-                        if len(frentistas_escalados_terceiro_turno_ao_dia) > 3
-                        and len(trocadores_escalados_terceiro_turno_ao_dia) > 1
-                        else "trabalhadores insuficientes"
-                    ),
-                    "dados_frentistas": dados_frentistas_terceiro_turno,
-                    "dados_trocadores": dados_trocadores_terceiro_turno,
-                    "quantidade_frentistas": len(
-                        frentistas_escalados_terceiro_turno_ao_dia
-                    ),
-                    "quantidade_trocadores": len(
-                        trocadores_escalados_terceiro_turno_ao_dia
-                    ),
-                }
-            )
+            while data_atual <= last_day_date:
+                dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+                data_atual += timedelta(days=1)
 
-        return {
-            "primeiro_turno_report": primeiro_turno_report,
-            "segundo_turno_report": segundo_turno_report,
-            "terceiro_turno_report": terceiro_turno_report,
-        }
+            def generate_turn_report(turn_id):
+                turn_info = session.get(Turn, turn_id)
+                turn_report = [{"turn_info": turn_info}]
+
+                for dia_do_mes in dias_do_mes:
+                    frentistas_ao_dia = session.exec(
+                        select(Scale)
+                        .where(Scale.days_on.contains(dia_do_mes))
+                        .where(Scale.worker_turn_id == turn_id)
+                        .where(
+                            or_(
+                                Scale.worker_function_id == 4,
+                                Scale.worker_function_id == 2,
+                            )
+                        )
+                    ).all()
+
+                    nomes_frentistas_ao_dia = [
+                        session.get(Workers, frentista.worker_id)
+                        for frentista in frentistas_ao_dia
+                    ]
+
+                    trocadores_ao_dia = session.exec(
+                        select(Scale)
+                        .where(Scale.days_on.contains(dia_do_mes))
+                        .where(Scale.worker_turn_id == turn_id)
+                        .where(Scale.worker_function_id == 9)
+                    ).all()
+
+                    nomes_trocadores_ao_dia = [
+                        session.get(Workers, trocador.worker_id)
+                        for trocador in trocadores_ao_dia
+                    ]
+
+                    turn_report.append(
+                        {
+                            "date": dia_do_mes,
+                            "nomes_frentistas": nomes_frentistas_ao_dia,
+                            "quantidade_frentistas": len(frentistas_ao_dia),
+                            "nomes_trocadores": nomes_trocadores_ao_dia,
+                            "quantidade_trocadores": len(trocadores_ao_dia),
+                            "status": (
+                                "trabalhadores suficientes"
+                                if len(trocadores_ao_dia) >= 1
+                                and len(frentistas_ao_dia) >= 3
+                                else "trabalhadores insuficientes"
+                            ),
+                        }
+                    )
+                return turn_report
+
+            report = {
+                "primeiro_turno_report": generate_turn_report(2),
+                "segundo_turno_report": generate_turn_report(1),
+                "terceiro_turno_report": generate_turn_report(3),
+                "quarto_turno_report": generate_turn_report(4),
+                "quinto_turno_report": generate_turn_report(5),
+                "sexto_turno_report": generate_turn_report(6),
+            }
+
+            return report
 
 
 class PrintScaleInput(BaseModel):
@@ -1018,8 +644,10 @@ def print_scales(
 ):
     if print_id == 1:
         with Session(engine) as session:
-            primeiro_turno_info = session.get(Turn, 1)
-            segundo_turno_info = session.get(Turn, 2)
+            primeiro_turno_info = session.get(Turn, 2)
+
+            segundo_turno_info = session.get(Turn, 1)
+
             terceiro_turno_info = session.get(Turn, 3)
 
             first_day_date = datetime.strptime(
@@ -1156,15 +784,29 @@ async def post_department(department_input: Department):
 
 @app.put("/departments/{id}")
 async def put_department(id: int, department_input: Department):
-    # return handle_database_operation(handle_put_department, id, department_input)
     return await handle_put_department(id, department_input)
 
 
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
-    # return await handle_database_operation(handle_delete_department, id)
     return await handle_delete_department(id)
 
-@app.get("/setting-up-staging-branch")
-def staging():
-    return "staging"
+
+# ~~
+
+
+@app.get(
+    "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}"
+)
+def get_workers_by_subsidiaries_functions_and_turns(
+    subsidiarie_id: int, function_id: int, turn_id: int
+):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers

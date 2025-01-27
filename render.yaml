@@ -29,7 +29,6 @@ services:
   branch: main
   plan: free
   envVars:
-  envVars:
   - key: ALGORITHM
     value: "HS256"
   - key: PROJECT_ID

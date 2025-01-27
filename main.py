@@ -790,3 +790,23 @@ async def put_department(id: int, department_input: Department):
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
     return await handle_delete_department(id)
+
+
+# ~~
+
+
+@app.get(
+    "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}"
+)
+def get_workers_by_subsidiaries_functions_and_turns(
+    subsidiarie_id: int, function_id: int, turn_id: int
+):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers

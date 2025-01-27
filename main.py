@@ -622,13 +622,12 @@ def get_scales_report(id: int, scale_report_input: ScalesReportInput):
                 return turn_report
 
             report = {
-                "primeiro_turno_report": generate_turn_report(1),  # 14:00 - 22:00
-                "segundo_turno_report": generate_turn_report(2),  # 06:00 - 14:00
-                "terceiro_turno_report": generate_turn_report(3),  # 22:00 - 06:00
-                "quarto_turno_report": generate_turn_report(4),  # 08:00 - 18:00
-                "quinto_turno_report": generate_turn_report(5),  # 14:00 - 22:00
-                "sexto_turno_report": generate_turn_report(6),  # 18:00 - 02:00
-                "setimo_turno_report": generate_turn_report(7),  # 06:00 - 15:00
+                "primeiro_turno_report": generate_turn_report(2),
+                "segundo_turno_report": generate_turn_report(1),
+                "terceiro_turno_report": generate_turn_report(3),
+                "quarto_turno_report": generate_turn_report(4),
+                "quinto_turno_report": generate_turn_report(5),
+                "sexto_turno_report": generate_turn_report(6),
             }
 
             return report

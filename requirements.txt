@@ -1,6 +1,7 @@
 aiocache==0.12.3
 annotated-types==0.7.0
 anyio==4.7.0
+autopep8==2.3.2
 CacheControl==0.14.1
 cachetools==5.5.0
 certifi==2024.8.30
@@ -43,6 +44,7 @@ proto-plus==1.25.0
 protobuf==5.29.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
+pycodestyle==2.12.1
 pycparser==2.22
 pydantic==2.10.3
 pydantic_core==2.27.1

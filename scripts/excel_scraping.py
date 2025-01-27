@@ -122,24 +122,62 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
 
     def remove_repeated_turns(all_turns):
         with Session(engine) as session:
-            # Ordenar todos os turnos por start_time e end_time para garantir que duplicatas estejam consecutivas
-            all_turns = sorted(all_turns, key=lambda turn: (turn.start_time, turn.end_time))
-            
+            all_turns = sorted(
+                all_turns, key=lambda turn: (turn.start_time, turn.end_time)
+            )
+
             previous_turn = None
+
             for turn in all_turns:
-                if previous_turn and previous_turn.start_time == turn.start_time and previous_turn.end_time == turn.end_time:
+                if (
+                    previous_turn
+                    and previous_turn.start_time == turn.start_time
+                    and previous_turn.end_time == turn.end_time
+                ):
                     session.delete(turn)
                 else:
                     previous_turn = turn
 
             session.commit()
 
+    def remove_non_operational_functions(all_functions):
+        non_operational_ids = [3, 5, 6, 7, 8, 11]
+
+        with Session(engine) as session:
+            for function in all_functions:
+                if function.id in non_operational_ids:
+                    session.delete(function)
+
+                if function.name == "Coordenador(a) de Vendas JR":
+                    session.delete(function)
+
+            session.commit()
+
+    def remove_non_operational_workers(all_workers):
+        non_operational_ids = [3, 5, 6, 7, 8, 11]
+
+        with Session(engine) as session:
+            for worker in all_workers:
+                if worker.function_id in non_operational_ids:
+                    session.delete(worker)
+
+                if worker.id == 19:
+                    session.delete(worker)
+
+            session.commit()
+
     with Session(engine) as session:
         all_turns = session.execute(select(Turn)).scalars().all()
+
         all_functions = session.execute(select(Function)).scalars().all()
+
         all_workers = session.execute(select(Workers)).scalars().all()
 
     remove_repeated_turns(all_turns)
+
+    remove_non_operational_functions(all_functions)
+
+    remove_non_operational_workers(all_workers)
 
     os.remove(file_location)
 

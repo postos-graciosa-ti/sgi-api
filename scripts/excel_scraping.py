@@ -76,6 +76,7 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
                         start_interval_time=turn_start_interval_time,
                         end_time=turn_end_time,
                         end_interval_time=turn_end_interval_time,
+                        subsidiarie_id=1
                     )
 
                     session.add(turn)

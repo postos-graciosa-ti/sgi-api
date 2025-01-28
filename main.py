@@ -81,6 +81,7 @@ from controllers.turn import (
     handle_delete_turn,
     handle_get_turn_by_id,
     handle_get_turns,
+    handle_get_turns_by_subsidiarie,
     handle_post_turns,
     handle_put_turn,
 )
@@ -300,24 +301,29 @@ def get_turns():
     return handle_get_turns()
 
 
+@app.get("/turns/subsidiaries/{id}")
+async def get_turns_by_subsidiarie(id: int):
+    return await handle_database_operation(handle_get_turns_by_subsidiarie, id)
+
+
 @app.get("/turns/{id}")
 async def get_turn_by_id(id: int):
     return await handle_database_operation(handle_get_turn_by_id, id)
 
 
 @app.post("/turns")
-def post_turns(formData: Turn):
-    return handle_post_turns(formData)
+async def post_turns(formData: Turn):
+    return await handle_database_operation(handle_post_turns, formData)
 
 
 @app.put("/turns/{id}")
-def put_turn(id: int, formData: PutTurn):
-    return handle_put_turn(id, formData)
+async def put_turn(id: int, formData: PutTurn):
+    return await handle_database_operation(handle_put_turn, id, formData)
 
 
 @app.delete("/turns/{id}")
-def delete_turn(id: int):
-    return handle_delete_turn(id)
+async def delete_turn(id: int):
+    return await handle_database_operation(handle_delete_turn, id)
 
 
 # workers

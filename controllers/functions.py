@@ -1,8 +1,7 @@
-from sqlmodel import Session, select, text
+from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.function import Function
-from repository.functions import create
 
 
 def handle_get_functions():
@@ -38,9 +37,13 @@ def handle_get_functions_for_workers():
 
 
 def handle_post_function(function: Function):
-    result = create(function)
+    with Session(engine) as session:
+        session.add(function)
 
-    return result
+        session.commit()
+
+        session.refresh(function)
+    return function
 
 
 def handle_put_function(id: int, function: Function):

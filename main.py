@@ -60,13 +60,16 @@ from controllers.roles import handle_get_roles
 from controllers.root import handle_activate_render_server, handle_get_docs_info
 from controllers.scale import (
     handle_delete_scale,
-    handle_generate_scale_report,
     handle_get_days_off_quantity,
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
     handle_post_scale,
 )
 from controllers.scales_logs import handle_get_scales_logs, handle_post_scale_logs
+from controllers.scales_reports import (
+    handle_generate_scale_days_off_report,
+    handle_generate_scale_days_on_report,
+)
 from controllers.subsidiaries import (
     handle_delete_subsidiarie,
     handle_get_subsidiarie_by_id,
@@ -483,13 +486,6 @@ def post_scale(form_data: PostScaleInput):
     return handle_post_scale(form_data)
 
 
-@app.post("/subsidiaries/{subsidiarie_id}/scales/report")
-async def generate_scale_report(subsidiarie_id: int, input: ScalesReportInput):
-    return await handle_database_operation(
-        handle_generate_scale_report, subsidiarie_id, input
-    )
-
-
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
@@ -510,11 +506,20 @@ async def post_scales_logs(scales_logs_input: ScaleLogs):
 
 # scale reports
 
-# anotação para refatorar depois
 
-# @app.post("/reports/subsidiaries/{id}/scales/days-on")
+@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
+async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
+    return await handle_database_operation(
+        handle_generate_scale_days_on_report, subsidiarie_id, input
+    )
 
-# @app.post("/reports/subsidiaries/{id}/scales/days-off")
+
+@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
+async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
+    return await handle_database_operation(
+        handle_generate_scale_days_off_report, subsidiarie_id, input
+    )
+
 
 # scrips
 
@@ -608,83 +613,3 @@ async def put_department(id: int, department_input: Department):
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
     return await handle_delete_department(id)
-
-
-@app.post("/subsidiaries/{subsidiarie_id}/prints/{print_id}/scales")
-def scales_print(subsidiarie_id: int, print_id: int, input: ScalesReportInput):
-    with Session(engine) as session:
-        turns = session.exec(select(Turn).where(Turn.id.in_([1, 2, 3, 4, 5]))).all()
-
-        first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
-
-        last_day = datetime.strptime(input.last_day, "%d-%m-%Y")
-
-        dias_do_mes = []
-
-        data_atual = first_day
-
-        while data_atual <= last_day:
-            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-
-            data_atual += timedelta(days=1)
-
-        all_turns_reports = []
-
-        for turn in turns:
-            turn_report = [{"turn_info": turn}]
-
-            for dia_do_mes in dias_do_mes:
-                caixas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 1)
-                ).all()
-
-                frentistas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 4)
-                ).all()
-
-                trocadores_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 9)
-                ).all()
-
-                turn_report.append(
-                    {
-                        "date": dia_do_mes,
-                        "dados_caixas": [
-                            session.get(Workers, caixa.worker_id)
-                            for caixa in caixas_ao_turno_e_dia
-                        ],
-                        "quantidade_caixas": len(caixas_ao_turno_e_dia),
-                        "dados_frentistas": [
-                            session.get(Workers, frentista.worker_id)
-                            for frentista in frentistas_ao_turno_e_dia
-                        ],
-                        "quantidade_frentistas": len(frentistas_ao_turno_e_dia),
-                        "dados_trocadores": [
-                            session.get(Workers, trocador.worker_id)
-                            for trocador in trocadores_ao_turno_e_dia
-                        ],
-                        "quantidade_trocadores": len(trocadores_ao_turno_e_dia),
-                        "status": (
-                            "trabalhadores suficientes"
-                            if len(frentistas_ao_turno_e_dia) >= 3
-                            and len(trocadores_ao_turno_e_dia) >= 1
-                            else "trabalhadores insuficientes"
-                        ),
-                    }
-                )
-
-            all_turns_reports.append(turn_report)
-
-        return all_turns_reports

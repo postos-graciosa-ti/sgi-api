@@ -24,3 +24,13 @@ async def handle_get_scales_logs():
             }
             for scale_log in scales_logs
         ]
+
+
+async def handle_post_scale_logs(scales_logs_input: ScaleLogs):
+    with Session(engine) as session:
+        session.add(scales_logs_input)
+
+        session.commit()
+
+        session.refresh(scales_logs_input)
+    return scales_logs_input

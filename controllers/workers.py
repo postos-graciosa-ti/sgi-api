@@ -12,6 +12,13 @@ from models.turn import Turn
 from models.workers import Workers
 
 
+async def handle_get_worker_by_id(id: int):
+    with Session(engine) as session:
+        worker = session.exec(select(Workers).where(Workers.id == id)).one()
+
+        return worker
+
+
 def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
     with Session(engine) as session:
         workers = session.exec(
@@ -161,6 +168,20 @@ def handle_get_active_workers_by_subsidiarie_and_function(
         ).all()
 
         return active_workers
+
+
+async def handle_get_workers_by_subsidiaries_functions_and_turns(
+    subsidiarie_id: int, function_id: int, turn_id: int
+):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers
 
 
 def handle_post_worker(worker: Workers):

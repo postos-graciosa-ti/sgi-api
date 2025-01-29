@@ -20,3 +20,8 @@ class PostScaleInput(BaseModel):
     first_day: str
     last_day: str
     ilegal_dates: str
+
+
+class ScalesReportInput(BaseModel):
+    first_day: str
+    last_day: str

@@ -14,6 +14,13 @@ def handle_get_turns():
     return turns
 
 
+async def handle_get_turn_by_id(id: int):
+    with Session(engine) as session:
+        turn = session.exec(select(Turn).where(Turn.id == id)).one()
+
+        return turn
+
+
 def handle_post_turns(formData: Turn):
     formData.start_time = datetime.strptime(formData.start_time, "%H:%M").time()
 

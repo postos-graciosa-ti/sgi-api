@@ -1,46 +1,30 @@
 services:
-- type: web
-  name: sgi-api-staging
-  runtime: python
-  repo: https://github.com/postos-graciosa-ti/sgi-api
-  branch: staging
-  plan: free
-  envVars:
-  - key: ALGORITHM
-    value: "HS256"
-  - key: PROJECT_ID
-    value: teste-9ad4b
-  - key: SERVICE_ACCOUNT_KEY
-    value: "{\"type\":\"service_account\",\"project_id\":\"teste-9ad4b\",\"private_key_id\":\"87da97cafe21600ae6a1f2bc66cb928f7c00ff2a\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCd1cXHhcvd1ftN\\nSBLJlfXfCjg9BiJuK5DpWm4PDORM3D8v9uuVFm0Yww7la7IN6VqFeu4Ku8WDUAts\\npjyWM8Thj1/js2hX6cfoMWPU78E03Rlajy428VnJZJ63o3btRSes5/kKDTqdm8Kn\\n1PdVZNehEzbrY9R1/wpQVzfBBVMmapJX9uczsZkElUW1rEJxWwoW30UaX2dN0a0k\\n2TLjIpcRPDP3IFjjlwzlvSE0N7u1xzc1IopJiuKyKAdBF0JVuEYSziBR72FWE0Jc\\nzf5Q544c94UbW9iz8YWOmb0v/m1FMrZDWw06XBRsQpOrT+91GH0B+m8awZIs1GiU\\nbaz5Oe9HAgMBAAECggEARNqzMz1tGFN3E9mzSHnBDxH4QrbgYktjJkmq5ansFpOm\\nhRgk4Z8s7LZ7Ux5OSL9aHAzqt4f+vDA5K6bBm4zuALB5Vm43wNJdwS96q7QEBznF\\nC7qWoKVdU/wvOVF4Wj3m9wkjnXzz6zm+C1VeqMQbRUuKk9mzH96o8y95RR07jvAT\\nYBXUY5PIrJFT+6cwAAyvSWnW29vgif3bBYT4IZIZgKyRyCJ3fU+gUp/Y1Sx3xEfv\\nk1W00tBF/R5J3zKGOZc29W2SrDu0CMhsR8MlHzJ5t2tr1rDOleSnhyb+meubmwxn\\ntf9ZcdGwseiRgby1nXmAVcMizD9AnCpA43KmSLamsQKBgQDSrmd10ofLCGFxLGVr\\nE3cCwFobIrRZXsPbFJJlychOmB4tteGdBXVy+AnSrW+mhqleNLOs/BtYQmSlLcDW\\nxHpEuloFxb5a607lDHzVJTvqAUYaYNwBF+w0aDQwxVunytfabiphRTNmd42vRN1S\\n1lK3pqT3HCTrCsyTq/4NJWrpWwKBgQC/yUh8WELkWXyxxG96e6FhM4RkNUjFENyH\\nFj15Ws4/fn04n/E2QWMmLz5VjiqEPrep8e8IfiePVLytMBOy5TOdDY5Wqu/RflY3\\n9Iq12whhWMSszzIXMh4W5VS3g4bNg08aoj/PLEVK313PH1BStfQw68T/OeNdhFJk\\nhIwecfeJhQKBgEBC/j/MBauCVOaGWjD88PIf5dwdC9GuvCLY9Yais7x1Xc8niTex\\n8I8u5SAj0siCjqqzfJKpG1Yiejx/5jAcIgdQqCDWnidxWtE2q+T/xHSuCsoE/VZA\\nC8Y4eqLdsAVQM+Lmc3rT9sesc8UgRjn8MaLe67aMGR6wXpI0hftQjHm9AoGBAL+X\\nFwCRM5HnC7iS4kLbyqXNz05EJMQpSgTxZMwcuLmZZQLyVQe8Xo5A1+akNTkTZmsx\\ns3cqf96h6jKhOqyWZ+9XIYDXFuiTaxJPC1sMytxkz2VLP2EIwiJhSzZhAIPBz35t\\n44zVTwuzBIXrZFScTKuqfIvzin1buOuNtmSbuYv5AoGAC3ROxvd+qp4FaWArf0pp\\nqgwkuL0uGzjeOWPuvgF/4rsPGX1QQyeCdu4eTOk+TvgKwDRz8yqOh4yWsmvgQVo6\\nqre8xhqJnMf7d9x9V8GUFzS7kU2ozHwtJTptVrOsDvA5Ck2mjv5xrzKq4KzkeUty\\nI61+eyyl5CAt2BUYRyujbZE=\\n-----END PRIVATE KEY-----\\n\",\"client_email\":\"firebase-adminsdk-2um0t@teste-9ad4b.iam.gserviceaccount.com\",\"client_id\":\"106509810458940363923\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-2um0t%40teste-9ad4b.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}"
-  - key: SECRET
-    value: "secret"
-  - key: FRONT_URL
-    value: "http://localhost:5173"
-  - key: SQLITE_URL
-    value: "sqlite:///./database.db"
-  region: oregon
-  buildCommand: pip install -r requirements.txt
-  startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+  - type: web
+    name: sgi-api-homologacao
+    plan: free
+    branch: staging
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port 8000"
+    envVars:
+      - key: SQLITE_URL
+      - key: FRONT_URL
+      - key: SECRET
+      - key: ALGORITHM
+      - key: SERVICE_ACCOUNT_KEY
+      - key: PROJECT_ID
 
-- type: web
-  name: sgi-api-production
-  runtime: python
-  repo: https://github.com/postos-graciosa-ti/sgi-api
-  branch: main
-  plan: free
-  envVars:
-  - key: ALGORITHM
-    value: "HS256"
-  - key: PROJECT_ID
-    value: teste-9ad4b
-  - key: SERVICE_ACCOUNT_KEY
-    value: "{\"type\":\"service_account\",\"project_id\":\"teste-9ad4b\",\"private_key_id\":\"87da97cafe21600ae6a1f2bc66cb928f7c00ff2a\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCd1cXHhcvd1ftN\\nSBLJlfXfCjg9BiJuK5DpWm4PDORM3D8v9uuVFm0Yww7la7IN6VqFeu4Ku8WDUAts\\npjyWM8Thj1/js2hX6cfoMWPU78E03Rlajy428VnJZJ63o3btRSes5/kKDTqdm8Kn\\n1PdVZNehEzbrY9R1/wpQVzfBBVMmapJX9uczsZkElUW1rEJxWwoW30UaX2dN0a0k\\n2TLjIpcRPDP3IFjjlwzlvSE0N7u1xzc1IopJiuKyKAdBF0JVuEYSziBR72FWE0Jc\\nzf5Q544c94UbW9iz8YWOmb0v/m1FMrZDWw06XBRsQpOrT+91GH0B+m8awZIs1GiU\\nbaz5Oe9HAgMBAAECggEARNqzMz1tGFN3E9mzSHnBDxH4QrbgYktjJkmq5ansFpOm\\nhRgk4Z8s7LZ7Ux5OSL9aHAzqt4f+vDA5K6bBm4zuALB5Vm43wNJdwS96q7QEBznF\\nC7qWoKVdU/wvOVF4Wj3m9wkjnXzz6zm+C1VeqMQbRUuKk9mzH96o8y95RR07jvAT\\nYBXUY5PIrJFT+6cwAAyvSWnW29vgif3bBYT4IZIZgKyRyCJ3fU+gUp/Y1Sx3xEfv\\nk1W00tBF/R5J3zKGOZc29W2SrDu0CMhsR8MlHzJ5t2tr1rDOleSnhyb+meubmwxn\\ntf9ZcdGwseiRgby1nXmAVcMizD9AnCpA43KmSLamsQKBgQDSrmd10ofLCGFxLGVr\\nE3cCwFobIrRZXsPbFJJlychOmB4tteGdBXVy+AnSrW+mhqleNLOs/BtYQmSlLcDW\\nxHpEuloFxb5a607lDHzVJTvqAUYaYNwBF+w0aDQwxVunytfabiphRTNmd42vRN1S\\n1lK3pqT3HCTrCsyTq/4NJWrpWwKBgQC/yUh8WELkWXyxxG96e6FhM4RkNUjFENyH\\nFj15Ws4/fn04n/E2QWMmLz5VjiqEPrep8e8IfiePVLytMBOy5TOdDY5Wqu/RflY3\\n9Iq12whhWMSszzIXMh4W5VS3g4bNg08aoj/PLEVK313PH1BStfQw68T/OeNdhFJk\\nhIwecfeJhQKBgEBC/j/MBauCVOaGWjD88PIf5dwdC9GuvCLY9Yais7x1Xc8niTex\\n8I8u5SAj0siCjqqzfJKpG1Yiejx/5jAcIgdQqCDWnidxWtE2q+T/xHSuCsoE/VZA\\nC8Y4eqLdsAVQM+Lmc3rT9sesc8UgRjn8MaLe67aMGR6wXpI0hftQjHm9AoGBAL+X\\nFwCRM5HnC7iS4kLbyqXNz05EJMQpSgTxZMwcuLmZZQLyVQe8Xo5A1+akNTkTZmsx\\ns3cqf96h6jKhOqyWZ+9XIYDXFuiTaxJPC1sMytxkz2VLP2EIwiJhSzZhAIPBz35t\\n44zVTwuzBIXrZFScTKuqfIvzin1buOuNtmSbuYv5AoGAC3ROxvd+qp4FaWArf0pp\\nqgwkuL0uGzjeOWPuvgF/4rsPGX1QQyeCdu4eTOk+TvgKwDRz8yqOh4yWsmvgQVo6\\nqre8xhqJnMf7d9x9V8GUFzS7kU2ozHwtJTptVrOsDvA5Ck2mjv5xrzKq4KzkeUty\\nI61+eyyl5CAt2BUYRyujbZE=\\n-----END PRIVATE KEY-----\\n\",\"client_email\":\"firebase-adminsdk-2um0t@teste-9ad4b.iam.gserviceaccount.com\",\"client_id\":\"106509810458940363923\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-2um0t%40teste-9ad4b.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}"
-  - key: SECRET
-    value: "secret"
-  - key: FRONT_URL
-    value: "http://localhost:5173"
-  - key: SQLITE_URL
-    value: "sqlite:///./database.db"
-  region: oregon
-  buildCommand: pip install -r requirements.txt
-  startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+  - type: web
+    name: sgi-api-producao
+    plan: free
+    branch: main
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port 8000"
+    envVars:
+      - key: SQLITE_URL
+      - key: FRONT_URL
+      - key: SECRET
+      - key: ALGORITHM
+      - key: SERVICE_ACCOUNT_KEY
+      - key: PROJECT_ID

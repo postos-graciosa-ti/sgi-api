@@ -11,7 +11,7 @@ from models.function import Function
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
-from pyhints.scales import GetScalesByDate, PostScaleInput
+from pyhints.scales import GetScalesByDate, PostScaleInput, ScalesReportInput
 
 # locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 

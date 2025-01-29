@@ -29,26 +29,7 @@ async def get_workers_without_scales(subsidiarie_id):
 
 async def get_workers_with_less_than_ideal_days_off(subsidiarie_id):
     with Session(engine) as session:
-        today = datetime.now()
-
-        year = today.year
-
-        month = today.month
-
-        first_day = datetime(year, month, 1)
-
-        last_day = (first_day + timedelta(days=31)).replace(day=1) - timedelta(days=1)
-
-        sundays = 0
-
-        current_day = first_day
-
-        while current_day <= last_day:
-            if current_day.weekday() == 6:
-                sundays += 1
-            current_day += timedelta(days=1)
-
-        ideal_days_off = sundays + 4
+        ideal_days_off = 5
 
         workers = session.exec(
             select(Workers)

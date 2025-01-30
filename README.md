@@ -1,9 +1,6 @@
-Claro! Aqui está um exemplo de um README.md para o repositório `postos-graciosa-ti/sgi-front`. Certifique-se de personalizá-lo de acordo com as necessidades específicas do seu projeto.
+# RH-API
 
-```markdown
-# SGI-Front
-
-Bem-vindo ao repositório do SGI-Front! Este projeto é a interface front-end do Sistema de Gestão Integrada (SGI) dos Postos Graciosa.
+Bem-vindo ao repositório do RH-API! Este projeto é uma API para gerenciar recursos humanos, incluindo candidatos, funcionários, escalas, departamentos, e muito mais.
 
 ## Índice
 
@@ -11,22 +8,23 @@ Bem-vindo ao repositório do SGI-Front! Este projeto é a interface front-end do
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Instalação](#instalação)
 - [Uso](#uso)
+- [Estrutura do Projeto](#estrutura-do-projeto)
 - [Contribuição](#contribuição)
 - [Licença](#licença)
 - [Contato](#contato)
 
 ## Visão Geral
 
-O SGI-Front é responsável pela interface do usuário do Sistema de Gestão Integrada, proporcionando uma experiência amigável e intuitiva para gerenciar as operações dos postos de combustível. Este projeto consome APIs fornecidas pelo backend para exibir e manipular dados em tempo real.
+O RH-API é uma API desenvolvida para gerenciar diversos aspectos de recursos humanos, como candidatos, funcionários, escalas de trabalho, departamentos, entre outros. A API é construída utilizando FastAPI e SQLModel para fornecer uma interface rápida e eficiente para operações CRUD.
 
 ## Tecnologias Utilizadas
 
-- **React**: Biblioteca JavaScript para construção de interfaces de usuário.
-- **Redux**: Biblioteca para gerenciamento de estado.
-- **Axios**: Cliente HTTP para fazer requisições à API.
-- **Bootstrap**: Framework CSS para design responsivo e componentes de UI.
-- **Jest**: Framework de testes em JavaScript.
-- **ESLint**: Ferramenta de linting para identificar e corrigir problemas no código JavaScript.
+- **FastAPI**: Framework web moderno e rápido para construir APIs com Python.
+- **SQLModel**: Biblioteca para interagir com bancos de dados SQL usando Python.
+- **SQLite**: Banco de dados SQL leve e autônomo.
+- **Pandas**: Biblioteca para manipulação e análise de dados.
+- **Pydantic**: Validação de dados usando modelos de Python.
+- **Uvicorn**: Servidor ASGI para rodar a aplicação FastAPI.
 
 ## Instalação
 
@@ -34,55 +32,134 @@ Siga os passos abaixo para configurar o ambiente de desenvolvimento:
 
 1. **Clone o repositório**:
 
-   ```bash
-   git clone https://github.com/postos-graciosa-ti/sgi-front.git
-   cd sgi-front
-   ```
+```bash
+git clone https://github.com/seu-usuario/rh-api.git
+cd rh-api
+```
 
-2. **Instale as dependências**:
+2. **Crie um ambiente virtual e ative-o**:
 
-   ```bash
-   npm install
-   ```
+```bash python -m venv venv
+source venv/bin/activate  # No Windows use `venv\Scripts\activate` 
+```
 
-3. **Inicie o servidor de desenvolvimento**:
+3. Instale as dependências:
 
-   ```bash
-   npm start
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-   O aplicativo estará disponível em `http://localhost:3000`.
+4. Configure as variáveis de ambiente:
+
+Crie um arquivo .env na raiz do projeto e adicione as seguintes variáveis:
+
+```bash
+SQLITE_URL=sqlite:///./database.db
+SECRET=your_secret_key
+ALGORITHM=HS256
+FRONT_URL=http://localhost:3000
+```
+
+5. Inicie o servidor de desenvolvimento:
+
+```bash
+uvicorn main:app --reload
+```
+
+A API estará disponível em http://localhost:8000.
 
 ## Uso
 
-Após iniciar o servidor de desenvolvimento, você poderá acessar o aplicativo via navegador. A interface permite a interação com diversas funcionalidades, como gestão de estoque, vendas, relatórios e muito mais.
+Após iniciar o servidor de desenvolvimento, você pode acessar a documentação interativa da API via navegador em http://localhost:8000/docs ou http://localhost:8000/redoc.
 
-## Contribuição
+## Estrutura do projeto
 
-Contribuições são bem-vindas! Siga os passos abaixo para contribuir:
+rh-api/
+├── controllers/
+│   ├── candidates.py
+│   ├── candidato.py
+│   ├── cities_states.py
+│   ├── cities.py
+│   ├── cost_center.py
+│   ├── departments.py
+│   ├── functions.py
+│   ├── jobs.py
+│   ├── months.py
+│   ├── roles.py
+│   ├── root.py
+│   ├── scale.py
+│   ├── scales_controller.py
+│   ├── scales_logs.py
+│   ├── scales_reports.py
+│   ├── states.py
+│   ├── subsidiaries_notifications.py
+│   ├── subsidiaries.py
+│   ├── turn.py
+│   ├── users.py
+│   └── workers.py
+├── database/
+│   └── sqlite.py
+├── functions/
+│   ├── auth.py
+│   ├── excel.py
+│   └── handle_operation.py
+├── middlewares/
+│   └── cors_middleware.py
+├── models/
+│   ├── candidate.py
+│   ├── candidate_status.py
+│   ├── candidate_step.py
+│   ├── cities.py
+│   ├── cost_center.py
+│   ├── default_scale.py
+│   ├── department.py
+│   ├── function.py
+│   ├── jobs.py
+│   ├── month.py
+│   ├── role.py
+│   ├── scale.py
+│   ├── scale_logs.py
+│   ├── scale_signature.py
+│   ├── states.py
+│   ├── subsidiarie.py
+│   ├── subsidiaries_functions_limits.py
+│   ├── turn.py
+│   ├── user.py
+│   ├── user_subsidiaries.py
+│   └── workers.py
+├── pyhints/
+│   ├── cities.py
+│   ├── scales.py
+│   ├── states.py
+│   ├── subsidiaries.py
+│   ├── turns.py
+│   └── users.py
+├── repository/
+│   ├── functions.py
+│   ├── raw_queries.py
+│   └── scale.py
+├── scripts/
+│   ├── cities_states.py
+│   └── excel_scraping.py
+├── seeds/
+│   └── seed_all.py
+├── .gitignore
+├── main.py
+├── README.md
+├── requirements.txt
+└── vercel.json
 
-1. **Fork o repositório**
-2. **Crie uma branch feature** (`git checkout -b feature/nova-funcionalidade`)
-3. **Commit suas mudanças** (`git commit -m 'Adiciona nova funcionalidade'`)
-4. **Faça o push para a branch** (`git push origin feature/nova-funcionalidade`)
-5. **Abra um Pull Request**
+## Padrões de Nomeação
 
-Por favor, certifique-se de seguir as [guidelines de contribuição](CONTRIBUTING.md).
+### Branches
+- Use o prefixo feature/ para novas funcionalidades (ex: feature/nova-funcionalidade)
+- Use o prefixo bugfix/ para correções de bugs (ex: bugfix/corrige-bug)
+- Use o prefixo hotfix/ para correções urgentes (ex: hotfix/corrige-erro-crítico)
 
-## Licença
-
-Este projeto está licenciado sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
-## Contato
-
-Para mais informações, entre em contato com a equipe de desenvolvimento:
-
-- **Email**: suporteti@postosgraciosa.com.br
-- **Site**: [www.postosgraciosa.com.br](http://www.postosgraciosa.com.br)
-
----
-
-Obrigado por usar o SGI-Front! Juntos, melhoramos a eficiência dos Postos Graciosa.
-```
-
-Certifique-se de ajustar os detalhes conforme necessário, como links, informações de contato e quaisquer outras especificidades do seu projeto.
+### Commits
+- Use o tempo presente (ex: feature: Adiciona nova funcionalidade)
+- Seja claro e descritivo
+- Exemplos:
+```feature: Adiciona endpoint para criar usuário```
+```bugfix: Corrige erro na autenticação```
+```chore: Atualiza dependências```

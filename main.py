@@ -637,7 +637,7 @@ class PostSomeWorkersScaleInput(BaseModel):
 
 
 @app.post("/scales/some-workers")
-def handle_post_scale(form_data: PostSomeWorkersScaleInput):
+def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
     try:
         form_data.worker_ids = eval(form_data.worker_ids)
         

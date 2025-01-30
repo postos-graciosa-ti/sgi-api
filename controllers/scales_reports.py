@@ -77,10 +77,10 @@ async def handle_generate_scale_days_on_report(
                         ],
                         "quantidade_trocadores": len(trocadores_ao_turno_e_dia),
                         "status": (
-                            "trabalhadores suficientes"
+                            "quantidade de colaboradores suficiente"
                             if len(frentistas_ao_turno_e_dia) >= 3
                             and len(trocadores_ao_turno_e_dia) >= 1
-                            else "trabalhadores insuficientes"
+                            else "quantidade de colaboradores insuficiente"
                         ),
                     }
                 )
@@ -158,10 +158,10 @@ async def handle_generate_scale_days_off_report(
                         ],
                         "quantidade_trocadores": len(trocadores_ao_turno_e_dia),
                         "status": (
-                            "trabalhadores suficientes"
+                            "quantidade de colaboradores suficiente"
                             if len(frentistas_ao_turno_e_dia) >= 3
                             and len(trocadores_ao_turno_e_dia) >= 1
-                            else "trabalhadores insuficientes"
+                            else "quantidade de colaboradores insuficiente"
                         ),
                     }
                 )

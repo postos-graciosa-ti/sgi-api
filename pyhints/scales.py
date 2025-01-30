@@ -25,3 +25,14 @@ class PostScaleInput(BaseModel):
 class ScalesReportInput(BaseModel):
     first_day: str
     last_day: str
+
+
+class PostSomeWorkersScaleInput(BaseModel):
+    worker_ids: str
+    # worker_turn_id: int
+    # worker_function_id: int
+    subsidiarie_id: int
+    days_off: str
+    first_day: str
+    last_day: str
+    ilegal_dates: str

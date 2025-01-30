@@ -65,6 +65,7 @@ from controllers.scale import (
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
     handle_post_scale,
+    handle_post_some_workers_scale,
 )
 from controllers.scales_logs import handle_get_scales_logs, handle_post_scale_logs
 from controllers.scales_reports import (
@@ -128,7 +129,7 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
-from pyhints.scales import PostScaleInput, ScalesReportInput
+from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput, ScalesReportInput
 from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
@@ -292,6 +293,14 @@ def put_subsidiaries(id: int, formData: PutSubsidiarie):
 @app.delete("/subsidiaries/{id}")
 def delete_subsidiaries(id: int):
     return handle_delete_subsidiarie(id)
+
+
+# subsidiarie notifications
+
+
+@app.get("/subsidiaries/{id}/notifications")
+async def get_subsidiarie_notifications(id: int):
+    return await handle_get_subsidiarie_notifications(id)
 
 
 # turn
@@ -488,6 +497,11 @@ def post_scale(form_data: PostScaleInput):
     return handle_post_scale(form_data)
 
 
+@app.post("/scales/some-workers")
+async def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
+    return await handle_database_operation(handle_post_some_workers_scale, form_data)
+
+
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
@@ -617,172 +631,40 @@ async def delete_department(id: int):
     return await handle_delete_department(id)
 
 
-# subsidiarie notifications
+@app.get("/subsidiaries/{id}/workers-status")
+def get_subsidiaries_status(id: int):
+    with Session(engine) as session:
+        frentistas = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 4)
+        ).all()
 
+        frentistas_caixa = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 2)
+        ).all()
 
-@app.get("/subsidiaries/{id}/notifications")
-async def get_subsidiarie_notifications(id: int):
-    return await handle_get_subsidiarie_notifications(id)
+        caixas = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 1)
+        ).all()
 
-
-class PostSomeWorkersScaleInput(BaseModel):
-    worker_ids: str
-    # worker_turn_id: int
-    # worker_function_id: int
-    subsidiarie_id: int
-    days_off: str
-    first_day: str
-    last_day: str
-    ilegal_dates: str
-
-
-@app.post("/scales/some-workers")
-def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
-    try:
-        form_data.worker_ids = eval(form_data.worker_ids)
-        
-        form_data.days_off = eval(form_data.days_off)
-        
-        first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
-        
-        last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
-
-        dias_do_mes = []
-        
-        data_atual = first_day
-        
-        while data_atual <= last_day:
-            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-            
-            data_atual += timedelta(days=1)
-
-        dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
-        
-        all_dates = sorted(dias_sem_folga + form_data.days_off)
-
-        options = [
-            {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
-        ]
-
-        dias_consecutivos = []
-        
-        contador = 0
-        
-        tem_mais_de_oito_dias_consecutivos = False
-        
-        for dia in options:
-            if dia["dayOff"]:
-                dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
-                
-                contador = 0
-
-            else:
-                contador += 1
-                
-                if contador > 8:
-                    tem_mais_de_oito_dias_consecutivos = True
-
-        proporcoes = [
-            {
-                "folga": idx + 1,
-                "data": item["dataFolga"],
-                "weekday": datetime.strptime(item["dataFolga"], "%d-%m-%Y").strftime(
-                    "%A"
-                ),
-                "proporcao": f"{item['dias']}x1",
-            }
-            for idx, item in enumerate(dias_consecutivos)
-        ]
-
-        if not form_data.days_off:
-            raise HTTPException(
-                status_code=400, detail="Não é possível salvar sem dias de folga."
-            )
-
-        days_off_with_weekday = [
-            {
-                "date": date,
-                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
-            }
-            for date in form_data.days_off
-        ]
-
-        days_on_with_weekday = [
-            {
-                "date": date,
-                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
-            }
-            for date in dias_sem_folga
-        ]
-
-        results = []
-
-        with Session(engine) as session:
-            for worker_id in form_data.worker_ids:
-                worker = session.exec(
-                    select(Workers).where(Workers.id == worker_id)
-                ).first()
-
-                if not worker:
-                    results.append(
-                        {
-                            "worker_id": worker_id,
-                            "status": "error",
-                            "detail": "Trabalhador não encontrado",
-                        }
-                    )
-                    continue
-
-                existing_scale = session.exec(
-                    select(Scale).where(
-                        Scale.worker_id == worker_id,
-                        Scale.subsidiarie_id == form_data.subsidiarie_id,
-                    )
-                ).first()
-
-                worker_data = session.get(Workers, worker_id)
-
-                worker_function_data = session.get(Function, worker_data.function_id)
-
-                worker_turn_data = session.get(Turn, worker_data.turn_id)
-
-                if existing_scale:
-                    existing_scale.days_on = json.dumps(days_on_with_weekday)
-                    existing_scale.days_off = json.dumps(days_off_with_weekday)
-                    existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
-                    existing_scale.proportion = json.dumps(proporcoes)
-                    existing_scale.ilegal_dates = json.dumps(form_data.ilegal_dates)
-                else:
-                    new_scale = Scale(
-                        worker_id=worker_id,
-                        subsidiarie_id=form_data.subsidiarie_id,
-                        days_on=json.dumps(days_on_with_weekday),
-                        days_off=json.dumps(days_off_with_weekday),
-                        need_alert=tem_mais_de_oito_dias_consecutivos,
-                        proportion=json.dumps(proporcoes),
-                        ilegal_dates=json.dumps(form_data.ilegal_dates),
-                        worker_function_id=worker_function_data.id,
-                        worker_turn_id=worker_turn_data.id,
-                    )
-                    session.add(new_scale)
-
-                try:
-                    session.commit()
-                    
-                    results.append({"worker_id": worker_id, "status": "success"})
-
-                except Exception as e:
-                    session.rollback()
-                    
-                    results.append(
-                        {"worker_id": worker_id, "status": "error", "detail": str(e)}
-                    )
+        trocadores = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 9)
+        ).all()
 
         return {
-            "results": results,
-            "days_off": form_data.days_off,
-            "ilegal_dates": form_data.ilegal_dates,
+            "dados_frentistas": frentistas,
+            "quantidade_frentistas": len(frentistas),
+            "dados_frentistas_caixa": frentistas_caixa,
+            "quantidade_frentistas_caixa": len(frentistas_caixa),
+            "dados_caixas": caixas,
+            "quantidade_caixas": len(caixas),
+            "dados_trocadores": trocadores,
+            "quantidade_trocadores": len(trocadores),
         }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

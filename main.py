@@ -1,15 +1,5 @@
-import calendar
-import json
-from datetime import datetime, timedelta
-
-import cloudinary
-import cloudinary.uploader
-from aiocache import Cache, cached
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from sqlmodel import Field, Session, SQLModel, create_engine, func, or_, select
+from fastapi import Depends, FastAPI, File, UploadFile
 
 from controllers.candidates import (
     handle_get_candidates,
@@ -79,7 +69,10 @@ from controllers.subsidiaries import (
     handle_post_subsidiaries,
     handle_put_subsidiarie,
 )
-from controllers.subsidiaries_notifications import handle_get_subsidiarie_notifications
+from controllers.subsidiaries_notifications import (
+    handle_get_subsidiarie_notifications,
+    handle_get_subsidiaries_status,
+)
 from controllers.turn import (
     handle_delete_turn,
     handle_get_turn_by_id,
@@ -111,20 +104,17 @@ from controllers.workers import (
     handle_post_worker,
     handle_put_worker,
 )
-from database.sqlite import create_db_and_tables, engine
+from database.sqlite import create_db_and_tables
 from functions.auth import verify_token
 from functions.handle_operation import handle_database_operation
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
-from models.cities import Cities
 from models.cost_center import CostCenter
 from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
-from models.scale import Scale
 from models.scale_logs import ScaleLogs
-from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
@@ -148,15 +138,6 @@ load_dotenv()
 app = FastAPI()
 
 add_cors_middleware(app)
-
-cache = Cache(Cache.MEMORY, ttl=3600)
-
-cloudinary.config(
-    cloud_name="drvzslkwn",
-    api_key="526373414174189",
-    api_secret="9NsMrkZPADrJIbSzd1JgfAKQnyI",
-    secure=True,
-)
 
 # root
 
@@ -301,6 +282,11 @@ def delete_subsidiaries(id: int):
 @app.get("/subsidiaries/{id}/notifications")
 async def get_subsidiarie_notifications(id: int):
     return await handle_get_subsidiarie_notifications(id)
+
+
+@app.get("/subsidiaries/{id}/workers-status")
+async def get_subsidiaries_status(id: int):
+    return await handle_database_operation(handle_get_subsidiaries_status, id)
 
 
 # turn
@@ -549,7 +535,6 @@ async def excel_scraping(file: UploadFile = File(...)):
 
 
 @app.get("/states")
-@cached(ttl=3600, cache=Cache.MEMORY)
 async def get_states():
     return await handle_get_states()
 
@@ -563,7 +548,6 @@ async def get_states_by_id(id: int):
 
 
 @app.get("/cities")
-@cached(ttl=3600, cache=Cache.MEMORY)
 async def get_cities():
     return await handle_get_cities()
 
@@ -629,42 +613,3 @@ async def put_department(id: int, department_input: Department):
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
     return await handle_delete_department(id)
-
-
-@app.get("/subsidiaries/{id}/workers-status")
-def get_subsidiaries_status(id: int):
-    with Session(engine) as session:
-        frentistas = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == id)
-            .where(Workers.function_id == 4)
-        ).all()
-
-        frentistas_caixa = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == id)
-            .where(Workers.function_id == 2)
-        ).all()
-
-        caixas = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == id)
-            .where(Workers.function_id == 1)
-        ).all()
-
-        trocadores = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == id)
-            .where(Workers.function_id == 9)
-        ).all()
-
-        return {
-            "dados_frentistas": frentistas,
-            "quantidade_frentistas": len(frentistas),
-            "dados_frentistas_caixa": frentistas_caixa,
-            "quantidade_frentistas_caixa": len(frentistas_caixa),
-            "dados_caixas": caixas,
-            "quantidade_caixas": len(caixas),
-            "dados_trocadores": trocadores,
-            "quantidade_trocadores": len(trocadores),
-        }

@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
+from sqlalchemy_utils import database_exists
 
 from controllers.candidates import (
     handle_get_candidates,
@@ -104,7 +105,7 @@ from controllers.workers import (
     handle_post_worker,
     handle_put_worker,
 )
-from database.sqlite import create_db_and_tables
+from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
 from functions.handle_operation import handle_database_operation
 from middlewares.cors_middleware import add_cors_middleware
@@ -144,9 +145,10 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
+    if not database_exists(engine.url):
+        create_db_and_tables()
 
-    # seed_database()
+        seed_database()
 
 
 @app.get("/")

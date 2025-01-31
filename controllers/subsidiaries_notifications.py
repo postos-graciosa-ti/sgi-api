@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlmodel import Session, func, select
 
 from database.sqlite import engine
+from models.function import Function
 from models.jobs import Jobs
 from models.scale import Scale
 from models.workers import Workers
@@ -67,3 +68,62 @@ async def handle_get_subsidiarie_notifications(id: int):
         ],
         "ideal_days_off": workers_with_less_than_ideal_days_off["ideal_days_off"],
     }
+
+
+async def handle_get_subsidiaries_status(id: int):
+    with Session(engine) as session:
+        frentistas = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 4)
+        ).all()
+
+        frentistas_caixa = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 2)
+        ).all()
+
+        caixas = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 1)
+        ).all()
+
+        trocadores = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == 9)
+        ).all()
+
+        frentistas_ideal_quantity = session.get(Function, 4).ideal_quantity
+
+        frentistas_diference = frentistas_ideal_quantity - len(frentistas)
+
+        trocadores_ideal_quantity = session.get(Function, 9).ideal_quantity
+
+        trocadores_diference = trocadores_ideal_quantity - len(trocadores)
+
+        return {
+            "dados_frentistas": frentistas,
+            "quantidade_frentistas": len(frentistas),
+            "frentistas_ideal_quantity": frentistas_ideal_quantity,
+            "frentistas_diference": frentistas_diference,
+            # "status_frentistas": [
+            #     (
+            #         "quantidade suficiente"
+            #         if session.get(Function, frentista.function_id).ideal_quantity
+            #         == len(frentistas)
+            #         else "quantidade insuficiente"
+            #     )
+            #     for frentista in frentistas
+            # ],
+            "dados_frentistas_caixa": frentistas_caixa,
+            "quantidade_frentistas_caixa": len(frentistas_caixa),
+            "dados_caixas": caixas,
+            "quantidade_caixas": len(caixas),
+            "dados_trocadores": trocadores,
+            "quantidade_trocadores": len(trocadores),
+            "trocadores_ideal_quantity": trocadores_ideal_quantity,
+            "trocadores_diference": trocadores_diference,
+        }

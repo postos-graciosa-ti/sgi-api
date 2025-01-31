@@ -89,6 +89,7 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
                 function = Function(
                     name=colaborador["Cargo Atual"],
                     description=colaborador["Cargo Atual"],
+                    subsidiarie_id=1,
                 )
                 session.add(function)
 

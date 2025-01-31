@@ -45,21 +45,29 @@ def handle_post_function(function: Function):
 
 def handle_put_function(id: int, function: Function):
     with Session(engine) as session:
-        statement = select(Function).where(Function.id == id)
+        db_function = session.exec(select(Function).where(Function.id == id)).first()
 
-        db_function = session.exec(statement).first()
+        if db_function:
+            db_function.name = function.name if function.name else db_function.name
 
-        db_function.name = function.name
+            db_function.description = (
+                function.description
+                if function.description
+                else db_function.description
+            )
 
-        db_function.description = function.description
+            db_function.ideal_quantity = (
+                function.ideal_quantity
+                if function.ideal_quantity
+                else db_function.ideal_quantity
+            )
 
-        session.add(db_function)
+            session.add(db_function)
 
-        session.commit()
+            session.commit()
 
-        session.refresh(db_function)
-
-        return db_function
+            session.refresh(db_function)
+    return db_function
 
 
 def handle_delete_function(id: int):

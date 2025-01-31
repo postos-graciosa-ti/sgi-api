@@ -146,7 +146,7 @@ add_cors_middleware(app)
 def on_startup():
     create_db_and_tables()
 
-    seed_database()
+    # seed_database()
 
 
 @app.get("/")

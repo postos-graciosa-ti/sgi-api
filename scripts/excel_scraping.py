@@ -116,6 +116,8 @@ async def handle_excel_scraping(file: UploadFile = File(...)):
                     turn_id=worker_turn.id,
                     cost_center_id=1,
                     department_id=1,
+                    admission_date="01-01-2025",
+                    resignation_date="01-01-2025",
                 )
 
                 session.add(worker)

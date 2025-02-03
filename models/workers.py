@@ -10,3 +10,5 @@ class Workers(SQLModel, table=True):
     cost_center_id: int = Field(default=None, foreign_key="costcenter.id")
     department_id: int = Field(default=None, foreign_key="department.id")
     # security_password: str | None = Field(default=None, nullable=True)
+    admission_date: str = Field(index=True)
+    resignation_date: str = Field(index=True)

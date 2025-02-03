@@ -36,3 +36,8 @@ class PostSomeWorkersScaleInput(BaseModel):
     first_day: str
     last_day: str
     ilegal_dates: str
+
+
+class WorkerDeactivateInput(BaseModel):
+    is_active: bool
+    resignation_date: str

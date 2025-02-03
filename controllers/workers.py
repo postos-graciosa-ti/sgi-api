@@ -10,6 +10,7 @@ from models.jobs import Jobs
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
+from pyhints.scales import WorkerDeactivateInput
 
 
 async def handle_get_worker_by_id(id: int):
@@ -61,52 +62,11 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "turn_end_time": worker.turn_end_time,
                 "cost_center_id": worker.cost_center_id,
                 "cost_center": worker.cost_center,
-                "department_id": worker.department_id, 
+                "department_id": worker.department_id,
                 "department": worker.department,
             }
             for worker in workers
         ]
-
-
-def handle_put_worker(id: int, worker: Workers):
-    with Session(engine) as session:
-        db_worker = session.get(Workers, id)
-
-        if db_worker:
-            db_worker.name = worker.name
-
-            db_worker.function_id = worker.function_id
-
-            db_worker.subsidiarie_id = worker.subsidiarie_id
-
-            db_worker.turn_id = worker.turn_id
-
-            db_worker.is_active = worker.is_active
-
-            if db_worker.function_id == 6:
-                db_worker.cost_center_id = 1
-
-                db_worker.department_id = 1
-
-            elif db_worker.function_id == 7:
-                db_worker.cost_center_id = 1
-
-                db_worker.department_id = 2
-
-            elif db_worker.function_id == 8:
-                db_worker.cost_center_id = 1
-
-                db_worker.department_id = 1
-
-            session.add(db_worker)
-
-            session.commit()
-
-            session.refresh(db_worker)
-
-            return db_worker
-        else:
-            return {"error": "Worker not found"}
 
 
 def handle_get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
@@ -192,64 +152,77 @@ async def handle_get_workers_by_subsidiaries_functions_and_turns(
         return workers
 
 
-def handle_post_worker(worker: Workers):
+async def handle_post_worker(worker: Workers):
     with Session(engine) as session:
-        worker_data = Workers(
-            name=worker.name,
-            function_id=worker.function_id,
-            subsidiarie_id=worker.subsidiarie_id,
-            turn_id=worker.turn_id,
-            cost_center_id=0,
-            department_id=0,
-        )
-
-        if worker.function_id == 6:
-            worker_data.cost_center_id = 1
-
-            worker_data.department_id = 1
-
-        elif worker.function_id == 7:
-            worker_data.cost_center_id = 1
-
-            worker_data.department_id = 2
-
-        elif worker.function_id == 8:
-            worker_data.cost_center_id = 1
-
-            worker_data.department_id = 1
-
-        session.add(worker_data)
+        session.add(worker)
 
         session.commit()
 
-        session.refresh(worker_data)
+        session.refresh(worker)
+    return worker
 
-    return worker_data
 
-
-def handle_deactivate_worker(worker_id: int):
+async def handle_put_worker(id: int, worker: Workers):
     with Session(engine) as session:
-        worker = session.get(Workers, worker_id)
+        db_worker = session.get(Workers, id)
 
-        if worker:
-            worker.is_active = False
+        db_worker.name = worker.name if worker.name else db_worker.name
 
-            session.commit()
+        db_worker.function_id = (
+            worker.function_id if worker.function_id else db_worker.function_id
+        )
 
-            session.refresh(worker)
+        db_worker.subsidiarie_id = (
+            worker.subsidiarie_id if worker.subsidiarie_id else db_worker.subsidiarie_id
+        )
 
-            new_job = session.get(Function, worker.function_id)
+        db_worker.is_active = (
+            worker.is_active if worker.is_active is not None else db_worker.is_active
+        )
 
-            job = Jobs(
-                name=new_job.name,
-                description=new_job.description,
-                subsidiarie_id=worker.subsidiarie_id,
-            )
+        db_worker.turn_id = worker.turn_id if worker.turn_id else db_worker.turn_id
 
-            session.add(job)
+        db_worker.cost_center_id = (
+            worker.cost_center_id if worker.cost_center_id else db_worker.cost_center_id
+        )
 
-            session.commit()
+        db_worker.department_id = (
+            worker.department_id if worker.department_id else db_worker.department_id
+        )
 
-            session.refresh(job)
+        db_worker.admission_date = (
+            worker.admission_date if worker.admission_date else db_worker.admission_date
+        )
 
-            return job
+        db_worker.resignation_date = (
+            worker.resignation_date
+            if worker.resignation_date
+            else db_worker.resignation_date
+        )
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+    return db_worker
+
+
+async def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
+    with Session(engine) as session:
+        db_worker = session.get(Workers, id)
+
+        db_worker.is_active = (
+            worker.is_active if worker.is_active is not None else db_worker.is_active
+        )
+
+        db_worker.resignation_date = (
+            worker.resignation_date
+            if worker.resignation_date
+            else db_worker.resignation_date
+        )
+
+        session.commit()
+
+        session.refresh(db_worker)
+    return db_worker

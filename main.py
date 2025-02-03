@@ -122,7 +122,12 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
-from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput, ScalesReportInput
+from pyhints.scales import (
+    PostScaleInput,
+    PostSomeWorkersScaleInput,
+    ScalesReportInput,
+    WorkerDeactivateInput,
+)
 from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
@@ -367,114 +372,19 @@ async def get_workers_by_subsidiaries_functions_and_turns(
     )
 
 
-# @app.post("/workers")
-# def post_worker(worker: Workers):
-#     return handle_post_worker(worker)
-
-
-# @app.put("/workers/{id}")
-# def put_worker(id: int, worker: Workers):
-#     return handle_put_worker(id, worker)
-
-
-# @app.put("/workers/deactivate/{worker_id}")
-# def deactivate_worker(worker_id: int):
-#     return handle_deactivate_worker(worker_id)
-
-
 @app.post("/workers")
-def post_worker(worker: Workers):
-    with Session(engine) as session:
-        session.add(worker)
-
-        session.commit()
-
-        session.refresh(worker)
-    return worker
-
-    # name: str = Field(index=True)
-    # function_id: int = Field(default=None, foreign_key="function.id")
-    # subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
-    # is_active: bool = Field(default=True)
-    # turn_id: int = Field(default=None, foreign_key="turn.id")
-    # cost_center_id: int = Field(default=None, foreign_key="costcenter.id")
-    # department_id: int = Field(default=None, foreign_key="department.id")
-    # # security_password: str | None = Field(default=None, nullable=True)
-    # admission_date: str = Field(index=True)
-    # resignation_date: str = Field(index=True)
+async def post_worker(worker: Workers):
+    return await handle_database_operation(handle_post_worker, worker)
 
 
 @app.put("/workers/{id}")
-def put_worker(id: int, worker: Workers):
-    with Session(engine) as session:
-        db_worker = session.get(Workers, id)
-
-        db_worker.name = worker.name if worker.name else db_worker.name
-
-        db_worker.function_id = (
-            worker.function_id if worker.function_id else db_worker.function_id
-        )
-
-        db_worker.subsidiarie_id = (
-            worker.subsidiarie_id if worker.subsidiarie_id else db_worker.subsidiarie_id
-        )
-
-        db_worker.is_active = (
-            worker.is_active if worker.is_active is not None else db_worker.is_active
-        )
-
-        db_worker.turn_id = worker.turn_id if worker.turn_id else db_worker.turn_id
-
-        db_worker.cost_center_id = (
-            worker.cost_center_id if worker.cost_center_id else db_worker.cost_center_id
-        )
-
-        db_worker.department_id = (
-            worker.department_id if worker.department_id else db_worker.department_id
-        )
-
-        db_worker.admission_date = (
-            worker.admission_date if worker.admission_date else db_worker.admission_date
-        )
-
-        db_worker.resignation_date = (
-            worker.resignation_date
-            if worker.resignation_date
-            else db_worker.resignation_date
-        )
-
-        session.add(db_worker)
-
-        session.commit()
-
-        session.refresh(db_worker)
-    return db_worker
-
-
-class WorkerDeactivateInput(BaseModel):
-    is_active: bool
-    resignation_date: str
+async def put_worker(id: int, worker: Workers):
+    return await handle_database_operation(handle_put_worker, id, worker)
 
 
 @app.put("/workers/{id}/deactivate")
-def deactivate_worker(id: int, worker: WorkerDeactivateInput):
-    with Session(engine) as session:
-        db_worker = session.get(Workers, id)
-
-        db_worker.is_active = (
-            worker.is_active if worker.is_active is not None else db_worker.is_active
-        )
-
-        db_worker.resignation_date = (
-            worker.resignation_date
-            if worker.resignation_date
-            else db_worker.resignation_date
-        )
-
-        session.commit()
-
-        session.refresh(db_worker)
-    return db_worker
+async def deactivate_worker(id: int, worker: WorkerDeactivateInput):
+    return await handle_database_operation(handle_deactivate_worker, id, worker)
 
 
 # functions

@@ -654,45 +654,45 @@ def status_resignable_reasons(input: StatusResignableReasonsInput):
 
         resignable_reasons_ids = json.loads(input.resignable_reasons_ids)
 
-        results = []
-
-        for resignable_reasons_id in resignable_reasons_ids:
-            stmt = (
-                select(
-                    Workers.id.label("worker_id"),
-                    Workers.name.label("worker_name"),
-                    Workers.resignation_date,
-                    ResignableReasons.id.label("resignable_reason_id"),
-                    ResignableReasons.name.label("resignable_reason_name"),
-                )
-                .join(
-                    ResignableReasons,
-                    Workers.resignation_reason_id == ResignableReasons.id,
-                )
-                .where(
-                    and_(
-                        Workers.resignation_reason_id == resignable_reasons_id,
-                        Workers.resignation_date != None,
-                    )
-                )
-            )
-
-            workers = session.exec(stmt).all()
-
-            filtered_workers = [
-                {
-                    "worker_id": worker.worker_id,
-                    "worker_name": worker.worker_name,
-                    "resignation_date": worker.resignation_date,
-                    "resignable_reason_id": worker.resignable_reason_id,
-                    "resignable_reason_name": worker.resignable_reason_name,
-                }
-                for worker in workers
-                if first_day
-                <= datetime.strptime(worker.resignation_date, "%d-%m-%Y")
-                <= last_day
+        if 0 in resignable_reasons_ids:
+            resignable_reasons_ids = [
+                reason for reason in session.exec(select(ResignableReasons.id)).all()
             ]
 
-            results.extend(filtered_workers)
+        stmt = (
+            select(
+                Workers.id.label("worker_id"),
+                Workers.name.label("worker_name"),
+                Workers.resignation_date,
+                ResignableReasons.id.label("resignable_reason_id"),
+                ResignableReasons.name.label("resignable_reason_name"),
+            )
+            .join(
+                ResignableReasons,
+                Workers.resignation_reason_id == ResignableReasons.id,
+            )
+            .where(
+                and_(
+                    Workers.resignation_reason_id.in_(resignable_reasons_ids),
+                    Workers.resignation_date != None,
+                )
+            )
+        )
+
+        workers = session.exec(stmt).all()
+
+        results = [
+            {
+                "worker_id": worker.worker_id,
+                "worker_name": worker.worker_name,
+                "resignation_date": worker.resignation_date,
+                "resignable_reason_id": worker.resignable_reason_id,
+                "resignable_reason_name": worker.resignable_reason_name,
+            }
+            for worker in workers
+            if first_day
+            <= datetime.strptime(worker.resignation_date, "%d-%m-%Y")
+            <= last_day
+        ]
 
     return results

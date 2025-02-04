@@ -130,40 +130,38 @@ def handle_post_scale(form_data: PostScaleInput):
 
         while data_atual <= last_day:
             dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+
             data_atual += timedelta(days=1)
 
         dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
 
-        all_dates = sorted(dias_sem_folga + form_data.days_off)
+        all_dates = sorted(
+            dias_sem_folga + form_data.days_off,
+            key=lambda d: datetime.strptime(d, "%d-%m-%Y"),
+        )
 
-        options = [
-            {"dayOff": date in form_data.days_off, "value": date} for date in all_dates
-        ]
+        count = 0
 
-        dias_consecutivos = []
-        contador = 0
+        proporcoes = []
+
         tem_mais_de_oito_dias_consecutivos = False
 
-        for dia in options:
-            if dia["dayOff"]:
-                dias_consecutivos.append({"dias": contador, "dataFolga": dia["value"]})
-                contador = 0
-            else:
-                contador += 1
-                if contador > 8:
-                    tem_mais_de_oito_dias_consecutivos = True
+        for dia in dias_do_mes:
+            count += 1
 
-        proporcoes = [
-            {
-                "folga": idx + 1,
-                "data": item["dataFolga"],
-                "weekday": datetime.strptime(item["dataFolga"], "%d-%m-%Y").strftime(
-                    "%A"
-                ),
-                "proporcao": f"{item['dias']}x1",
-            }
-            for idx, item in enumerate(dias_consecutivos)
-        ]
+            if count > 8:
+                tem_mais_de_oito_dias_consecutivos = True
+
+            if dia in form_data.days_off:
+                proporcoes.append(
+                    {
+                        "data": dia,
+                        "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime("%A"),
+                        "proporcao": f"{count-1}x1",
+                    }
+                )
+
+                count = 0
 
         if not form_data.days_off:
             raise HTTPException(
@@ -187,7 +185,6 @@ def handle_post_scale(form_data: PostScaleInput):
         ]
 
         with Session(engine) as session:
-            # Obter o turno do trabalhador atual
             worker = session.exec(
                 select(Workers).where(Workers.id == form_data.worker_id)
             ).first()
@@ -196,31 +193,6 @@ def handle_post_scale(form_data: PostScaleInput):
                 raise HTTPException(
                     status_code=400, detail="Trabalhador não encontrado."
                 )
-
-            # worker_turn_id = worker.turn_id  # Obtém o turn_id do trabalhador
-
-            # for day_off in form_data.days_off:
-            # existing_workers = session.exec(
-            #     select(Scale)
-            #     .join(
-            #         Workers, Scale.worker_id == Workers.id
-            #     )  # Juntar com a tabela Worker
-            #     .where(
-            #         Scale.subsidiarie_id == form_data.subsidiarie_id,  # Mesmo local
-            #         Workers.turn_id == worker_turn_id,  # Mesmo turno
-            #         Scale.days_off.contains(
-            #             f'"{day_off}"'
-            #         ),  # Dia de folga em comum
-            #         Scale.worker_id
-            #         != form_data.worker_id,  # Ignorar o próprio trabalhador
-            #     )
-            # ).all()
-
-            # if existing_workers:
-            #     raise HTTPException(
-            #         status_code=400,
-            #         detail=f"Já existem trabalhadores no turno '{worker_turn_id}' com folga no dia {day_off}.",
-            #     )
 
             existing_scale = session.exec(
                 select(Scale).where(
@@ -247,7 +219,6 @@ def handle_post_scale(form_data: PostScaleInput):
                     worker_function_id=form_data.worker_function_id,
                     worker_turn_id=form_data.worker_turn_id,
                 )
-
                 session.add(existing_scale)
 
             session.commit()
@@ -260,8 +231,6 @@ def handle_post_scale(form_data: PostScaleInput):
 
         for day_off in existing_scale_days_off:
             sla.append(day_off["date"])
-
-        # return sla
 
         return {"days_off": sla, "ilegal_dates": eval(existing_scale.ilegal_dates)}
 

@@ -1,4 +1,7 @@
+from typing import Optional
+
 from sqlmodel import Field, Session, SQLModel, create_engine, select
+
 
 class Workers(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -12,3 +15,4 @@ class Workers(SQLModel, table=True):
     # security_password: str | None = Field(default=None, nullable=True)
     admission_date: str = Field(index=True)
     resignation_date: str = Field(index=True)
+    resignation_reason_id: Optional[int] = Field(default=None, foreign_key="resignablereasons.id", nullable=True)  # Corrigido o nome da tabela

@@ -1,8 +1,11 @@
+import json
+from datetime import datetime
+
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy_utils import database_exists
-from sqlmodel import Session
+from sqlmodel import Session, and_, select
 
 from controllers.candidates import (
     handle_get_candidates,
@@ -117,6 +120,7 @@ from models.cost_center import CostCenter
 from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
+from models.resignable_reasons import ResignableReasons
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
@@ -622,3 +626,73 @@ async def put_department(id: int, department_input: Department):
 @app.delete("/departments/{id}")
 async def delete_department(id: int):
     return await handle_delete_department(id)
+
+
+# resignable reasons
+
+
+@app.get("/resignable-reasons")
+def get_get_resignable_reasons():
+    with Session(engine) as session:
+        resignable_reasons = session.exec(select(ResignableReasons)).all()
+
+        return resignable_reasons
+
+
+class StatusResignableReasonsInput(BaseModel):
+    first_day: str
+    last_day: str
+    resignable_reasons_ids: str
+
+
+@app.post("/resignable-reasons/report")
+def status_resignable_reasons(input: StatusResignableReasonsInput):
+    with Session(engine) as session:
+        first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
+
+        last_day = datetime.strptime(input.last_day, "%d-%m-%Y")
+
+        resignable_reasons_ids = json.loads(input.resignable_reasons_ids)
+
+        results = []
+
+        for resignable_reasons_id in resignable_reasons_ids:
+            stmt = (
+                select(
+                    Workers.id.label("worker_id"),
+                    Workers.name.label("worker_name"),
+                    Workers.resignation_date,
+                    ResignableReasons.id.label("resignable_reason_id"),
+                    ResignableReasons.name.label("resignable_reason_name"),
+                )
+                .join(
+                    ResignableReasons,
+                    Workers.resignation_reason_id == ResignableReasons.id,
+                )
+                .where(
+                    and_(
+                        Workers.resignation_reason_id == resignable_reasons_id,
+                        Workers.resignation_date != None,
+                    )
+                )
+            )
+
+            workers = session.exec(stmt).all()
+
+            filtered_workers = [
+                {
+                    "worker_id": worker.worker_id,
+                    "worker_name": worker.worker_name,
+                    "resignation_date": worker.resignation_date,
+                    "resignable_reason_id": worker.resignable_reason_id,
+                    "resignable_reason_name": worker.resignable_reason_name,
+                }
+                for worker in workers
+                if first_day
+                <= datetime.strptime(worker.resignation_date, "%d-%m-%Y")
+                <= last_day
+            ]
+
+            results.extend(filtered_workers)
+
+    return results

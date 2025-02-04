@@ -9,6 +9,7 @@ from models.cost_center import CostCenter
 from models.department import Department
 from models.function import Function
 from models.month import Month
+from models.resignable_reasons import ResignableReasons
 from models.role import Role
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
@@ -339,7 +340,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Frentista 02",
@@ -348,7 +349,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Frentista 03",
@@ -357,7 +358,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Frentista 04",
@@ -366,7 +367,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Frentista 05",
@@ -375,7 +376,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Frentista 06",
@@ -384,7 +385,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Caixa 01",
@@ -393,7 +394,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Caixa 02",
@@ -402,7 +403,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Caixa 03",
@@ -411,7 +412,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Caixa 04",
@@ -420,7 +421,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Caixa 05",
@@ -429,7 +430,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Caixa 06",
@@ -438,7 +439,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=2
+                    department_id=2,
                 ),
                 Workers(
                     name="Trocador de óleo 01",
@@ -447,7 +448,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Trocador de óleo 02",
@@ -456,7 +457,7 @@ def seed_workers():
                     turn_id=1,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Trocador de óleo 03",
@@ -465,7 +466,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Trocador de óleo 04",
@@ -474,7 +475,7 @@ def seed_workers():
                     turn_id=2,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Trocador de óleo 05",
@@ -483,7 +484,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
                 Workers(
                     name="Trocador de óleo 06",
@@ -492,7 +493,7 @@ def seed_workers():
                     turn_id=3,
                     is_active=True,
                     cost_center_id=1,
-                    department_id=1
+                    department_id=1,
                 ),
             ]
 
@@ -545,16 +546,52 @@ def create_departments():
         session.commit()
 
 
+def demission_reasons():
+    resignable_reasons = [
+        {
+            "name": "Demissão sem Justa Causa",
+            "description": "Rescisão sem motivo específico por parte da empresa.",
+        },
+        {
+            "name": "Demissão por Justa Causa",
+            "description": "Rescisão devido a falta grave cometida pelo empregado.",
+        },
+        {
+            "name": "Pedido de Demissão",
+            "description": "Solicitação do empregado para encerrar o contrato de trabalho.",
+        },
+        {
+            "name": "Pedido de Demissão Antecipada do Contrato de Experiência (parte empregado)",
+            "description": "O empregado solicita o fim do contrato antes do prazo.",
+        },
+        {
+            "name": "Demissão Antecipada do Contrato de Experiência (parte empresa)",
+            "description": "A empresa decide encerrar o contrato de experiência antes do prazo.",
+        },
+        {
+            "name": "Demissão por Justa Causa",
+            "description": "Rescisão por justa causa devido a conduta inapropriada do empregado.",
+        },
+    ]
+
+    with Session(engine) as session:
+        for resignable_reason in resignable_reasons:
+            reason = ResignableReasons(
+                name=resignable_reason["name"],
+                description=resignable_reason["description"],
+            )
+
+            session.add(reason)
+
+        session.commit()
+
+
 def seed_database():
+    demission_reasons()
     seed_roles()
     seed_subsidiaries()
     seed_candidate_status()
     seed_users()
-    # seed_functions()
-    # seed_turns()
     seed_months()
-    # seed_workers()
-    # get_states_from_ibge()
-    # get_cities_from_ibge()
     create_cost_centers()
     create_departments()

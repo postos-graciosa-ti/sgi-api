@@ -11,6 +11,7 @@ from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
 from pyhints.scales import WorkerDeactivateInput
+from models.resignable_reasons import ResignableReasons
 
 
 async def handle_get_worker_by_id(id: int):
@@ -29,6 +30,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.is_active,
                 Workers.admission_date,
                 Workers.resignation_date,
+                Workers.resignation_reason_id,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -39,12 +41,23 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 CostCenter.name.label("cost_center"),
                 Department.id.label("department_id"),
                 Department.name.label("department"),
+                ResignableReasons.id.label(
+                    "resignation_reason_id"
+                ),  # Incluindo o ID do motivo de demissão
+                ResignableReasons.name.label(
+                    "resignation_reason_name"
+                ),  # Incluindo o nome do motivo de demissão
             )
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .join(Function, Function.id == Workers.function_id)
             .join(Turn, Workers.turn_id == Turn.id)
             .join(CostCenter, Workers.cost_center_id == CostCenter.id)
             .join(Department, Workers.department_id == Department.id)
+            .join(
+                ResignableReasons,
+                ResignableReasons.id == Workers.resignation_reason_id,
+                isouter=True,
+            )  # Join com ResignableReasons
         ).all()
 
         return [
@@ -54,6 +67,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "worker_is_active": worker.is_active,
                 "admission_date": worker.admission_date,
                 "resignation_date": worker.resignation_date,
+                "resignation_reason_id": worker.resignation_reason_id,  # ID do motivo de demissão
+                "resignation_reason_name": worker.resignation_reason_name,  # Nome do motivo de demissão
                 "function_id": worker.function_id,
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
@@ -214,6 +229,12 @@ async def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
 
         db_worker.is_active = (
             worker.is_active if worker.is_active is not None else db_worker.is_active
+        )
+
+        db_worker.resignation_reason_id = (
+            worker.resignation_reason
+            if worker.resignation_reason
+            else db_worker.resignation_reason_id
         )
 
         db_worker.resignation_date = (

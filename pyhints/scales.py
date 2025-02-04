@@ -41,3 +41,4 @@ class PostSomeWorkersScaleInput(BaseModel):
 class WorkerDeactivateInput(BaseModel):
     is_active: bool
     resignation_date: str
+    resignation_reason: int

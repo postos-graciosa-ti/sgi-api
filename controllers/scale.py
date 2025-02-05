@@ -252,93 +252,38 @@ def handle_post_scale(form_data: PostScaleInput):
 
 async def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
     try:
-        # Converte os dias de folga (string) em lista
+        # Converte a string recebida para uma lista
         form_data.days_off = eval(form_data.days_off)
 
-        # Converte a string de worker_ids para uma lista de inteiros
-        worker_ids = eval(form_data.worker_ids)
-
+        # Converte as datas de início e fim para objetos datetime
         first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
         last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
 
-        # Cria a lista de todas as datas do período
+        # Cria uma lista com todas as datas do período (ordenada cronologicamente)
         dias_do_mes = []
         data_atual = first_day
         while data_atual <= last_day:
             dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
             data_atual += timedelta(days=1)
 
-        # Calcula os dias sem folga
-        dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
-
-        # Ordena todas as datas (opcional)
-        all_dates = sorted(
-            dias_sem_folga + form_data.days_off,
-            key=lambda d: datetime.strptime(d, "%d-%m-%Y"),
-        )
-
-        count = 0
-        proporcoes = []
-        tem_mais_de_oito_dias_consecutivos = False
-
-        # Calcula as proporções e identifica se há mais de 8 dias consecutivos sem folga
-        for dia in dias_do_mes:
-            count += 1
-            if count > 8:
-                tem_mais_de_oito_dias_consecutivos = True
-
-            if dia in form_data.days_off:
-                proporcoes.append(
-                    {
-                        "data": dia,
-                        "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime("%A"),
-                        "proporcao": f"{count-1}x1",
-                    }
-                )
-                count = 0
-
-        if not form_data.days_off:
-            raise HTTPException(
-                status_code=400, detail="Não é possível salvar sem dias de folga."
-            )
-
-        # Monta as listas com os dias de folga e dias trabalhados, incluindo o weekday
-        days_off_with_weekday = [
-            {
-                "date": date,
-                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
-            }
-            for date in form_data.days_off
-        ]
-
-        days_on_with_weekday = [
-            {
-                "date": date,
-                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
-            }
-            for date in dias_sem_folga
-        ]
+        results = []
 
         with Session(engine) as session:
-            scales = []
+            # Itera sobre a lista de worker IDs (supondo que o input agora contenha "worker_ids")
+            form_data.worker_ids = eval(form_data.worker_ids)
 
-            for worker_id in worker_ids:
-                # Busca o trabalhador no banco
+            for worker_id in form_data.worker_ids:
+                # Verifica se o trabalhador existe
                 worker = session.exec(
                     select(Workers).where(Workers.id == worker_id)
                 ).first()
-
                 if not worker:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Trabalhador com id {worker_id} não encontrado.",
+                        detail=f"Trabalhador {worker_id} não encontrado.",
                     )
 
-                # Busca os IDs de função e turno diretamente do registro do trabalhador
-                worker_function_id = worker.function_id
-                worker_turn_id = worker.turn_id
-
-                # Verifica se já existe uma escala para este trabalhador na subsidiária informada
+                # Busca a escala existente para o mesmo worker e subsidiária
                 existing_scale = session.exec(
                     select(Scale).where(
                         Scale.worker_id == worker_id,
@@ -346,44 +291,105 @@ async def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
                     )
                 ).first()
 
+                # Inicia a mesclagem dos "days off": utiliza os novos e, se existir, adiciona os já salvos
+                merged_days_off_dates = set(form_data.days_off)
+                if existing_scale and existing_scale.days_off:
+                    old_days_off = json.loads(existing_scale.days_off)
+                    old_days_off_dates = [d["date"] for d in old_days_off]
+                    merged_days_off_dates.update(old_days_off_dates)
+
+                # Converte para lista e ordena as datas
+                merged_days_off_dates = sorted(
+                    list(merged_days_off_dates),
+                    key=lambda d: datetime.strptime(d, "%d-%m-%Y"),
+                )
+
+                # Garante que existam days off após a mesclagem
+                if not merged_days_off_dates:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Não é possível salvar sem dias de folga.",
+                    )
+
+                # Calcula os dias que não são de folga (days on) a partir da lista ordenada
+                merged_dias_sem_folga = [
+                    dia for dia in dias_do_mes if dia not in merged_days_off_dates
+                ]
+
+                # Gera as listas com weekday para days off e days on
+                merged_days_off_with_weekday = [
+                    {
+                        "date": date,
+                        "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+                    }
+                    for date in merged_days_off_dates
+                ]
+                merged_days_on_with_weekday = [
+                    {
+                        "date": date,
+                        "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+                    }
+                    for date in merged_dias_sem_folga
+                ]
+
+                # Calcula as proporções e verifica se há mais de 8 dias consecutivos sem folga
+                count = 0
+                merged_proporcoes = []
+                tem_mais_de_oito_dias_consecutivos = False
+                for dia in dias_do_mes:
+                    count += 1
+                    if count > 8:
+                        tem_mais_de_oito_dias_consecutivos = True
+                    if dia in merged_days_off_dates:
+                        merged_proporcoes.append(
+                            {
+                                "data": dia,
+                                "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime(
+                                    "%A"
+                                ),
+                                "proporcao": f"{count-1}x1",
+                            }
+                        )
+                        count = 0
+
+                # Atualiza a escala se já existir; caso contrário, cria uma nova
                 if existing_scale:
-                    # Atualiza os campos da escala existente
-                    existing_scale.days_on = json.dumps(days_on_with_weekday)
-                    existing_scale.days_off = json.dumps(days_off_with_weekday)
+                    existing_scale.days_off = json.dumps(merged_days_off_with_weekday)
+                    existing_scale.days_on = json.dumps(merged_days_on_with_weekday)
                     existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
-                    existing_scale.proportion = json.dumps(proporcoes)
+                    existing_scale.proportion = json.dumps(merged_proporcoes)
                     existing_scale.ilegal_dates = form_data.ilegal_dates
-                    existing_scale.worker_function_id = worker_function_id
-                    existing_scale.worker_turn_id = worker_turn_id
-                    scales.append(existing_scale)
                 else:
-                    # Cria uma nova escala para o trabalhador
                     new_scale = Scale(
                         worker_id=worker_id,
                         subsidiarie_id=form_data.subsidiarie_id,
-                        days_on=json.dumps(days_on_with_weekday),
-                        days_off=json.dumps(days_off_with_weekday),
+                        days_off=json.dumps(merged_days_off_with_weekday),
+                        days_on=json.dumps(merged_days_on_with_weekday),
                         need_alert=tem_mais_de_oito_dias_consecutivos,
-                        proportion=json.dumps(proporcoes),
+                        proportion=json.dumps(merged_proporcoes),
                         ilegal_dates=form_data.ilegal_dates,
-                        worker_function_id=worker_function_id,
-                        worker_turn_id=worker_turn_id,
+                        worker_function_id=worker.function_id,
+                        worker_turn_id=worker.turn_id,
                     )
                     session.add(new_scale)
-                    scales.append(new_scale)
+                    existing_scale = new_scale
 
-            session.commit()
-            for scale in scales:
-                session.refresh(scale)
+                session.commit()
+                session.refresh(existing_scale)
 
-        # Prepara a resposta: retorna os dias de folga e os "ilegal_dates"
-        sla = [day_off["date"] for day_off in days_off_with_weekday]
+                # Prepara os dados de retorno para este worker
+                existing_scale_days_off = json.loads(existing_scale.days_off)
+                days_off_list = [d["date"] for d in existing_scale_days_off]
 
-        return {
-            "worker_ids": worker_ids,
-            "days_off": sla,
-            "ilegal_dates": eval(form_data.ilegal_dates),
-        }
+                results.append(
+                    {
+                        "worker_id": worker_id,
+                        "days_off": days_off_list,
+                        "ilegal_dates": eval(existing_scale.ilegal_dates),
+                    }
+                )
+
+        return {"results": results}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

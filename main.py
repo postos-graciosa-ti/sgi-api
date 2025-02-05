@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy_utils import database_exists
 from sqlmodel import Session, and_, select
@@ -125,6 +125,7 @@ from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
 from models.resignable_reasons import ResignableReasons
+from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
@@ -647,3 +648,103 @@ async def get_resignable_reasons():
 @app.post("/resignable-reasons/report")
 async def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return await handle_database_operation(handle_resignable_reasons_report, input)
+
+
+@app.get("/scales/remove-day-off")
+def remove_day_off(worker_id: int, subsidiarie_id: int, date: str):
+    try:
+        # Converte a data recebida para o formato correto
+        try:
+            date_obj = datetime.strptime(date, "%d-%m-%Y").strftime("%d-%m-%Y")
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Formato de data inválido. Use DD-MM-YYYY."
+            )
+
+        with Session(engine) as session:
+            # Busca a escala do trabalhador na subsidiária informada
+            existing_scale = session.exec(
+                select(Scale).where(
+                    Scale.worker_id == worker_id,
+                    Scale.subsidiarie_id == subsidiarie_id,
+                )
+            ).first()
+
+            if not existing_scale:
+                raise HTTPException(status_code=404, detail="Escala não encontrada.")
+
+            # Carrega os days off existentes
+            existing_days_off = json.loads(existing_scale.days_off)
+            updated_days_off = [
+                day for day in existing_days_off if day["date"] != date_obj
+            ]
+
+            # Se não houver mais dias de folga, impede a remoção
+            if not updated_days_off:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Não é possível remover o último dia de folga. A escala precisa ter pelo menos um day off.",
+                )
+
+            # Obtém todas as datas do período já existente na escala
+            all_dates = sorted(
+                [d["date"] for d in json.loads(existing_scale.days_on)]
+                + [d["date"] for d in existing_days_off],
+                key=lambda d: datetime.strptime(d, "%d-%m-%Y"),
+            )
+
+            # Recalcula os days on (dias trabalhados) após a remoção do day off
+            updated_days_on = [
+                dia
+                for dia in all_dates
+                if dia not in [d["date"] for d in updated_days_off]
+            ]
+
+            # Recalcula as proporções e verifica se há mais de 8 dias consecutivos sem folga
+            count = 0
+            updated_proporcoes = []
+            tem_mais_de_oito_dias_consecutivos = False
+
+            for dia in all_dates:
+                count += 1
+                if count > 8:
+                    tem_mais_de_oito_dias_consecutivos = True
+                if dia in [d["date"] for d in updated_days_off]:
+                    updated_proporcoes.append(
+                        {
+                            "data": dia,
+                            "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime(
+                                "%A"
+                            ),
+                            "proporcao": f"{count-1}x1",
+                        }
+                    )
+                    count = 0  # Reseta a contagem após um day off
+
+            # Atualiza os valores na escala existente
+            existing_scale.days_off = json.dumps(updated_days_off)
+            existing_scale.days_on = json.dumps(
+                [
+                    {
+                        "date": d,
+                        "weekday": datetime.strptime(d, "%d-%m-%Y").strftime("%A"),
+                    }
+                    for d in updated_days_on
+                ]
+            )
+            existing_scale.proportion = json.dumps(updated_proporcoes)
+            existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
+
+            session.commit()
+            session.refresh(existing_scale)
+
+            return {
+                "message": "Day off removido com sucesso.",
+                "updated_days_off": [d["date"] for d in updated_days_off],
+                "updated_days_on": [d["date"] for d in updated_days_on],
+                "proportion": updated_proporcoes,
+                "need_alert": tem_mais_de_oito_dias_consecutivos,
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -651,7 +651,7 @@ async def get_resignable_reasons_report(input: StatusResignableReasonsInput):
 
 
 @app.post("/delete-scale")
-def handle_delete_scale(form_data: PostScaleInput):
+def handle_scale(form_data: PostScaleInput):
     try:
         form_data.days_off = eval(form_data.days_off)
 

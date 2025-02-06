@@ -7,11 +7,13 @@ from models.cost_center import CostCenter
 from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
+from models.resignable_reasons import ResignableReasons
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
+from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
-from models.resignable_reasons import ResignableReasons
+from pyhints.workers import PostWorkerNotationInput
 
 
 async def handle_get_worker_by_id(id: int):
@@ -167,6 +169,15 @@ async def handle_get_workers_by_subsidiaries_functions_and_turns(
         return workers
 
 
+def handle_get_worker_notations(id: int):
+    with Session(engine) as session:
+        worker_notations = session.exec(
+            select(WorkersNotations).where(WorkersNotations.worker_id == id)
+        ).all()
+
+        return worker_notations
+
+
 async def handle_post_worker(worker: Workers):
     with Session(engine) as session:
         session.add(worker)
@@ -175,6 +186,19 @@ async def handle_post_worker(worker: Workers):
 
         session.refresh(worker)
     return worker
+
+
+def handle_post_worker_notation(id: int, data: PostWorkerNotationInput):
+    with Session(engine) as session:
+        worker_notation = WorkersNotations(notation=data.notation, worker_id=id)
+
+        session.add(worker_notation)
+
+        session.commit()
+
+        session.refresh(worker_notation)
+
+        return worker_notation
 
 
 async def handle_put_worker(id: int, worker: Workers):
@@ -223,6 +247,21 @@ async def handle_put_worker(id: int, worker: Workers):
     return db_worker
 
 
+def handle_reactivate_worker(id: int):
+    with Session(engine) as session:
+        worker = session.get(Workers, id)
+
+        worker.is_active = True
+
+        session.add(worker)
+
+        session.commit()
+
+        session.refresh(worker)
+
+        return worker
+
+
 async def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
@@ -247,3 +286,14 @@ async def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
 
         session.refresh(db_worker)
     return db_worker
+
+
+def handle_delete_worker_notation(id: int):
+    with Session(engine) as session:
+        worker_notation = session.get(WorkersNotations, id)
+
+        session.delete(worker_notation)
+
+        session.commit()
+
+        return {"status": "ok"}

@@ -395,6 +395,128 @@ async def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def handle_handle_scale(form_data: PostScaleInput):
+    try:
+        form_data.days_off = eval(form_data.days_off)
+
+        first_day = datetime.strptime(form_data.first_day, "%d-%m-%Y")
+
+        last_day = datetime.strptime(form_data.last_day, "%d-%m-%Y")
+
+        dias_do_mes = []
+
+        data_atual = first_day
+
+        while data_atual <= last_day:
+            dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
+
+            data_atual += timedelta(days=1)
+
+        dias_sem_folga = [dia for dia in dias_do_mes if dia not in form_data.days_off]
+
+        all_dates = sorted(
+            dias_sem_folga + form_data.days_off,
+            key=lambda d: datetime.strptime(d, "%d-%m-%Y"),
+        )
+
+        count = 0
+
+        proporcoes = []
+
+        tem_mais_de_oito_dias_consecutivos = False
+
+        for dia in dias_do_mes:
+            count += 1
+
+            if count > 8:
+                tem_mais_de_oito_dias_consecutivos = True
+
+            if dia in form_data.days_off:
+                proporcoes.append(
+                    {
+                        "data": dia,
+                        "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime("%A"),
+                        "proporcao": f"{count-1}x1",
+                    }
+                )
+
+                count = 0
+
+        if not form_data.days_off:
+            raise HTTPException(
+                status_code=400, detail="Não é possível salvar sem dias de folga."
+            )
+
+        days_off_with_weekday = [
+            {
+                "date": date,
+                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+            }
+            for date in form_data.days_off
+        ]
+
+        days_on_with_weekday = [
+            {
+                "date": date,
+                "weekday": datetime.strptime(date, "%d-%m-%Y").strftime("%A"),
+            }
+            for date in dias_sem_folga
+        ]
+
+        with Session(engine) as session:
+            worker = session.exec(
+                select(Workers).where(Workers.id == form_data.worker_id)
+            ).first()
+
+            if not worker:
+                raise HTTPException(
+                    status_code=400, detail="Trabalhador não encontrado."
+                )
+
+            existing_scale = session.exec(
+                select(Scale).where(
+                    Scale.worker_id == form_data.worker_id,
+                    Scale.subsidiarie_id == form_data.subsidiarie_id,
+                )
+            ).first()
+
+            if existing_scale:
+                existing_scale.days_on = json.dumps(days_on_with_weekday)
+                existing_scale.days_off = json.dumps(days_off_with_weekday)
+                existing_scale.need_alert = tem_mais_de_oito_dias_consecutivos
+                existing_scale.proportion = json.dumps(proporcoes)
+                existing_scale.ilegal_dates = form_data.ilegal_dates
+            else:
+                existing_scale = Scale(
+                    worker_id=form_data.worker_id,
+                    subsidiarie_id=form_data.subsidiarie_id,
+                    days_on=json.dumps(days_on_with_weekday),
+                    days_off=json.dumps(days_off_with_weekday),
+                    need_alert=tem_mais_de_oito_dias_consecutivos,
+                    proportion=json.dumps(proporcoes),
+                    ilegal_dates=form_data.ilegal_dates,
+                    worker_function_id=form_data.worker_function_id,
+                    worker_turn_id=form_data.worker_turn_id,
+                )
+                session.add(existing_scale)
+
+            session.commit()
+
+            session.refresh(existing_scale)
+
+        sla = []
+
+        existing_scale_days_off = json.loads(existing_scale.days_off)
+
+        for day_off in existing_scale_days_off:
+            sla.append(day_off["date"])
+
+        return {"days_off": sla, "ilegal_dates": eval(existing_scale.ilegal_dates)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def handle_delete_scale(scale_id: int, subsidiarie_id: int):
     with Session(engine) as session:
         session.delete(session.get(Scale, scale_id))

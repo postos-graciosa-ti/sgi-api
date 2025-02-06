@@ -771,3 +771,19 @@ def handle_scale(form_data: PostScaleInput):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/workers/{id}/reactivate")
+def handle_reactivate_worker(id: int):
+    with Session(engine) as session:
+        worker = session.get(Workers, id)
+
+        worker.is_active = True
+
+        session.add(worker)
+
+        session.commit()
+
+        session.refresh(worker)
+
+        return worker

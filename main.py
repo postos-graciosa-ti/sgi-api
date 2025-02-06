@@ -131,6 +131,7 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
+from models.workers_notations import WorkersNotations
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
     PostScaleInput,
@@ -787,3 +788,43 @@ def handle_reactivate_worker(id: int):
         session.refresh(worker)
 
         return worker
+
+
+@app.get("/workers/{id}/notations")
+def get_worker_notatio(id: int):
+    with Session(engine) as session:
+        worker_notations = session.exec(
+            select(WorkersNotations).where(WorkersNotations.worker_id == id)
+        ).all()
+
+        return worker_notations
+
+
+class PostWorkerNotationInput(BaseModel):
+    notation: str
+
+
+@app.post("/workers/{id}/notations")
+def post_worker_notation(id: int, data: PostWorkerNotationInput):
+    with Session(engine) as session:
+        worker_notation = WorkersNotations(notation=data.notation, worker_id=id)
+
+        session.add(worker_notation)
+
+        session.commit()
+
+        session.refresh(worker_notation)
+
+        return worker_notation
+
+
+@app.delete("/workers-notations/{id}")
+def delete_worker_notation(id: int):
+    with Session(engine) as session:
+        worker_notation = session.get(WorkersNotations, id)
+
+        session.delete(worker_notation)
+
+        session.commit()
+
+        return {"status": "ok"}

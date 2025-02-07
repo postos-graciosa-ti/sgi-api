@@ -5,13 +5,13 @@ from sqlmodel import Session, select
 from database.sqlite import engine
 from models.turn import Turn
 from pyhints.turns import PutTurn
-from repository.functions import create, delete, find_all, update
 
 
 def handle_get_turns():
-    turns = find_all(Turn)
+    with Session(engine) as session:
+        turns = session.exec(select(Turn)).all()
 
-    return turns
+        return turns
 
 
 async def handle_get_turn_by_id(id: int):
@@ -34,9 +34,14 @@ def handle_post_turns(formData: Turn):
         formData.end_interval_time, "%H:%M"
     ).time()
 
-    turns = create(formData)
+    with Session(engine) as session:
+        session.add(formData)
 
-    return turns
+        session.commit()
+
+        session.refresh(formData)
+
+        return formData
 
 
 def handle_put_turn(id: int, formData: PutTurn):
@@ -74,4 +79,11 @@ def handle_put_turn(id: int, formData: PutTurn):
 
 
 def handle_delete_turn(id: int):
-    return delete(id, Turn)
+    with Session(engine) as session:
+        turn = session.get(Turn, id)
+
+        session.delete(turn)
+
+        session.commit()
+
+        return {"status": "ok"}

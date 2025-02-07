@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import inspect
+from sqlalchemy.exc import OperationalError
 from sqlalchemy_utils import database_exists
 from sqlmodel import Session, and_, select
 
@@ -58,7 +60,11 @@ from controllers.resignable_reasons import (
     handle_resignable_reasons_report,
 )
 from controllers.roles import handle_get_roles
-from controllers.root import handle_activate_render_server, handle_get_docs_info
+from controllers.root import (
+    handle_activate_render_server,
+    handle_get_docs_info,
+    handle_on_startup,
+)
 from controllers.scale import (
     handle_delete_scale,
     handle_get_days_off_quantity,
@@ -169,10 +175,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    if not database_exists(engine.url):
-        create_db_and_tables()
-
-        seed_database()
+    return handle_on_startup()
 
 
 @app.get("/")

@@ -21,7 +21,6 @@ from pyhints.users import (
     Test,
     VerifyEmail,
 )
-from repository.functions import create, delete, update
 
 load_dotenv()
 
@@ -128,9 +127,14 @@ def handle_get_users():
 
 
 def handle_post_user(user: User):
-    result = create(user)
+    with Session(engine) as session:
+        session.add(user)
 
-    return result
+        session.commit()
+
+        session.refresh(user)
+
+        return user
 
 
 def handle_put_user(id: int, user: User):
@@ -161,9 +165,14 @@ def handle_put_user(id: int, user: User):
 
 
 def handle_delete_user(id: int):
-    result = delete(id, User)
+    with Session(engine) as session:
+        user = session.get(User, id)
 
-    return result
+        session.delete(user)
+
+        session.commit()
+
+        return {"status": "ok"}
 
 
 def handle_get_users_roles():

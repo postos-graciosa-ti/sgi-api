@@ -125,6 +125,14 @@ from controllers.workers import (
     handle_put_worker,
     handle_reactivate_worker,
 )
+from controllers.workers_logs import (
+    handle_get_create_workers_logs,
+    handle_get_delete_workers_logs,
+    handle_get_update_workers_logs,
+    handle_post_create_workers_logs,
+    handle_post_delete_workers_logs,
+    handle_post_update_workers_logs,
+)
 from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
 from functions.handle_operation import handle_database_operation
@@ -161,7 +169,12 @@ from pyhints.users import (
     CreateUserPasswordInput,
     Test,
 )
-from pyhints.workers import PostWorkerNotationInput
+from pyhints.workers import (
+    PostWorkerNotationInput,
+    WorkerLogCreateInput,
+    WorkerLogDeleteInput,
+    WorkerLogUpdateInput,
+)
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
 
@@ -420,55 +433,12 @@ def reactivate_worker(id: int):
 
 @app.get("/logs/subsidiaries/{id}/workers/create")
 def get_create_workers_logs(id: int):
-    with Session(engine) as session:
-        statement = (
-            select(WorkersLogsCreate, Workers, User)
-            .join(Workers, WorkersLogsCreate.worker_id == Workers.id)
-            .join(User, WorkersLogsCreate.user_id == User.id)
-            .where(WorkersLogsCreate.subsidiarie_id == id)
-            .order_by(WorkersLogsCreate.id.desc())
-        )
-
-        workers_create_logs = session.exec(statement).all()
-
-        return [
-            {
-                "worker_id": log.WorkersLogsCreate.worker_id,
-                "user_id": log.WorkersLogsCreate.user_id,
-                "worker_name": log.Workers.name,
-                "user_name": log.User.name,
-                "created_at": log.WorkersLogsCreate.created_at,
-                "created_at_time": log.WorkersLogsCreate.created_at_time,
-            }
-            for log in workers_create_logs
-        ]
-
-
-class WorkerLogCreateInput(BaseModel):
-    created_at: str
-    created_at_time: str
-    user_id: int
-    worker_id: int
+    return handle_get_create_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/create")
 def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
-    with Session(engine) as session:
-        worker_log = WorkersLogsCreate(
-            subsidiarie_id=id,
-            created_at=worker_log.created_at,
-            created_at_time=worker_log.created_at_time,
-            user_id=worker_log.user_id,
-            worker_id=worker_log.worker_id,
-        )
-
-        session.add(worker_log)
-
-        session.commit()
-
-        session.refresh(worker_log)
-
-        return worker_log
+    return handle_post_create_workers_logs(id, worker_log)
 
 
 # workers logs update
@@ -476,55 +446,12 @@ def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
 
 @app.get("/logs/subsidiaries/{id}/workers/update")
 def get_update_workers_logs(id: int):
-    with Session(engine) as session:
-        statement = (
-            select(WorkersLogsUpdate, Workers, User)
-            .join(Workers, WorkersLogsUpdate.worker_id == Workers.id)
-            .join(User, WorkersLogsUpdate.user_id == User.id)
-            .where(WorkersLogsUpdate.subsidiarie_id == id)
-            .order_by(WorkersLogsUpdate.id.desc())
-        )
-
-        workers_update_logs = session.exec(statement).all()
-
-        return [
-            {
-                "worker_id": log.WorkersLogsUpdate.worker_id,
-                "user_id": log.WorkersLogsUpdate.user_id,
-                "worker_name": log.Workers.name,
-                "user_name": log.User.name,
-                "updated_at": log.WorkersLogsUpdate.updated_at,
-                "updated_at_time": log.WorkersLogsUpdate.updated_at_time,
-            }
-            for log in workers_update_logs
-        ]
-
-
-class WorkerLogUpdateInput(BaseModel):
-    updated_at: str
-    updated_at_time: str
-    user_id: int
-    worker_id: int
+    return handle_get_update_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/update")
 def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
-    with Session(engine) as session:
-        worker_log = WorkersLogsUpdate(
-            subsidiarie_id=id,
-            updated_at=worker_log.updated_at,
-            updated_at_time=worker_log.updated_at_time,
-            user_id=worker_log.user_id,
-            worker_id=worker_log.worker_id,
-        )
-
-        session.add(worker_log)
-
-        session.commit()
-
-        session.refresh(worker_log)
-
-        return worker_log
+    return handle_post_update_workers_logs(id, worker_log)
 
 
 # workers logs delete
@@ -532,55 +459,12 @@ def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
 
 @app.get("/logs/subsidiaries/{id}/workers/delete")
 def get_delete_workers_logs(id: int):
-    with Session(engine) as session:
-        statement = (
-            select(WorkersLogsDelete, Workers, User)
-            .join(Workers, WorkersLogsDelete.worker_id == Workers.id)
-            .join(User, WorkersLogsDelete.user_id == User.id)
-            .where(WorkersLogsDelete.subsidiarie_id == id)
-            .order_by(WorkersLogsDelete.id.desc())
-        )
-
-        workers_delete_logs = session.exec(statement).all()
-
-        return [
-            {
-                "worker_id": log.WorkersLogsDelete.worker_id,
-                "user_id": log.WorkersLogsDelete.user_id,
-                "worker_name": log.Workers.name,
-                "user_name": log.User.name,
-                "deleted_at": log.WorkersLogsDelete.deleted_at,
-                "deleted_at_time": log.WorkersLogsDelete.deleted_at_time,
-            }
-            for log in workers_delete_logs
-        ]
-
-
-class WorkerLogDeleteInput(BaseModel):
-    deleted_at: str
-    deleted_at_time: str
-    user_id: int
-    worker_id: int
+    return handle_get_delete_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/delete")
 def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
-    with Session(engine) as session:
-        worker_log = WorkersLogsDelete(
-            subsidiarie_id=id,
-            deleted_at=worker_log.deleted_at,
-            deleted_at_time=worker_log.deleted_at_time,
-            user_id=worker_log.user_id,
-            worker_id=worker_log.worker_id,
-        )
-
-        session.add(worker_log)
-
-        session.commit()
-
-        session.refresh(worker_log)
-
-        return worker_log
+    return handle_post_delete_workers_logs(id, worker_log)
 
 
 # workers notations

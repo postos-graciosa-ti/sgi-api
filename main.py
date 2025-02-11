@@ -178,6 +178,7 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
+from models.TurnsLogs import TurnsLogs
 
 # pre settings
 
@@ -787,3 +788,61 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
+
+
+# 1 insert
+
+# 2 update
+
+# 3 delete
+
+logs_enum = {
+    "insert": 1,
+    "update": 2,
+    "delete": 3
+}
+
+@app.get("/logs/subsidiaries/{id}/turns")
+def get_turns_logs(id: int):
+    with Session(engine) as session:
+        post_logs = session.exec(
+            select(TurnsLogs)
+            .join(User, TurnsLogs.user_id == User.id)
+            .join(Turn, TurnsLogs.turn_id == Turn.id)
+            .where(TurnsLogs.subsidiarie_id == id)
+            .where(TurnsLogs.http_method == logs_enum['insert'])
+        ).all()
+
+        put_logs = session.exec(
+            select(TurnsLogs)
+            .join(User, TurnsLogs.user_id == User.id)
+            .join(Turn, TurnsLogs.turn_id == Turn.id)
+            .where(TurnsLogs.subsidiarie_id == id)
+            .where(TurnsLogs.http_method == logs_enum['update'])
+        ).all()
+
+        delete_logs = session.exec(
+            select(TurnsLogs)
+            .join(User, TurnsLogs.user_id == User.id)
+            .join(Turn, TurnsLogs.turn_id == Turn.id)
+            .where(TurnsLogs.subsidiarie_id == id)
+            .where(TurnsLogs.http_method == logs_enum['delete'])
+        ).all()
+
+        return {
+            "post_logs": post_logs,
+            "put_logs": put_logs,
+            "delete_logs": delete_logs,
+        }
+
+
+@app.post("/logs/turns")
+def post_turns_logs(turn_log: TurnsLogs):
+    with Session(engine) as session:
+        session.add(turn_log)
+
+        session.commit()
+
+        session.refresh(turn_log)
+
+        return turn_log

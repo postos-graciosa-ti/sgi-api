@@ -177,6 +177,7 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
+from models.role import Role
 
 # pre settings
 
@@ -232,7 +233,32 @@ def delete_candidato(id: int):
 
 @app.get("/users")
 def get_users(token: dict = Depends(verify_token)):
-    return handle_get_users()
+    with Session(engine) as session:
+        users = (
+            session.exec(select(User, Role).join(Role, User.role_id == Role.id))
+            .tuples()
+            .all()
+        )
+
+        result = []
+
+        for user, role in users:
+            result.append(
+                {
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "user_name": user.name,
+                    "user_subsidiaries": [
+                        session.get(Subsidiarie, id)
+                        for id in user.subsidiaries_id
+                        if id is not None and session.get(Subsidiarie, id) is not None
+                    ],
+                    "role_id": role.id,
+                    "role_name": role.name,
+                }
+            )
+
+    return result
 
 
 @app.get("/users/{id}")

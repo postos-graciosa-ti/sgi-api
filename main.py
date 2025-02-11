@@ -144,6 +144,7 @@ from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
 from models.resignable_reasons import ResignableReasons
+from models.role import Role
 from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
@@ -177,7 +178,6 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
-from models.role import Role
 
 # pre settings
 
@@ -187,12 +187,15 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-# root
+# startup function
 
 
 @app.on_event("startup")
 def on_startup():
     return handle_on_startup()
+
+
+# public routes
 
 
 @app.get("/")
@@ -205,27 +208,14 @@ def activate_render_server():
     return handle_activate_render_server()
 
 
-# candidato
+@app.post("/users/login")
+def user_login(user: User):
+    return handle_user_login(user)
 
 
-@app.get("/candidato")
-def get_candidato():
-    return handle_get_candidato()
-
-
-@app.get("/candidato/{id}")
-def get_candidato_by_id(id: int):
-    return handle_get_candidato_by_id(id)
-
-
-@app.post("/candidato")
-def post_candidato(candidato: Candidato):
-    return handle_post_candidato(candidato)
-
-
-@app.delete("/candidato/{id}")
-def delete_candidato(id: int):
-    return handle_delete_candidato(id)
+@app.post("/scripts/excel-scraping")
+async def excel_scraping(file: UploadFile = File(...)):
+    return await handle_excel_scraping(file)
 
 
 # users
@@ -262,52 +252,51 @@ def get_users(token: dict = Depends(verify_token)):
 
 
 @app.get("/users/{id}")
-def get_user_by_id(id: int):
+def get_user_by_id(id: int, token: dict = Depends(verify_token)):
     return handle_get_user_by_id(id)
 
 
 @app.get("/users_roles")
-def get_users_roles():
+def get_users_roles(token: dict = Depends(verify_token)):
     return handle_get_users_roles()
 
 
-@app.post("/users/login")
-def user_login(user: User):
-    return handle_user_login(user)
-
-
 @app.post("/users")
-def post_user(user: User):
+def post_user(user: User, token: dict = Depends(verify_token)):
     return handle_post_user(user)
 
 
 @app.put("/users/{id}")
-def put_user(id: int, user: User):
+def put_user(id: int, user: User, token: dict = Depends(verify_token)):
     return handle_put_user(id, user)
 
 
 @app.delete("/users/{id}")
-def delete_user(id: int):
+def delete_user(id: int, token: dict = Depends(verify_token)):
     return handle_delete_user(id)
 
 
 @app.post("/test")
-def test(arr: Test):
+def test(arr: Test, token: dict = Depends(verify_token)):
     return handle_get_test(arr)
 
 
 @app.post("/users/create-password")
-def create_user_password(userData: CreateUserPasswordInput):
+def create_user_password(
+    userData: CreateUserPasswordInput, token: dict = Depends(verify_token)
+):
     return handle_create_user_password(userData)
 
 
 @app.post("/confirm-password")
-def confirm_password(userData: ConfirmPassword):
+def confirm_password(userData: ConfirmPassword, token: dict = Depends(verify_token)):
     return handle_confirm_password(userData)
 
 
 @app.post("/users/change-password")
-def change_password(userData: ChangeUserPasswordInput):
+def change_password(
+    userData: ChangeUserPasswordInput, token: dict = Depends(verify_token)
+):
     return handle_change_password(userData)
 
 
@@ -315,7 +304,7 @@ def change_password(userData: ChangeUserPasswordInput):
 
 
 @app.get("/months")
-def get_months():
+def get_months(token: dict = Depends(verify_token)):
     return handle_get_months()
 
 
@@ -323,27 +312,29 @@ def get_months():
 
 
 @app.get("/subsidiaries")
-def get_subsidiaries():
+def get_subsidiaries(token: dict = Depends(verify_token)):
     return handle_get_subsidiaries()
 
 
 @app.get("/subsidiaries/{id}")
-def get_subsidiarie_by_id(id: int):
+def get_subsidiarie_by_id(id: int, token: dict = Depends(verify_token)):
     return handle_get_subsidiarie_by_id(id)
 
 
 @app.post("/subsidiaries")
-def post_subsidiaries(formData: Subsidiarie):
+def post_subsidiaries(formData: Subsidiarie, token: dict = Depends(verify_token)):
     return handle_post_subsidiaries(formData)
 
 
 @app.put("/subsidiaries/{id}")
-def put_subsidiaries(id: int, formData: PutSubsidiarie):
+def put_subsidiaries(
+    id: int, formData: PutSubsidiarie, token: dict = Depends(verify_token)
+):
     return handle_put_subsidiarie(id, formData)
 
 
 @app.delete("/subsidiaries/{id}")
-def delete_subsidiaries(id: int):
+def delete_subsidiaries(id: int, token: dict = Depends(verify_token)):
     return handle_delete_subsidiarie(id)
 
 
@@ -351,12 +342,12 @@ def delete_subsidiaries(id: int):
 
 
 @app.get("/subsidiaries/{id}/notifications")
-async def get_subsidiarie_notifications(id: int):
+async def get_subsidiarie_notifications(id: int, token: dict = Depends(verify_token)):
     return await handle_get_subsidiarie_notifications(id)
 
 
 @app.get("/subsidiaries/{id}/workers-status")
-async def get_subsidiaries_status(id: int):
+async def get_subsidiaries_status(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_subsidiaries_status, id)
 
 
@@ -364,27 +355,27 @@ async def get_subsidiaries_status(id: int):
 
 
 @app.get("/turns")
-def get_turns():
+def get_turns(token: dict = Depends(verify_token)):
     return handle_get_turns()
 
 
 @app.get("/turns/{id}")
-async def get_turn_by_id(id: int):
+async def get_turn_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_turn_by_id, id)
 
 
 @app.post("/turns")
-def post_turns(formData: Turn):
+def post_turns(formData: Turn, token: dict = Depends(verify_token)):
     return handle_post_turns(formData)
 
 
 @app.put("/turns/{id}")
-def put_turn(id: int, formData: PutTurn):
+def put_turn(id: int, formData: PutTurn, token: dict = Depends(verify_token)):
     return handle_put_turn(id, formData)
 
 
 @app.delete("/turns/{id}")
-def delete_turn(id: int):
+def delete_turn(id: int, token: dict = Depends(verify_token)):
     return handle_delete_turn(id)
 
 
@@ -392,23 +383,27 @@ def delete_turn(id: int):
 
 
 @app.get("/workers/{id}")
-async def get_worker_by_id(id: int):
+async def get_worker_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_worker_by_id, id)
 
 
 @app.get("/workers/turns/{turn_id}/subsidiarie/{subsidiarie_id}")
-def get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
+def get_workers_by_turn_and_subsidiarie(
+    turn_id: int, subsidiarie_id: int, token: dict = Depends(verify_token)
+):
     return handle_get_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
 
 
 @app.get("/workers/on-track/turn/{turn_id}/subsidiarie/{subsidiarie_id}")
-def get_active_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
+def get_active_workers_by_turn_and_subsidiarie(
+    turn_id: int, subsidiarie_id: int, token: dict = Depends(verify_token)
+):
     return handle_get_active_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
 
 
 @app.get("/workers/active/subsidiarie/{subsidiarie_id}/function/{function_id}")
 def get_active_workers_by_subsidiarie_and_function(
-    subsidiarie_id: int, function_id: int
+    subsidiarie_id: int, function_id: int, token: dict = Depends(verify_token)
 ):
     return handle_get_active_workers_by_subsidiarie_and_function(
         subsidiarie_id, function_id
@@ -416,7 +411,9 @@ def get_active_workers_by_subsidiarie_and_function(
 
 
 @app.get("/workers/subsidiarie/{subsidiarie_id}")
-def get_workers_by_subsidiarie(subsidiarie_id: int):
+def get_workers_by_subsidiarie(
+    subsidiarie_id: int, token: dict = Depends(verify_token)
+):
     return handle_get_workers_by_subsidiarie(subsidiarie_id)
 
 
@@ -424,7 +421,10 @@ def get_workers_by_subsidiarie(subsidiarie_id: int):
     "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}"
 )
 async def get_workers_by_subsidiaries_functions_and_turns(
-    subsidiarie_id: int, function_id: int, turn_id: int
+    subsidiarie_id: int,
+    function_id: int,
+    turn_id: int,
+    token: dict = Depends(verify_token),
 ):
     return await handle_database_operation(
         handle_get_workers_by_subsidiaries_functions_and_turns,
@@ -435,22 +435,24 @@ async def get_workers_by_subsidiaries_functions_and_turns(
 
 
 @app.post("/workers")
-async def post_worker(worker: Workers):
+async def post_worker(worker: Workers, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_post_worker, worker)
 
 
 @app.put("/workers/{id}")
-async def put_worker(id: int, worker: Workers):
+async def put_worker(id: int, worker: Workers, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_put_worker, id, worker)
 
 
 @app.put("/workers/{id}/deactivate")
-async def deactivate_worker(id: int, worker: WorkerDeactivateInput):
+async def deactivate_worker(
+    id: int, worker: WorkerDeactivateInput, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(handle_deactivate_worker, id, worker)
 
 
 @app.put("/workers/{id}/reactivate")
-def reactivate_worker(id: int):
+def reactivate_worker(id: int, token: dict = Depends(verify_token)):
     return handle_reactivate_worker(id)
 
 
@@ -458,12 +460,14 @@ def reactivate_worker(id: int):
 
 
 @app.get("/logs/subsidiaries/{id}/workers/create")
-def get_create_workers_logs(id: int):
+def get_create_workers_logs(id: int, token: dict = Depends(verify_token)):
     return handle_get_create_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/create")
-def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
+def post_create_workers_logs(
+    id: int, worker_log: WorkerLogCreateInput, token: dict = Depends(verify_token)
+):
     return handle_post_create_workers_logs(id, worker_log)
 
 
@@ -471,12 +475,14 @@ def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
 
 
 @app.get("/logs/subsidiaries/{id}/workers/update")
-def get_update_workers_logs(id: int):
+def get_update_workers_logs(id: int, token: dict = Depends(verify_token)):
     return handle_get_update_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/update")
-def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
+def post_update_workers_logs(
+    id: int, worker_log: WorkerLogUpdateInput, token: dict = Depends(verify_token)
+):
     return handle_post_update_workers_logs(id, worker_log)
 
 
@@ -484,12 +490,14 @@ def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
 
 
 @app.get("/logs/subsidiaries/{id}/workers/delete")
-def get_delete_workers_logs(id: int):
+def get_delete_workers_logs(id: int, token: dict = Depends(verify_token)):
     return handle_get_delete_workers_logs(id)
 
 
 @app.post("/logs/subsidiaries/{id}/workers/delete")
-def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
+def post_delete_workers_logs(
+    id: int, worker_log: WorkerLogDeleteInput, token: dict = Depends(verify_token)
+):
     return handle_post_delete_workers_logs(id, worker_log)
 
 
@@ -497,17 +505,19 @@ def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
 
 
 @app.get("/workers/{id}/notations")
-def get_worker_notations(id: int):
+def get_worker_notations(id: int, token: dict = Depends(verify_token)):
     return handle_get_worker_notations(id)
 
 
 @app.post("/workers/{id}/notations")
-def post_worker_notation(id: int, data: PostWorkerNotationInput):
+def post_worker_notation(
+    id: int, data: PostWorkerNotationInput, token: dict = Depends(verify_token)
+):
     return handle_post_worker_notation(id, data)
 
 
 @app.delete("/workers-notations/{id}")
-def delete_worker_notation(id: int):
+def delete_worker_notation(id: int, token: dict = Depends(verify_token)):
     return handle_delete_worker_notation(id)
 
 
@@ -515,32 +525,32 @@ def delete_worker_notation(id: int):
 
 
 @app.get("/functions")
-def get_functions():
+def get_functions(token: dict = Depends(verify_token)):
     return handle_get_functions()
 
 
 @app.get("/functions/for-users")
-def get_functions_for_users():
+def get_functions_for_users(token: dict = Depends(verify_token)):
     return handle_get_functions_for_users()
 
 
 @app.get("/functions/for-workers")
-def get_functions_for_users():
+def get_functions_for_users(token: dict = Depends(verify_token)):
     return handle_get_functions_for_workers()
 
 
 @app.post("/functions")
-def post_function(function: Function):
+def post_function(function: Function, token: dict = Depends(verify_token)):
     return handle_post_function(function)
 
 
 @app.put("/functions/{id}")
-def put_function(id: int, function: Function):
+def put_function(id: int, function: Function, token: dict = Depends(verify_token)):
     return handle_put_function(id, function)
 
 
 @app.delete("/functions/{id}")
-def delete_function(id: int):
+def delete_function(id: int, token: dict = Depends(verify_token)):
     return handle_delete_function(id)
 
 
@@ -548,22 +558,24 @@ def delete_function(id: int):
 
 
 @app.get("/jobs")
-def get_jobs():
+def get_jobs(token: dict = Depends(verify_token)):
     return handle_get_jobs()
 
 
 @app.get("/jobs/subsidiarie/{subsidiarie_id}")
-def get_jobs_by_subsidiarie_id(subsidiarie_id: int):
+def get_jobs_by_subsidiarie_id(
+    subsidiarie_id: int, token: dict = Depends(verify_token)
+):
     return handle_get_jobs_by_subsidiarie_id(subsidiarie_id)
 
 
 @app.post("/jobs")
-def post_job(job: Jobs):
+def post_job(job: Jobs, token: dict = Depends(verify_token)):
     return handle_post_job(job)
 
 
 @app.delete("/jobs/{job_id}")
-def delete_job(job_id: int):
+def delete_job(job_id: int, token: dict = Depends(verify_token)):
     return handle_delete_job(job_id)
 
 
@@ -571,7 +583,7 @@ def delete_job(job_id: int):
 
 
 @app.get("/roles")
-def get_roles():
+def get_roles(token: dict = Depends(verify_token)):
     return handle_get_roles()
 
 
@@ -579,17 +591,17 @@ def get_roles():
 
 
 @app.get("/candidates")
-def get_candidates():
+def get_candidates(token: dict = Depends(verify_token)):
     return handle_get_candidates()
 
 
 @app.get("/candidates/status/{id}")
-def get_candidates_by_status(id: int):
+def get_candidates_by_status(id: int, token: dict = Depends(verify_token)):
     return handle_get_candidates_by_status(id)
 
 
 @app.post("/candidates")
-def post_candidate(candidate: Candidate):
+def post_candidate(candidate: Candidate, token: dict = Depends(verify_token)):
     return handle_post_candidate(candidate)
 
 
@@ -635,12 +647,14 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 
 
 @app.get("/logs/scales")
-async def get_scales_logs():
+async def get_scales_logs(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_scales_logs)
 
 
 @app.post("/logs/scales")
-async def post_scales_logs(scales_logs_input: ScaleLogs):
+async def post_scales_logs(
+    scales_logs_input: ScaleLogs, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(handle_post_scale_logs, scales_logs_input)
 
 
@@ -648,37 +662,33 @@ async def post_scales_logs(scales_logs_input: ScaleLogs):
 
 
 @app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
-async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
+async def generate_scale_days_on_report(
+    subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(
         handle_generate_scale_days_on_report, subsidiarie_id, input
     )
 
 
 @app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
-async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
+async def generate_scale_days_off_report(
+    subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(
         handle_generate_scale_days_off_report, subsidiarie_id, input
     )
-
-
-# scrips
-
-
-@app.post("/scripts/excel-scraping")
-async def excel_scraping(file: UploadFile = File(...)):
-    return await handle_excel_scraping(file)
 
 
 # states
 
 
 @app.get("/states")
-async def get_states():
+async def get_states(token: dict = Depends(verify_token)):
     return await handle_get_states()
 
 
 @app.get("/states/{id}")
-async def get_states_by_id(id: int):
+async def get_states_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_get_states_by_id(id)
 
 
@@ -686,12 +696,12 @@ async def get_states_by_id(id: int):
 
 
 @app.get("/cities")
-async def get_cities():
+async def get_cities(token: dict = Depends(verify_token)):
     return await handle_get_cities()
 
 
 @app.get("/cities/{id}")
-async def get_city_by_id(id: int):
+async def get_city_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_get_city_by_id(id)
 
 
@@ -699,29 +709,33 @@ async def get_city_by_id(id: int):
 
 
 @app.get("/cost-center")
-async def get_cost_center():
+async def get_cost_center(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_cost_center)
 
 
 @app.get("/cost-center/{id}")
-async def get_cost_center_by_id(id: int):
+async def get_cost_center_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_cost_center_by_id, id)
 
 
 @app.post("/cost-center")
-async def post_cost_center(cost_center_input: CostCenter):
+async def post_cost_center(
+    cost_center_input: CostCenter, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(handle_post_cost_center, cost_center_input)
 
 
 @app.put("/cost-center/{id}")
-async def put_cost_center(id: int, cost_center_input: CostCenter):
+async def put_cost_center(
+    id: int, cost_center_input: CostCenter, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(
         handle_put_cost_center, id, cost_center_input
     )
 
 
 @app.delete("/cost-center/{id}")
-async def delete_cost_center(id: int):
+async def delete_cost_center(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_delete_cost_center, id)
 
 
@@ -729,27 +743,31 @@ async def delete_cost_center(id: int):
 
 
 @app.get("/departments")
-async def get_departments():
+async def get_departments(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_departments)
 
 
 @app.get("/departments/{id}")
-async def get_department_by_id(id: int):
+async def get_department_by_id(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_department_by_id, id)
 
 
 @app.post("/departments")
-async def post_department(department_input: Department):
+async def post_department(
+    department_input: Department, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(handle_post_department, department_input)
 
 
 @app.put("/departments/{id}")
-async def put_department(id: int, department_input: Department):
+async def put_department(
+    id: int, department_input: Department, token: dict = Depends(verify_token)
+):
     return await handle_put_department(id, department_input)
 
 
 @app.delete("/departments/{id}")
-async def delete_department(id: int):
+async def delete_department(id: int, token: dict = Depends(verify_token)):
     return await handle_delete_department(id)
 
 
@@ -757,7 +775,7 @@ async def delete_department(id: int):
 
 
 @app.get("/resignable-reasons")
-async def get_resignable_reasons():
+async def get_resignable_reasons(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_resignable_reasons)
 
 
@@ -765,5 +783,7 @@ async def get_resignable_reasons():
 
 
 @app.post("/resignable-reasons/report")
-async def get_resignable_reasons_report(input: StatusResignableReasonsInput):
+async def get_resignable_reasons_report(
+    input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
+):
     return await handle_database_operation(handle_resignable_reasons_report, input)

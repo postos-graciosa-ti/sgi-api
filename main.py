@@ -140,6 +140,7 @@ from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
 from models.cost_center import CostCenter
+from models.cost_center_logs import CostCenterLogs
 from models.department import Department
 from models.function import Function
 from models.jobs import Jobs
@@ -864,3 +865,41 @@ def post_turns_logs(turn_log: TurnsLogs):
         session.refresh(turn_log)
 
         return turn_log
+
+
+@app.get("/subsidiaries/{id}/logs/costs-centers")
+def get_cost_center_logs(id: int):
+    with Session(engine) as session:
+        costs_center_logs = session.exec(
+            select(CostCenterLogs).where(CostCenterLogs.subsidiarie_id == id)
+        ).all()
+
+        return costs_center_logs
+
+
+class PostCostCenterLogs(BaseModel):
+    log_str: str
+    happened_at: str
+    happened_at_time: str
+    subsidiarie_id: int
+    user_id: int
+
+
+@app.post("/subsidiaries/{id}/logs/costs-centers")
+def post_cost_center_logs(id: int, cost_center_log: PostCostCenterLogs):
+    with Session(engine) as session:
+        cost_center_log = CostCenterLogs(
+            log_str=cost_center_log.log_str,
+            happened_at=cost_center_log.happened_at,
+            happened_at_time=cost_center_log.happened_at_time,
+            subsidiarie_id=id,
+            user_id=cost_center_log.user_id,
+        )
+
+        session.add(cost_center_log)
+
+        session.commit()
+
+        session.refresh(cost_center_log)
+
+        return cost_center_log

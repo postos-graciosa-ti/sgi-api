@@ -149,6 +149,7 @@ from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
+from models.TurnsLogs import TurnsLogs
 from models.user import User
 from models.workers import Workers
 from models.workers_logs_create import WorkersLogsCreate
@@ -178,7 +179,6 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
-from models.TurnsLogs import TurnsLogs
 
 # pre settings
 
@@ -796,38 +796,56 @@ async def get_resignable_reasons_report(
 
 # 3 delete
 
-logs_enum = {
-    "insert": 1,
-    "update": 2,
-    "delete": 3
-}
+logs_enum = {"insert": 1, "update": 2, "delete": 3}
+
 
 @app.get("/logs/subsidiaries/{id}/turns")
 def get_turns_logs(id: int):
+    def fetch_logs(log_type: int):
+        return session.exec(
+            select(TurnsLogs, User, Turn)
+            .join(User, TurnsLogs.user_id == User.id)
+            .join(Turn, TurnsLogs.turn_id == Turn.id)
+            .where(TurnsLogs.subsidiarie_id == id)
+            .where(TurnsLogs.http_method == log_type)
+        ).all()
+
     with Session(engine) as session:
-        post_logs = session.exec(
-            select(TurnsLogs)
-            .join(User, TurnsLogs.user_id == User.id)
-            .join(Turn, TurnsLogs.turn_id == Turn.id)
-            .where(TurnsLogs.subsidiarie_id == id)
-            .where(TurnsLogs.http_method == logs_enum['insert'])
-        ).all()
+        post_logs = [
+            {
+                "happened_at": log[0].happened_at,
+                "happened_at_time": log[0].happened_at_time,
+                "user_id": log[0].user_id,
+                "user_name": log[1].name,
+                "turn_id": log[0].turn_id,
+                "turn_name": log[2].name,
+            }
+            for log in fetch_logs(logs_enum["insert"])
+        ]
 
-        put_logs = session.exec(
-            select(TurnsLogs)
-            .join(User, TurnsLogs.user_id == User.id)
-            .join(Turn, TurnsLogs.turn_id == Turn.id)
-            .where(TurnsLogs.subsidiarie_id == id)
-            .where(TurnsLogs.http_method == logs_enum['update'])
-        ).all()
+        put_logs = [
+            {
+                "happened_at": log[0].happened_at,
+                "happened_at_time": log[0].happened_at_time,
+                "user_id": log[0].user_id,
+                "user_name": log[1].name,
+                "turn_id": log[0].turn_id,
+                "turn_name": log[2].name,
+            }
+            for log in fetch_logs(logs_enum["update"])
+        ]
 
-        delete_logs = session.exec(
-            select(TurnsLogs)
-            .join(User, TurnsLogs.user_id == User.id)
-            .join(Turn, TurnsLogs.turn_id == Turn.id)
-            .where(TurnsLogs.subsidiarie_id == id)
-            .where(TurnsLogs.http_method == logs_enum['delete'])
-        ).all()
+        delete_logs = [
+            {
+                "happened_at": log[0].happened_at,
+                "happened_at_time": log[0].happened_at_time,
+                "user_id": log[0].user_id,
+                "user_name": log[1].name,
+                "turn_id": log[0].turn_id,
+                "turn_name": log[2].name,
+            }
+            for log in fetch_logs(logs_enum["delete"])
+        ]
 
         return {
             "post_logs": post_logs,

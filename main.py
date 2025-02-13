@@ -878,24 +878,10 @@ def get_cost_center_logs(id: int):
         return costs_center_logs
 
 
-class PostCostCenterLogs(BaseModel):
-    log_str: str
-    happened_at: str
-    happened_at_time: str
-    subsidiarie_id: int
-    user_id: int
-
-
 @app.post("/subsidiaries/{id}/logs/costs-centers")
-def post_cost_center_logs(id: int, cost_center_log: PostCostCenterLogs):
+def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
     with Session(engine) as session:
-        cost_center_log = CostCenterLogs(
-            log_str=cost_center_log.log_str,
-            happened_at=cost_center_log.happened_at,
-            happened_at_time=cost_center_log.happened_at_time,
-            subsidiarie_id=id,
-            user_id=cost_center_log.user_id,
-        )
+        cost_center_log.subsidiarie_id = id
 
         session.add(cost_center_log)
 

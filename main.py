@@ -33,12 +33,20 @@ from controllers.cost_center import (
     handle_post_cost_center,
     handle_put_cost_center,
 )
+from controllers.cost_center_log import (
+    handle_get_cost_center_logs,
+    handle_post_cost_center_logs,
+)
 from controllers.departments import (
     handle_delete_department,
     handle_get_department_by_id,
     handle_get_departments,
     handle_post_department,
     handle_put_department,
+)
+from controllers.departments_logs import (
+    handle_get_departments_logs,
+    handle_post_departments_logs,
 )
 from controllers.functions import (
     handle_delete_function,
@@ -97,6 +105,7 @@ from controllers.turn import (
     handle_post_turns,
     handle_put_turn,
 )
+from controllers.turns_logs import handle_get_turns_logs, handle_post_turns_logs
 from controllers.users import (
     handle_change_password,
     handle_confirm_password,
@@ -380,6 +389,19 @@ def put_turn(id: int, formData: PutTurn, token: dict = Depends(verify_token)):
 @app.delete("/turns/{id}")
 def delete_turn(id: int, token: dict = Depends(verify_token)):
     return handle_delete_turn(id)
+
+
+# turns logs
+
+
+@app.get("/subsidiaries/{id}/logs/turns")
+async def get_turns_logs(id: int):
+    return await handle_database_operation(handle_get_turns_logs, id)
+
+
+@app.post("/subsidiaries/{id}/logs/turns")
+async def post_turns_logs(id: int, turn_log: TurnsLogs):
+    return await handle_post_turns_logs(id, turn_log)
 
 
 # workers
@@ -742,6 +764,21 @@ async def delete_cost_center(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_delete_cost_center, id)
 
 
+# cost center logs
+
+
+@app.get("/subsidiaries/{id}/logs/costs-centers")
+async def get_cost_center_logs(id: int):
+    return await handle_database_operation(handle_get_cost_center_logs, id)
+
+
+@app.post("/subsidiaries/{id}/logs/costs-centers")
+async def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
+    return await handle_database_operation(
+        handle_post_cost_center_logs, id, cost_center_log
+    )
+
+
 # department
 
 
@@ -774,6 +811,21 @@ async def delete_department(id: int, token: dict = Depends(verify_token)):
     return await handle_delete_department(id)
 
 
+# department logs
+
+
+@app.get("/subsidiaries/{id}/logs/departments")
+async def get_departments_logs(id: int):
+    return await handle_database_operation(handle_get_departments_logs, id)
+
+
+@app.post("/subsidiaries/{id}/logs/departments")
+async def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
+    return await handle_database_operation(
+        handle_post_departments_logs, id, department_logs_input
+    )
+
+
 # resignable reasons
 
 
@@ -790,78 +842,3 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
-
-
-# logs
-
-
-@app.get("/subsidiaries/{id}/logs/turns")
-def get_turns_logs(id: int):
-    with Session(engine) as session:
-        turns_logs = session.exec(
-            select(TurnsLogs).where(TurnsLogs.subsidiarie_id == id)
-        ).all()
-
-        return turns_logs
-
-
-@app.post("/subsidiaries/{id}/logs/turns")
-def post_turns_logs(id: int, turn_log: TurnsLogs):
-    with Session(engine) as session:
-        turn_log.subsidiarie_id = id
-
-        session.add(turn_log)
-
-        session.commit()
-
-        session.refresh(turn_log)
-
-        return turn_log
-
-
-@app.get("/subsidiaries/{id}/logs/costs-centers")
-def get_cost_center_logs(id: int):
-    with Session(engine) as session:
-        costs_center_logs = session.exec(
-            select(CostCenterLogs).where(CostCenterLogs.subsidiarie_id == id)
-        ).all()
-
-        return costs_center_logs
-
-
-@app.post("/subsidiaries/{id}/logs/costs-centers")
-def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
-    with Session(engine) as session:
-        cost_center_log.subsidiarie_id = id
-
-        session.add(cost_center_log)
-
-        session.commit()
-
-        session.refresh(cost_center_log)
-
-        return cost_center_log
-
-
-@app.get("/subsidiaries/{id}/logs/departments")
-def get_departments_logs(id: int):
-    with Session(engine) as session:
-        departments_logs = session.exec(
-            select(DepartmentsLogs).where(DepartmentsLogs.subsidiarie_id == id)
-        ).all()
-
-        return departments_logs
-
-
-@app.post("/subsidiaries/{id}/logs/departments")
-def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
-    with Session(engine) as session:
-        department_logs_input.subsidiarie_id = id
-
-        session.add(department_logs_input)
-
-        session.commit()
-
-        session.refresh(department_logs_input)
-
-        return department_logs_input

@@ -23,12 +23,14 @@ async def handle_database_operation(func: Callable, *args, **kwargs):
 
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
+
         raise HTTPException(
             status_code=500, detail="An error occurred while processing your request"
         )
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
+
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred. Please try again later",

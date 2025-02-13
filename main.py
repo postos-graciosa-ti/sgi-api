@@ -792,73 +792,24 @@ async def get_resignable_reasons_report(
     return await handle_database_operation(handle_resignable_reasons_report, input)
 
 
-# 1 insert
-
-# 2 update
-
-# 3 delete
-
-logs_enum = {"insert": 1, "update": 2, "delete": 3}
+# logs
 
 
-@app.get("/logs/subsidiaries/{id}/turns")
+@app.get("/subsidiaries/{id}/logs/turns")
 def get_turns_logs(id: int):
-    def fetch_logs(log_type: int):
-        return session.exec(
-            select(TurnsLogs, User, Turn)
-            .join(User, TurnsLogs.user_id == User.id)
-            .join(Turn, TurnsLogs.turn_id == Turn.id)
-            .where(TurnsLogs.subsidiarie_id == id)
-            .where(TurnsLogs.http_method == log_type)
+    with Session(engine) as session:
+        turns_logs = session.exec(
+            select(TurnsLogs).where(TurnsLogs.subsidiarie_id == id)
         ).all()
 
+        return turns_logs
+
+
+@app.post("/subsidiaries/{id}/logs/turns")
+def post_turns_logs(id: int, turn_log: TurnsLogs):
     with Session(engine) as session:
-        post_logs = [
-            {
-                "happened_at": log[0].happened_at,
-                "happened_at_time": log[0].happened_at_time,
-                "user_id": log[0].user_id,
-                "user_name": log[1].name,
-                "turn_id": log[0].turn_id,
-                "turn_name": log[2].name,
-            }
-            for log in fetch_logs(logs_enum["insert"])
-        ]
+        turn_log.subsidiarie_id = id
 
-        put_logs = [
-            {
-                "happened_at": log[0].happened_at,
-                "happened_at_time": log[0].happened_at_time,
-                "user_id": log[0].user_id,
-                "user_name": log[1].name,
-                "turn_id": log[0].turn_id,
-                "turn_name": log[2].name,
-            }
-            for log in fetch_logs(logs_enum["update"])
-        ]
-
-        delete_logs = [
-            {
-                "happened_at": log[0].happened_at,
-                "happened_at_time": log[0].happened_at_time,
-                "user_id": log[0].user_id,
-                "user_name": log[1].name,
-                "turn_id": log[0].turn_id,
-                "turn_name": log[2].name,
-            }
-            for log in fetch_logs(logs_enum["delete"])
-        ]
-
-        return {
-            "post_logs": post_logs,
-            "put_logs": put_logs,
-            "delete_logs": delete_logs,
-        }
-
-
-@app.post("/logs/turns")
-def post_turns_logs(turn_log: TurnsLogs):
-    with Session(engine) as session:
         session.add(turn_log)
 
         session.commit()

@@ -159,6 +159,7 @@ from models.role import Role
 from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
+from models.subsidiarie_logs import SubsidiarieLogs
 from models.turn import Turn
 from models.TurnsLogs import TurnsLogs
 from models.user import User
@@ -842,3 +843,23 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
+
+
+@app.get("/subsidiaries-logs")
+def get_subsidiarie_logs():
+    with Session(engine) as session:
+        subsidiarie_logs = session.exec(select(SubsidiarieLogs)).all()
+
+        return subsidiarie_logs
+
+
+@app.post("/subsidiaries/logs")
+def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
+    with Session(engine) as session:
+        session.add(subsidiarie_log)
+
+        session.commit()
+
+        session.refresh(subsidiarie_log)
+
+        return subsidiarie_log

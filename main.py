@@ -191,6 +191,7 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
+from models.function_logs import FunctionLogs
 
 # pre settings
 
@@ -863,3 +864,27 @@ def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
         session.refresh(subsidiarie_log)
 
         return subsidiarie_log
+
+
+@app.get("/subsidiaries/{id}/functions/logs")
+def get_functions_logs(id: int):
+    with Session(engine) as session:
+        query = select(FunctionLogs).where(FunctionLogs.subsidiarie_id == id)
+
+        function_logs = session.exec(query).all()
+
+        return function_logs
+
+
+@app.post("/subsidiaries/{id}/functions/logs")
+def post_functions_logs(id: int, function_log: FunctionLogs):
+    with Session(engine) as session:
+        function_log.subsidiarie_id = id
+
+        session.add(function_log)
+
+        session.commit()
+
+        session.refresh(function_log)
+
+        return function_log

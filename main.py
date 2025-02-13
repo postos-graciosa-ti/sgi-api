@@ -142,6 +142,7 @@ from models.candidato import Candidato
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
 from models.department import Department
+from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.jobs import Jobs
 from models.resignable_reasons import ResignableReasons
@@ -903,3 +904,27 @@ def post_cost_center_logs(id: int, cost_center_log: PostCostCenterLogs):
         session.refresh(cost_center_log)
 
         return cost_center_log
+
+
+@app.get("/subsidiaries/{id}/logs/departments")
+def get_departments_logs(id: int):
+    with Session(engine) as session:
+        departments_logs = session.exec(
+            select(DepartmentsLogs).where(DepartmentsLogs.subsidiarie_id == id)
+        ).all()
+
+        return departments_logs
+
+
+@app.post("/subsidiaries/{id}/logs/departments")
+def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
+    with Session(engine) as session:
+        department_logs_input.subsidiarie_id = id
+
+        session.add(department_logs_input)
+
+        session.commit()
+
+        session.refresh(department_logs_input)
+
+        return department_logs_input

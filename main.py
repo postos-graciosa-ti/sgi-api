@@ -56,6 +56,10 @@ from controllers.functions import (
     handle_post_function,
     handle_put_function,
 )
+from controllers.functions_logs import (
+    handle_get_functions_logs,
+    handle_post_functions_logs,
+)
 from controllers.jobs import (
     handle_delete_job,
     handle_get_jobs,
@@ -93,6 +97,10 @@ from controllers.subsidiaries import (
     handle_get_subsidiaries,
     handle_post_subsidiaries,
     handle_put_subsidiarie,
+)
+from controllers.subsidiaries_logs import (
+    handle_get_subsidiarie_logs,
+    handle_post_subsidiaries_logs,
 )
 from controllers.subsidiaries_notifications import (
     handle_get_subsidiarie_notifications,
@@ -153,6 +161,7 @@ from models.cost_center_logs import CostCenterLogs
 from models.department import Department
 from models.department_logs import DepartmentsLogs
 from models.function import Function
+from models.function_logs import FunctionLogs
 from models.jobs import Jobs
 from models.resignable_reasons import ResignableReasons
 from models.role import Role
@@ -191,7 +200,7 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
-from models.function_logs import FunctionLogs
+from models.users_logs import UsersLogs
 
 # pre settings
 
@@ -352,7 +361,7 @@ def delete_subsidiaries(id: int, token: dict = Depends(verify_token)):
     return handle_delete_subsidiarie(id)
 
 
-# subsidiarie notifications
+# subsidiaries notifications
 
 
 @app.get("/subsidiaries/{id}/notifications")
@@ -363,6 +372,19 @@ async def get_subsidiarie_notifications(id: int, token: dict = Depends(verify_to
 @app.get("/subsidiaries/{id}/workers-status")
 async def get_subsidiaries_status(id: int, token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_subsidiaries_status, id)
+
+
+# subsidiaries logs
+
+
+@app.get("/subsidiaries-logs")
+async def get_subsidiarie_logs():
+    return await handle_get_subsidiarie_logs()
+
+
+@app.post("/subsidiaries/logs")
+async def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
+    return await handle_post_subsidiaries_logs(subsidiarie_log)
 
 
 # turn
@@ -579,6 +601,19 @@ def put_function(id: int, function: Function, token: dict = Depends(verify_token
 @app.delete("/functions/{id}")
 def delete_function(id: int, token: dict = Depends(verify_token)):
     return handle_delete_function(id)
+
+
+# functions logs
+
+
+@app.get("/subsidiaries/{id}/functions/logs")
+def get_functions_logs(id: int):
+    return handle_get_functions_logs(id)
+
+
+@app.post("/subsidiaries/{id}/functions/logs")
+def post_functions_logs(id: int, function_log: FunctionLogs):
+    return handle_post_functions_logs(id, function_log)
 
 
 # jobs
@@ -846,45 +881,24 @@ async def get_resignable_reasons_report(
     return await handle_database_operation(handle_resignable_reasons_report, input)
 
 
-@app.get("/subsidiaries-logs")
-def get_subsidiarie_logs():
+# user logs
+
+
+@app.get("/logs/users")
+def get_logs_user():
     with Session(engine) as session:
-        subsidiarie_logs = session.exec(select(SubsidiarieLogs)).all()
+        users_logs = session.exec(select(UsersLogs)).all()
 
-        return subsidiarie_logs
+        return users_logs
 
 
-@app.post("/subsidiaries/logs")
-def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
+@app.post("/logs/users")
+def post_logs_user(users_logs: UsersLogs):
     with Session(engine) as session:
-        session.add(subsidiarie_log)
+        session.add(users_logs)
 
         session.commit()
 
-        session.refresh(subsidiarie_log)
+        session.refresh(users_logs)
 
-        return subsidiarie_log
-
-
-@app.get("/subsidiaries/{id}/functions/logs")
-def get_functions_logs(id: int):
-    with Session(engine) as session:
-        query = select(FunctionLogs).where(FunctionLogs.subsidiarie_id == id)
-
-        function_logs = session.exec(query).all()
-
-        return function_logs
-
-
-@app.post("/subsidiaries/{id}/functions/logs")
-def post_functions_logs(id: int, function_log: FunctionLogs):
-    with Session(engine) as session:
-        function_log.subsidiarie_id = id
-
-        session.add(function_log)
-
-        session.commit()
-
-        session.refresh(function_log)
-
-        return function_log
+        return users_logs

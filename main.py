@@ -324,6 +324,19 @@ def change_password(
     return handle_change_password(userData)
 
 
+# user logs
+
+
+@app.get("/logs/users")
+def get_logs_user():
+    return handle_get_logs_user()
+
+
+@app.post("/logs/users")
+def post_logs_user(users_logs: UsersLogs):
+    return handle_post_logs_user(users_logs)
+
+
 # months
 
 
@@ -880,16 +893,3 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
-
-
-# user logs
-
-
-@app.get("/logs/users")
-def get_logs_user():
-    return handle_get_logs_user()
-
-
-@app.post("/logs/users")
-def post_logs_user(users_logs: UsersLogs):
-    return handle_post_logs_user(users_logs)

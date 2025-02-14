@@ -127,6 +127,7 @@ from controllers.users import (
     handle_put_user,
     handle_user_login,
 )
+from controllers.users_logs import handle_get_logs_user, handle_post_logs_user
 from controllers.workers import (
     handle_deactivate_worker,
     handle_delete_worker_notation,
@@ -172,6 +173,7 @@ from models.subsidiarie_logs import SubsidiarieLogs
 from models.turn import Turn
 from models.TurnsLogs import TurnsLogs
 from models.user import User
+from models.users_logs import UsersLogs
 from models.workers import Workers
 from models.workers_logs_create import WorkersLogsCreate
 from models.workers_logs_delete import WorkersLogsDelete
@@ -200,7 +202,6 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from seeds.seed_all import seed_database
-from models.users_logs import UsersLogs
 
 # pre settings
 
@@ -886,19 +887,9 @@ async def get_resignable_reasons_report(
 
 @app.get("/logs/users")
 def get_logs_user():
-    with Session(engine) as session:
-        users_logs = session.exec(select(UsersLogs)).all()
-
-        return users_logs
+    return handle_get_logs_user()
 
 
 @app.post("/logs/users")
 def post_logs_user(users_logs: UsersLogs):
-    with Session(engine) as session:
-        session.add(users_logs)
-
-        session.commit()
-
-        session.refresh(users_logs)
-
-        return users_logs
+    return handle_post_logs_user(users_logs)

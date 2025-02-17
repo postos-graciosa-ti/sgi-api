@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, SQLModel
 
 
 class Workers(SQLModel, table=True):
@@ -12,7 +12,8 @@ class Workers(SQLModel, table=True):
     turn_id: int = Field(default=None, foreign_key="turn.id")
     cost_center_id: int = Field(default=None, foreign_key="costcenter.id")
     department_id: int = Field(default=None, foreign_key="department.id")
-    # security_password: str | None = Field(default=None, nullable=True)
     admission_date: str = Field(index=True)
     resignation_date: str = Field(index=True)
-    resignation_reason_id: Optional[int] = Field(default=None, foreign_key="resignablereasons.id", nullable=True)  # Corrigido o nome da tabela
+    resignation_reason_id: Optional[int] = Field(
+        default=None, foreign_key="resignablereasons.id", nullable=True
+    )

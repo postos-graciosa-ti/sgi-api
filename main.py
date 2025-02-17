@@ -175,6 +175,7 @@ from models.TurnsLogs import TurnsLogs
 from models.user import User
 from models.users_logs import UsersLogs
 from models.workers import Workers
+from models.workers_logs import WorkersLogs
 from models.workers_logs_create import WorkersLogsCreate
 from models.workers_logs_delete import WorkersLogsDelete
 from models.workers_logs_update import WorkersLogsUpdate
@@ -517,6 +518,64 @@ async def deactivate_worker(
 @app.put("/workers/{id}/reactivate")
 def reactivate_worker(id: int, token: dict = Depends(verify_token)):
     return handle_reactivate_worker(id)
+
+
+# workers logs
+
+
+@app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+def get_worker_by_id_in_subsidiarie(subsidiarie_id: int, worker_id: int):
+    with Session(engine) as session:
+        result = session.exec(
+            select(
+                Workers,
+                Function,
+                Turn,
+                CostCenter,
+                Department,
+            )
+            .join(Function, Workers.function_id == Function.id)
+            .join(Turn, Workers.turn_id == Turn.id)
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .where(Workers.id == worker_id)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+        ).first()
+
+        worker = [
+            {
+                "name": result[0].name,
+                "function": result[1].name,
+                "turn": result[2].name,
+                "cost_center": result[3].name,
+                "setor": result[4].name,
+            }
+        ]
+
+        return worker
+
+
+@app.get("/subsidiaries/{id}/workers/logs")
+def get_workers_logs(id: int):
+    with Session(engine) as session:
+        workers_logs = session.exec(
+            select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
+        ).all()
+
+        return workers_logs
+
+
+@app.post("/subsidiaries/{id}/workers/logs")
+def post_workers_logs(id: int, workers_log: WorkersLogs):
+    with Session(engine) as session:
+        workers_log.subsidiarie_id = id
+
+        session.add(workers_log)
+
+        session.commit()
+
+        session.refresh(workers_log)
+
+        return workers_log
 
 
 # workers logs create

@@ -5,8 +5,5 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port 8000"
     plan: free
-    envVars:
-      - key: SQLITE_URL
-        valueFromSecret: sqlite_url
-      - key: FRONT_URL
-        valueFromSecret: front_url
+    envGroups:
+      - sgi-staging

@@ -7,6 +7,6 @@ services:
     plan: free
     envVars:
       - key: SQLITE_URL
-        fromSecret: sqlite_url
+        valueFromSecret: sqlite_url
       - key: FRONT_URL
-        fromSecret: front_url
+        valueFromSecret: front_url

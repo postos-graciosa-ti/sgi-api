@@ -73,9 +73,9 @@ from controllers.resignable_reasons import (
 )
 from controllers.roles import handle_get_roles
 from controllers.root import (
-    handle_activate_render_server,
     handle_get_docs_info,
     handle_on_startup,
+    handle_health_check
 )
 from controllers.scale import (
     handle_delete_scale,
@@ -228,9 +228,9 @@ def get_docs_info():
     return handle_get_docs_info()
 
 
-@app.get("/render-server/activate")
-def activate_render_server():
-    return handle_activate_render_server()
+@app.get("/healthz")
+def health_check():
+    return handle_health_check()
 
 
 @app.post("/users/login")

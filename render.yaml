@@ -5,5 +5,4 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python app.py"
     envVars:
-      - key: DATABASE_URL
         fromGroup: sgi-staging

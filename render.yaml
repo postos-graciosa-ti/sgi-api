@@ -5,8 +5,9 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port 8000"
     plan: free
-  - key: SQLITE_URL
-    fromService:
-      name: SQLITE_URL
-      type: pserv
-      envVarKey: SQLITE_URL
+    envVars:
+      - key: SQLITE_URL
+        fromService:
+          name: sgi-staging
+          type: web    # Substitua "web" pelo tipo correto do serviço
+          envVarKey: SQLITE_URL

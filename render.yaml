@@ -3,8 +3,6 @@ services:
     name: sgi-api-staging
     runtime: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port 8000"
     plan: free
-    envVars:
-      - key: SQLITE_URL
-        fromEnv: SQLITE_URL
+  - fromGroup: sgi-staging

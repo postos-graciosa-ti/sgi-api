@@ -402,7 +402,17 @@ async def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
     return await handle_post_subsidiaries_logs(subsidiarie_log)
 
 
-# turn
+# turns
+
+
+@app.get("/subsidiaries/{id}/turns")
+def get_subsidiarie_turns(id: int):
+    with Session(engine) as session:
+        query = select(Turn).where(Turn.subsidiarie_id == id)
+
+        turns = session.exec(query).all()
+
+        return turns
 
 
 @app.get("/turns")
@@ -644,6 +654,16 @@ def delete_worker_notation(id: int, token: dict = Depends(verify_token)):
 
 
 # functions
+
+
+@app.get("/subsidiaries/{id}/functions")
+def get_functions_by_subsidiarie(id: int):
+    with Session(engine) as session:
+        query = select(Function).where(Function.subsidiarie_id == id)
+
+        functions = session.exec(query).all()
+
+        return functions
 
 
 @app.get("/functions")
@@ -952,15 +972,3 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
-
-# functions
-
-@app.get("/subsidiaries/{id}/functions")
-def get_functions_by_subsidiarie(id: int):
-    with Session(engine) as session:
-        query = select(Function).where(Function.subsidiarie_id == id)
-
-        functions = session.exec(query).all()
-
-        return functions
-    

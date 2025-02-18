@@ -6,4 +6,4 @@ services:
     startCommand: "python app.py"
     envVars:
       - key: DATABASE_URL
-        fromGroup: DATABASE_URL
+        fromGroup: sgi-staging

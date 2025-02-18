@@ -11,5 +11,3 @@ services:
           name: sgi-staging
           type: web
           envVarKey: SQLITE_URL
-    envGroups:
-      - sgi-staging

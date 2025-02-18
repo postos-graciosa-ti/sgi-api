@@ -238,9 +238,9 @@ def user_login(user: User):
     return handle_user_login(user)
 
 
-@app.post("/scripts/excel-scraping")
-async def excel_scraping(file: UploadFile = File(...)):
-    return await handle_excel_scraping(file)
+@app.post("/subsidiaries/{id}/scripts/excel-scraping")
+async def excel_scraping(id: int, file: UploadFile = File(...)):
+    return await handle_excel_scraping(id, file)
 
 
 # users
@@ -952,3 +952,15 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
+
+# functions
+
+@app.get("/subsidiaries/{id}/functions")
+def get_functions_by_subsidiarie(id: int):
+    with Session(engine) as session:
+        query = select(Function).where(Function.subsidiarie_id == id)
+
+        functions = session.exec(query).all()
+
+        return functions
+    

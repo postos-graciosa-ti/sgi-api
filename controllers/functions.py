@@ -4,6 +4,15 @@ from database.sqlite import engine
 from models.function import Function
 
 
+def handle_get_functions_by_subsidiarie(id: int):
+    with Session(engine) as session:
+        query = select(Function).where(Function.subsidiarie_id == id)
+
+        functions = session.exec(query).all()
+
+        return functions
+
+
 def handle_get_functions():
     with Session(engine) as session:
         functions = session.exec(select(Function)).all()

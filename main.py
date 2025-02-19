@@ -51,6 +51,7 @@ from controllers.departments_logs import (
 from controllers.functions import (
     handle_delete_function,
     handle_get_functions,
+    handle_get_functions_by_subsidiarie,
     handle_get_functions_for_users,
     handle_get_functions_for_workers,
     handle_post_function,
@@ -74,8 +75,8 @@ from controllers.resignable_reasons import (
 from controllers.roles import handle_get_roles
 from controllers.root import (
     handle_get_docs_info,
+    handle_health_check,
     handle_on_startup,
-    handle_health_check
 )
 from controllers.scale import (
     handle_delete_scale,
@@ -108,6 +109,7 @@ from controllers.subsidiaries_notifications import (
 )
 from controllers.turn import (
     handle_delete_turn,
+    handle_get_subsidiarie_turns,
     handle_get_turn_by_id,
     handle_get_turns,
     handle_post_turns,
@@ -407,12 +409,7 @@ async def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
 
 @app.get("/subsidiaries/{id}/turns")
 def get_subsidiarie_turns(id: int):
-    with Session(engine) as session:
-        query = select(Turn).where(Turn.subsidiarie_id == id)
-
-        turns = session.exec(query).all()
-
-        return turns
+    return handle_get_subsidiarie_turns(id)
 
 
 @app.get("/turns")
@@ -657,13 +654,8 @@ def delete_worker_notation(id: int, token: dict = Depends(verify_token)):
 
 
 @app.get("/subsidiaries/{id}/functions")
-def get_functions_by_subsidiarie(id: int):
-    with Session(engine) as session:
-        query = select(Function).where(Function.subsidiarie_id == id)
-
-        functions = session.exec(query).all()
-
-        return functions
+def get_functions_by_subsidiarie(id: int, token: dict = Depends(verify_token)):
+    return handle_get_functions_by_subsidiarie(id)
 
 
 @app.get("/functions")

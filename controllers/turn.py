@@ -7,6 +7,15 @@ from models.turn import Turn
 from pyhints.turns import PutTurn
 
 
+def handle_get_subsidiarie_turns(id: int):
+    with Session(engine) as session:
+        query = select(Turn).where(Turn.subsidiarie_id == id)
+
+        turns = session.exec(query).all()
+
+        return turns
+
+
 def handle_get_turns():
     with Session(engine) as session:
         turns = session.exec(select(Turn)).all()

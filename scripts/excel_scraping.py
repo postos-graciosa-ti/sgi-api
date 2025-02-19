@@ -102,34 +102,30 @@ async def handle_excel_scraping(id, file: UploadFile = File(...)):
         
         new_workers = []
 
-        # Busca todas as opções de funções e turnos de uma vez
         functions_options = session.exec(select(Function).where(Function.subsidiarie_id == id)).all()
+        
         turns_options = session.exec(select(Turn).where(Turn.subsidiarie_id == id)).all()
 
-        # Prepara um dicionário de turnos para uma busca mais rápida
         turns_dict = {option.name.strip().lower(): option.id for option in turns_options}
 
-        # Busca os trabalhadores da subsidiária
         subsidiarie_workers_query = select(Workers).where(Workers.subsidiarie_id == id)
+        
         subsidiarie_workers = session.exec(subsidiarie_workers_query).all() or []
 
-        # Cria um dicionário de nomes dos trabalhadores para validação rápida
         existing_worker_names = {db_worker.name.strip().lower() for db_worker in subsidiarie_workers}
 
         for worker in workers_list:
-            # Verifica se o nome do colaborador já existe
             if worker["Nome do Colaborador"].strip().lower() not in existing_worker_names:
-                
-                # Tenta encontrar o turno baseado no nome
                 worker_turn = worker["Turno de Trabalho"].strip().lower()
+                
                 exist_turn = turns_dict.get(worker_turn)
 
                 if not exist_turn:
-                    # Caso o turno não exista, cria um novo
                     turn_parts = re.match(regex, worker["Turno de Trabalho"])
 
                     if turn_parts:
                         turn_start_time = datetime.strptime(turn_parts.group(1).strip(), "%H:%M").time()
+
                         turn_end_time = datetime.strptime(turn_parts.group(2).strip(), "%H:%M").time()
                         
                         turn = Turn(
@@ -142,17 +138,17 @@ async def handle_excel_scraping(id, file: UploadFile = File(...)):
                         )
                         
                         session.add(turn)
-                        session.commit()  # Commit para salvar o novo turno
+
+                        session.commit()
+
                         session.refresh(turn)
+
                         exist_turn = turn.id
 
-                # Encontre o id do turno, se necessário
                 format_turn_id = turns_dict.get("14:00 - 22:00") if worker_turn == "14:00-22:00" else exist_turn
 
-                # Encontre o id da função
                 function_id = next((option.id for option in functions_options if option.name == worker["Cargo Atual"]), None)
 
-                # Criação do novo trabalhador
                 neo = Workers(
                     name=worker["Nome do Colaborador"],
                     function_id=function_id,
@@ -167,9 +163,9 @@ async def handle_excel_scraping(id, file: UploadFile = File(...)):
                 
                 new_workers.append(neo)
 
-        # Adiciona todos os novos trabalhadores e faz o commit final
         if new_workers:
             session.add_all(new_workers)
+            
             session.commit()
 
         return {"status": "ok"}

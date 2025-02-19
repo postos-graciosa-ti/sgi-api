@@ -10,3 +10,4 @@ class ScaleLogs(SQLModel, table=True):
     worker_id: int = Field(default=None, foreign_key="workers.id")
     inserted_at: str
     at_time: str
+    subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")

@@ -99,67 +99,74 @@ async def handle_excel_scraping(id, file: UploadFile = File(...)):
         session.add_all(subsidiarie_turns)
 
         session.commit()
+        
+        new_workers = []
 
-        with Session(engine) as session:
-            new_workers = []
+        functions_options = session.exec(select(Function).where(Function.subsidiarie_id == id)).all()
+        
+        turns_options = session.exec(select(Turn).where(Turn.subsidiarie_id == id)).all()
 
-            refactor_tomorrow = Turn(
-                name="06:00 - 15:00",
-                start_time=time(6, 0),
-                end_time=time(15, 0),
-                start_interval_time=time(),
-                end_interval_time=time(),
-                subsidiarie_id=id   
-            )
+        turns_dict = {option.name.strip().lower(): option.id for option in turns_options}
 
-            session.add(refactor_tomorrow)
+        subsidiarie_workers_query = select(Workers).where(Workers.subsidiarie_id == id)
+        
+        subsidiarie_workers = session.exec(subsidiarie_workers_query).all() or []
+
+        existing_worker_names = {db_worker.name.strip().lower() for db_worker in subsidiarie_workers}
+
+        for worker in workers_list:
+            if worker["Nome do Colaborador"].strip().lower() not in existing_worker_names:
+                worker_turn = worker["Turno de Trabalho"].strip().lower()
+                
+                exist_turn = turns_dict.get(worker_turn)
+
+                if not exist_turn:
+                    turn_parts = re.match(regex, worker["Turno de Trabalho"])
+
+                    if turn_parts:
+                        turn_start_time = datetime.strptime(turn_parts.group(1).strip(), "%H:%M").time()
+                        
+                        turn_end_time = datetime.strptime(turn_parts.group(2).strip(), "%H:%M").time()
+                        
+                        turn = Turn(
+                            name=worker["Turno de Trabalho"],
+                            start_time=turn_start_time,
+                            end_time=turn_end_time,
+                            start_interval_time=time(0, 0),
+                            end_interval_time=time(0, 0),
+                            subsidiarie_id=id
+                        )
+                        
+                        session.add(turn)
+                        
+                        session.commit()
+                        
+                        session.refresh(turn)
+                        
+                        exist_turn = turn.id
+
+                format_turn_id = turns_dict.get("14:00 - 22:00") if worker_turn == "14:00-22:00" else exist_turn
+
+                function_id = next((option.id for option in functions_options if option.name == worker["Cargo Atual"]), None)
+
+                neo = Workers(
+                    name=worker["Nome do Colaborador"],
+                    function_id=function_id,
+                    subsidiarie_id=id,
+                    is_active=True,
+                    turn_id=format_turn_id,
+                    cost_center_id=1,
+                    department_id=1,
+                    admission_date=date(2025, 1, 1),
+                    resignation_date=date(2025, 1, 1)
+                )
+                
+                new_workers.append(neo)
+
+        if new_workers:
+            session.add_all(new_workers)
 
             session.commit()
 
-            session.refresh(refactor_tomorrow)
-
-            for worker in workers_list:
-                functions_options = session.exec(select(Function).where(Function.subsidiarie_id == id)).all()
-
-                turns_options = session.exec(select(Turn).where(Turn.subsidiarie_id == id)).all()
-
-                exist_worker = session.exec(select(Workers).where(Workers.subsidiarie_id == id).where(Workers.name == worker["Nome do Colaborador"])).first()
-
-                if not exist_worker:
-                    new_worker_function_id = next((option.id for option in functions_options if option.name == worker["Cargo Atual"]), None)
-
-                    new_worker_turn_id = next((option.id for option in turns_options if option.name == worker["Turno de Trabalho"]),None)
-
-                    if worker["Turno de Trabalho"] == "14:00-22:00":
-                        new_worker_turn_id = next((option.id for option in turns_options if option.name == "14:00 - 22:00"), None)
-
-                    neo = Workers(
-                        name=worker["Nome do Colaborador"],
-                        function_id=new_worker_function_id,
-                        subsidiarie_id=id,
-                        is_active=True,
-                        turn_id=new_worker_turn_id,
-                        cost_center_id=1,
-                        department_id=1,
-                        admission_date=date(2025, 1, 1),
-                        resignation_date=date(2025, 1, 1)
-                    )
-                    
-                    new_workers.append(neo)
-
-            if new_workers:
-                session.add_all(new_workers)
-            
-                session.commit()
-
-        all_subsidiarie_functions = session.exec(select(Function).where(Function.subsidiarie_id == id)).all()
-
-        all_subsidiarie_turns = session.exec(select(Turn).where(Turn.subsidiarie_id == id)).all()
-
-        all_subsidiarie_workers = session.exec(select(Workers).where(Workers.subsidiarie_id == id)).all()
-        
-        return {
-            "all_subsidiarie_functions": all_subsidiarie_functions,
-            "all_subsidiarie_turns": all_subsidiarie_turns,
-            "all_subsidiarie_workers": all_subsidiarie_workers
-        }
+        return {"status": "ok"}
+    

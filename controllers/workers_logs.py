@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from database.sqlite import engine
 from models.user import User
 from models.workers import Workers
+from models.workers_logs import WorkersLogs
 from models.workers_logs_create import WorkersLogsCreate
 from models.workers_logs_delete import WorkersLogsDelete
 from models.workers_logs_update import WorkersLogsUpdate
@@ -143,3 +144,25 @@ def handle_post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
         session.refresh(worker_log)
 
         return worker_log
+
+
+def handle_get_workers_logs(id: int):
+    with Session(engine) as session:
+        query = select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
+
+        workers_logs = session.exec(query).all()
+
+        return workers_logs
+
+
+def handle_post_workers_logs(id: int, workers_log: WorkersLogs):
+    with Session(engine) as session:
+        workers_log.subsidiarie_id = id
+
+        session.add(workers_log)
+
+        session.commit()
+
+        session.refresh(workers_log)
+
+        return workers_log

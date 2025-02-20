@@ -155,9 +155,11 @@ from controllers.workers_logs import (
     handle_get_create_workers_logs,
     handle_get_delete_workers_logs,
     handle_get_update_workers_logs,
+    handle_get_workers_logs,
     handle_post_create_workers_logs,
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,
+    handle_post_workers_logs,
 )
 from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
@@ -596,32 +598,20 @@ def get_worker_by_id_in_subsidiarie(subsidiarie_id: int, worker_id: int):
 @app.get("/subsidiaries/{id}/workers/logs", dependencies=[Depends(verify_token)])
 @error_handler
 def get_workers_logs(id: int):
-    with Session(engine) as session:
-        workers_logs = session.exec(
-            select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
-        ).all()
-
-        return workers_logs
+    return handle_get_workers_logs(id)
 
 
 @app.post("/subsidiaries/{id}/workers/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def post_workers_logs(id: int, workers_log: WorkersLogs):
-    with Session(engine) as session:
-        workers_log.subsidiarie_id = id
-
-        session.add(workers_log)
-
-        session.commit()
-
-        session.refresh(workers_log)
-
-        return workers_log
+    return handle_post_workers_logs(id, workers_log)
 
 
 # workers logs create
 
 
 @app.get("/logs/subsidiaries/{id}/workers/create", dependencies=[Depends(verify_token)])
+@error_handler
 def get_create_workers_logs(id: int):
     return handle_get_create_workers_logs(id)
 
@@ -629,6 +619,7 @@ def get_create_workers_logs(id: int):
 @app.post(
     "/logs/subsidiaries/{id}/workers/create", dependencies=[Depends(verify_token)]
 )
+@error_handler
 def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
     return handle_post_create_workers_logs(id, worker_log)
 
@@ -637,6 +628,7 @@ def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
 
 
 @app.get("/logs/subsidiaries/{id}/workers/update", dependencies=[Depends(verify_token)])
+@error_handler
 def get_update_workers_logs(id: int):
     return handle_get_update_workers_logs(id)
 
@@ -644,6 +636,7 @@ def get_update_workers_logs(id: int):
 @app.post(
     "/logs/subsidiaries/{id}/workers/update", dependencies=[Depends(verify_token)]
 )
+@error_handler
 def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
     return handle_post_update_workers_logs(id, worker_log)
 
@@ -652,6 +645,7 @@ def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
 
 
 @app.get("/logs/subsidiaries/{id}/workers/delete", dependencies=[Depends(verify_token)])
+@error_handler
 def get_delete_workers_logs(id: int):
     return handle_get_delete_workers_logs(id)
 
@@ -659,6 +653,7 @@ def get_delete_workers_logs(id: int):
 @app.post(
     "/logs/subsidiaries/{id}/workers/delete", dependencies=[Depends(verify_token)]
 )
+@error_handler
 def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
     return handle_post_delete_workers_logs(id, worker_log)
 
@@ -667,16 +662,19 @@ def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
 
 
 @app.get("/workers/{id}/notations", dependencies=[Depends(verify_token)])
+@error_handler
 def get_worker_notations(id: int):
     return handle_get_worker_notations(id)
 
 
 @app.post("/workers/{id}/notations", dependencies=[Depends(verify_token)])
+@error_handler
 def post_worker_notation(id: int, data: PostWorkerNotationInput):
     return handle_post_worker_notation(id, data)
 
 
 @app.delete("/workers-notations/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def delete_worker_notation(id: int):
     return handle_delete_worker_notation(id)
 

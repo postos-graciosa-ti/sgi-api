@@ -82,7 +82,7 @@ def handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_i
     }
 
 
-async def handle_get_days_off_quantity():
+def handle_get_days_off_quantity():
     data_atual = datetime.now()
 
     ano_atual = data_atual.year
@@ -276,7 +276,7 @@ def handle_post_scale(form_data: PostScaleInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
+def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
     try:
         # Converte a string recebida para uma lista
         form_data.days_off = eval(form_data.days_off)

@@ -27,7 +27,7 @@ def handle_get_subsidiarie_scales_logs(id: int):
         ]
 
 
-async def handle_get_scales_logs():
+def handle_get_scales_logs():
     with Session(engine) as session:
         scales_logs = session.exec(
             select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
@@ -47,7 +47,7 @@ async def handle_get_scales_logs():
         ]
 
 
-async def handle_post_scale_logs(scales_logs_input: ScaleLogs):
+def handle_post_scale_logs(scales_logs_input: ScaleLogs):
     with Session(engine) as session:
         session.add(scales_logs_input)
 

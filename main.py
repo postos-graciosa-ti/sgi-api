@@ -383,8 +383,8 @@ async def get_subsidiarie_notifications(id: int):
 
 
 @app.get("/subsidiaries/{id}/workers-status", dependencies=[Depends(verify_token)])
-async def get_subsidiaries_status(id: int):
-    return await handle_database_operation(handle_get_subsidiaries_status, id)
+def get_subsidiaries_status(id: int):
+    handle_get_subsidiaries_status(id)
 
 
 # subsidiaries logs
@@ -416,8 +416,8 @@ def get_turns():
 
 
 @app.get("/turns/{id}", dependencies=[Depends(verify_token)])
-async def get_turn_by_id(id: int):
-    return await handle_database_operation(handle_get_turn_by_id, id)
+def get_turn_by_id(id: int):
+    return handle_get_turn_by_id(id)
 
 
 @app.post("/turns", dependencies=[Depends(verify_token)])
@@ -442,8 +442,8 @@ def delete_turn(id: int):
 
 
 @app.get("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
-async def get_turns_logs(id: int):
-    return await handle_database_operation(handle_get_turns_logs, id)
+def get_turns_logs(id: int):
+    return handle_get_turns_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
@@ -455,8 +455,8 @@ async def post_turns_logs(id: int, turn_log: TurnsLogs):
 
 
 @app.get("/workers/{id}", dependencies=[Depends(verify_token)])
-async def get_worker_by_id(id: int):
-    return await handle_database_operation(handle_get_worker_by_id, id)
+def get_worker_by_id(id: int):
+    return handle_get_worker_by_id(id)
 
 
 @app.get(
@@ -500,30 +500,27 @@ def get_workers_by_subsidiarie(subsidiarie_id: int):
     "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}",
     dependencies=[Depends(verify_token)],
 )
-async def get_workers_by_subsidiaries_functions_and_turns(
+def get_workers_by_subsidiaries_functions_and_turns(
     subsidiarie_id: int, function_id: int, turn_id: int
 ):
-    return await handle_database_operation(
-        handle_get_workers_by_subsidiaries_functions_and_turns,
-        subsidiarie_id,
-        function_id,
-        turn_id,
+    return handle_get_workers_by_subsidiaries_functions_and_turns(
+        subsidiarie_id, function_id, turn_id
     )
 
 
 @app.post("/workers", dependencies=[Depends(verify_token)])
-async def post_worker(worker: Workers):
-    return await handle_database_operation(handle_post_worker, worker)
+def post_worker(worker: Workers):
+    return handle_post_worker(worker)
 
 
 @app.put("/workers/{id}", dependencies=[Depends(verify_token)])
-async def put_worker(id: int, worker: Workers):
-    return await handle_database_operation(handle_put_worker, id, worker)
+def put_worker(id: int, worker: Workers):
+    return handle_put_worker(id, worker)
 
 
 @app.put("/workers/{id}/deactivate", dependencies=[Depends(verify_token)])
-async def deactivate_worker(id: int, worker: WorkerDeactivateInput):
-    return await handle_database_operation(handle_deactivate_worker, id, worker)
+def deactivate_worker(id: int, worker: WorkerDeactivateInput):
+    return handle_deactivate_worker(id, worker)
 
 
 @app.put("/workers/{id}/reactivate", dependencies=[Depends(verify_token)])
@@ -788,8 +785,8 @@ def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int)
 
 @app.get("/scales/day-off/quantity")
 @error_handler
-async def get_days_off_quantity():
-    return await handle_database_operation(handle_get_days_off_quantity)
+def get_days_off_quantity():
+    return handle_get_days_off_quantity()
 
 
 @app.post("/scales")
@@ -799,8 +796,8 @@ def post_scale(form_data: PostScaleInput):
 
 
 @app.post("/scales/some-workers")
-async def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
-    return await handle_database_operation(handle_post_some_workers_scale, form_data)
+def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
+    return handle_post_some_workers_scale(form_data)
 
 
 @app.post("/delete-scale")
@@ -825,15 +822,13 @@ def get_subsidiarie_scales_logs(id: int):
 
 
 @app.get("/logs/scales")
-async def get_scales_logs(token: dict = Depends(verify_token)):
-    return await handle_database_operation(handle_get_scales_logs)
+def get_scales_logs(token: dict = Depends(verify_token)):
+    return handle_get_scales_logs()
 
 
 @app.post("/logs/scales")
-async def post_scales_logs(
-    scales_logs_input: ScaleLogs, token: dict = Depends(verify_token)
-):
-    return await handle_database_operation(handle_post_scale_logs, scales_logs_input)
+def post_scales_logs(scales_logs_input: ScaleLogs, token: dict = Depends(verify_token)):
+    return handle_post_scale_logs(scales_logs_input)
 
 
 # scale reports
@@ -843,18 +838,14 @@ async def post_scales_logs(
 async def generate_scale_days_on_report(
     subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
 ):
-    return await handle_database_operation(
-        handle_generate_scale_days_on_report, subsidiarie_id, input
-    )
+    return handle_generate_scale_days_on_report(subsidiarie_id, input)
 
 
 @app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
-async def generate_scale_days_off_report(
+def generate_scale_days_off_report(
     subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
 ):
-    return await handle_database_operation(
-        handle_generate_scale_days_off_report, subsidiarie_id, input
-    )
+    return handle_generate_scale_days_off_report(subsidiarie_id, input)
 
 
 # scales print
@@ -934,7 +925,7 @@ async def get_cost_center_logs(id: int):
     return await handle_database_operation(handle_get_cost_center_logs, id)
 
 
-@app.post("/subsidiaries/{id}/logs/costs-centers")
+@app.post("/subsidiaries/{id}/logs/costs-centers", dependencies=[Depends(verify_token)])
 async def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
     return await handle_database_operation(
         handle_post_cost_center_logs, id, cost_center_log
@@ -944,44 +935,40 @@ async def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
 # department
 
 
-@app.get("/departments")
-async def get_departments(token: dict = Depends(verify_token)):
+@app.get("/departments", dependencies=[Depends(verify_token)])
+async def get_departments():
     return await handle_database_operation(handle_get_departments)
 
 
-@app.get("/departments/{id}")
-async def get_department_by_id(id: int, token: dict = Depends(verify_token)):
+@app.get("/departments/{id}", dependencies=[Depends(verify_token)])
+async def get_department_by_id(id: int):
     return await handle_database_operation(handle_get_department_by_id, id)
 
 
-@app.post("/departments")
-async def post_department(
-    department_input: Department, token: dict = Depends(verify_token)
-):
+@app.post("/departments", dependencies=[Depends(verify_token)])
+async def post_department(department_input: Department):
     return await handle_database_operation(handle_post_department, department_input)
 
 
-@app.put("/departments/{id}")
-async def put_department(
-    id: int, department_input: Department, token: dict = Depends(verify_token)
-):
+@app.put("/departments/{id}", dependencies=[Depends(verify_token)])
+async def put_department(id: int, department_input: Department):
     return await handle_put_department(id, department_input)
 
 
-@app.delete("/departments/{id}")
-async def delete_department(id: int, token: dict = Depends(verify_token)):
+@app.delete("/departments/{id}", dependencies=[Depends(verify_token)])
+async def delete_department(id: int):
     return await handle_delete_department(id)
 
 
 # department logs
 
 
-@app.get("/subsidiaries/{id}/logs/departments")
+@app.get("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
 async def get_departments_logs(id: int):
     return await handle_database_operation(handle_get_departments_logs, id)
 
 
-@app.post("/subsidiaries/{id}/logs/departments")
+@app.post("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
 async def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
     return await handle_database_operation(
         handle_post_departments_logs, id, department_logs_input
@@ -991,7 +978,7 @@ async def post_departments_logs(id: int, department_logs_input: DepartmentsLogs)
 # resignable reasons
 
 
-@app.get("/resignable-reasons")
+@app.get("/resignable-reasons", dependencies=[Depends(verify_token)])
 async def get_resignable_reasons(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_resignable_reasons)
 
@@ -999,8 +986,6 @@ async def get_resignable_reasons(token: dict = Depends(verify_token)):
 # resignable reasons reports
 
 
-@app.post("/resignable-reasons/report")
-async def get_resignable_reasons_report(
-    input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
-):
+@app.post("/resignable-reasons/report", dependencies=[Depends(verify_token)])
+async def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return await handle_database_operation(handle_resignable_reasons_report, input)

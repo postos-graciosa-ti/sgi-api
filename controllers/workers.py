@@ -16,7 +16,7 @@ from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 
 
-async def handle_get_worker_by_id(id: int):
+def handle_get_worker_by_id(id: int):
     with Session(engine) as session:
         worker = session.exec(select(Workers).where(Workers.id == id)).one()
 
@@ -155,7 +155,7 @@ def handle_get_active_workers_by_subsidiarie_and_function(
         return active_workers
 
 
-async def handle_get_workers_by_subsidiaries_functions_and_turns(
+def handle_get_workers_by_subsidiaries_functions_and_turns(
     subsidiarie_id: int, function_id: int, turn_id: int
 ):
     with Session(engine) as session:
@@ -178,7 +178,7 @@ def handle_get_worker_notations(id: int):
         return worker_notations
 
 
-async def handle_post_worker(worker: Workers):
+def handle_post_worker(worker: Workers):
     with Session(engine) as session:
         session.add(worker)
 
@@ -201,7 +201,7 @@ def handle_post_worker_notation(id: int, data: PostWorkerNotationInput):
         return worker_notation
 
 
-async def handle_put_worker(id: int, worker: Workers):
+def handle_put_worker(id: int, worker: Workers):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
 
@@ -262,7 +262,7 @@ def handle_reactivate_worker(id: int):
         return worker
 
 
-async def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
+def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
 

@@ -4,7 +4,7 @@ from database.sqlite import engine
 from models.cost_center import CostCenter
 
 
-async def handle_get_cost_center():
+def handle_get_cost_center():
     with Session(engine) as session:
         cost_centers = session.exec(select(CostCenter)).all()
 

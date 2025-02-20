@@ -1,7 +1,8 @@
 import calendar
 import json
 import locale
-from datetime import datetime, timedelta
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
@@ -18,29 +19,8 @@ from pyhints.scales import (
     ScalesReportInput,
 )
 
-# locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
-
 
 def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
-    # with Session(engine) as session:
-    #     results = session.exec(
-    #         select(Scale, Workers)
-    #         .join(Workers, Workers.id == Scale.worker_id)
-    #         .where(Scale.subsidiarie_id == subsidiarie_id)
-    #     ).all()
-
-    #     options = []
-
-    #     for result in results:
-    #         options.append({"scale": result[0], "worker": result[1]})
-
-    #     for option in options:
-    #         option["worker"].function_id = session.get(
-    #             Function, option["worker"].function_id
-    #         )
-
-    #     return options
-
     with Session(engine) as session:
         statement = (
             select(Scale)
@@ -114,6 +94,52 @@ async def handle_get_days_off_quantity():
     folgas = semanas_no_mes * 1
 
     return folgas
+
+
+def handle_get_subsidiarie_scale_to_print(id: int):
+    with Session(engine) as session:
+        hoje = date.today()
+
+        start_date = hoje.replace(day=1)
+
+        ultimo_dia = monthrange(hoje.year, hoje.month)[1]
+
+        end_date = hoje.replace(day=ultimo_dia)
+
+        scales_print = []
+
+        scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+
+            valid_dates = []
+
+            scale_days_off = eval(scale.days_off)
+
+            for day_off in scale_days_off:
+                if isinstance(day_off, dict):
+                    day_str = day_off.get("date")
+
+                    if not day_str:
+                        continue
+
+                else:
+                    day_str = day_off
+
+                try:
+                    day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+
+                except Exception:
+                    continue
+
+                if start_date <= day_date <= end_date:
+                    valid_dates.append(day_date)
+
+            if valid_dates:
+                scales_print.append({"worker": worker, "dates": valid_dates})
+
+    return scales_print
 
 
 def handle_post_scale(form_data: PostScaleInput):

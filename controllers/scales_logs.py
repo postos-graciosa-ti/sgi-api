@@ -6,6 +6,27 @@ from models.user import User
 from models.workers import Workers
 
 
+def handle_get_subsidiarie_scales_logs(id: int):
+    with Session(engine) as session:
+        scales_logs = session.exec(
+            select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
+            .join(Workers, ScaleLogs.worker_id == Workers.id)
+            .join(User, ScaleLogs.user_id == User.id)
+            .where(ScaleLogs.subsidiarie_id == id)
+            .order_by(ScaleLogs.id.desc())
+        ).all()
+
+        return [
+            {
+                "inserted_at": scale_log[0],
+                "at_time": scale_log[1],
+                "worker_name": scale_log[2],
+                "user_name": scale_log[3],
+            }
+            for scale_log in scales_logs
+        ]
+
+
 async def handle_get_scales_logs():
     with Session(engine) as session:
         scales_logs = session.exec(

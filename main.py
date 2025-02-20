@@ -84,11 +84,16 @@ from controllers.scale import (
     handle_get_days_off_quantity,
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
+    handle_get_subsidiarie_scale_to_print,
     handle_handle_scale,
     handle_post_scale,
     handle_post_some_workers_scale,
 )
-from controllers.scales_logs import handle_get_scales_logs, handle_post_scale_logs
+from controllers.scales_logs import (
+    handle_get_scales_logs,
+    handle_get_subsidiarie_scales_logs,
+    handle_post_scale_logs,
+)
 from controllers.scales_reports import (
     handle_generate_scale_days_off_report,
     handle_generate_scale_days_on_report,
@@ -794,6 +799,11 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 # scale logs
 
 
+@app.get("/subsidiaries/{id}/scales/logs")
+def get_subsidiarie_scales_logs(id: int):
+    return handle_get_subsidiarie_scales_logs(id)
+
+
 @app.get("/logs/scales")
 async def get_scales_logs(token: dict = Depends(verify_token)):
     return await handle_database_operation(handle_get_scales_logs)
@@ -825,6 +835,14 @@ async def generate_scale_days_off_report(
     return await handle_database_operation(
         handle_generate_scale_days_off_report, subsidiarie_id, input
     )
+
+
+# scales print
+
+
+@app.get("/subsidiaries/{id}/scales/print")
+def get_subsidiarie_scale_to_print(id: int):
+    return handle_get_subsidiarie_scale_to_print(id)
 
 
 # states
@@ -965,72 +983,3 @@ async def get_resignable_reasons_report(
     input: StatusResignableReasonsInput, token: dict = Depends(verify_token)
 ):
     return await handle_database_operation(handle_resignable_reasons_report, input)
-
-
-@app.get("/subsidiaries/{id}/scales/logs")
-def get_subsidiarie_scales_logs(id: int):
-    with Session(engine) as session:
-        scales_logs = session.exec(
-            select(ScaleLogs.inserted_at, ScaleLogs.at_time, Workers.name, User.name)
-            .join(Workers, ScaleLogs.worker_id == Workers.id)
-            .join(User, ScaleLogs.user_id == User.id)
-            .where(ScaleLogs.subsidiarie_id == id)
-            .order_by(ScaleLogs.id.desc())
-        ).all()
-
-        return [
-            {
-                "inserted_at": scale_log[0],
-                "at_time": scale_log[1],
-                "worker_name": scale_log[2],
-                "user_name": scale_log[3],
-            }
-            for scale_log in scales_logs
-        ]
-
-
-@app.get("/subsidiaries/{id}/scales/print")
-def get_subsidiarie_scale_to_print(id: int):
-    with Session(engine) as session:
-        hoje = date.today()
-
-        start_date = hoje.replace(day=1)
-
-        ultimo_dia = monthrange(hoje.year, hoje.month)[1]
-
-        end_date = hoje.replace(day=ultimo_dia)
-
-        scales_print = []
-
-        scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
-
-        for scale in scales:
-            worker = session.get(Workers, scale.worker_id)
-
-            valid_dates = []
-
-            scale_days_off = eval(scale.days_off)
-
-            for day_off in scale_days_off:
-                if isinstance(day_off, dict):
-                    day_str = day_off.get("date")
-
-                    if not day_str:
-                        continue
-
-                else:
-                    day_str = day_off
-
-                try:
-                    day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
-
-                except Exception:
-                    continue
-
-                if start_date <= day_date <= end_date:
-                    valid_dates.append(day_date)
-
-            if valid_dates:
-                scales_print.append({"worker": worker, "dates": valid_dates})
-
-    return scales_print

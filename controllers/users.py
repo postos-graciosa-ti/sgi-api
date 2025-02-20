@@ -77,53 +77,53 @@ def handle_user_login(user: User):
         )
 
 
-def handle_get_users():
-    with Session(engine) as session:
-        statement = (
-            select(
-                User.id,
-                User.name,
-                User.email,
-                User.subsidiaries_id,
-                Role.id.label("role_id"),
-                Role.name.label("role_name"),
-                Function.id.label("function_id"),
-                Function.name.label("function_name"),
-            )
-            .join(Role, User.role_id == Role.id)
-            .join(Function, User.function_id == Function.id)
-        )
+# def handle_get_users():
+#     with Session(engine) as session:
+#         statement = (
+#             select(
+#                 User.id,
+#                 User.name,
+#                 User.email,
+#                 User.subsidiaries_id,
+#                 Role.id.label("role_id"),
+#                 Role.name.label("role_name"),
+#                 Function.id.label("function_id"),
+#                 Function.name.label("function_name"),
+#             )
+#             .join(Role, User.role_id == Role.id)
+#             .join(Function, User.function_id == Function.id)
+#         )
 
-        users = session.exec(statement).all()
+#         users = session.exec(statement).all()
 
-        all_subsidiaries = session.exec(select(Subsidiarie.id, Subsidiarie.name)).all()
+#         all_subsidiaries = session.exec(select(Subsidiarie.id, Subsidiarie.name)).all()
 
-        subsidiaries_map = {sub.id: sub.name for sub in all_subsidiaries}
+#         subsidiaries_map = {sub.id: sub.name for sub in all_subsidiaries}
 
-        result = []
+#         result = []
 
-        for user in users:
-            subsidiary_ids = json.loads(user[3])
+#         for user in users:
+#             subsidiary_ids = json.loads(user[3])
 
-            subsidiaries = [
-                {"id": sub_id, "name": subsidiaries_map.get(sub_id, "Unknown")}
-                for sub_id in subsidiary_ids
-            ]
+#             subsidiaries = [
+#                 {"id": sub_id, "name": subsidiaries_map.get(sub_id, "Unknown")}
+#                 for sub_id in subsidiary_ids
+#             ]
 
-            result.append(
-                {
-                    "user_id": user[0],
-                    "user_name": user[1],
-                    "user_email": user[2],
-                    "subsidiaries": subsidiaries,
-                    "role_id": user[4],
-                    "role_name": user[5],
-                    "function_id": user[6],
-                    "function_name": user[7],
-                }
-            )
+#             result.append(
+#                 {
+#                     "user_id": user[0],
+#                     "user_name": user[1],
+#                     "user_email": user[2],
+#                     "subsidiaries": subsidiaries,
+#                     "role_id": user[4],
+#                     "role_name": user[5],
+#                     "function_id": user[6],
+#                     "function_name": user[7],
+#                 }
+#             )
 
-    return result
+#     return result
 
 
 def handle_post_user(user: User):
@@ -219,6 +219,35 @@ def handle_get_test(arr: Test):
         subsidiaries_array.append(subsidiary)
 
     return subsidiaries_array
+
+
+def handle_get_users():
+    with Session(engine) as session:
+        users = (
+            session.exec(select(User, Role).join(Role, User.role_id == Role.id))
+            .tuples()
+            .all()
+        )
+
+        result = []
+
+        for user, role in users:
+            result.append(
+                {
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "user_name": user.name,
+                    "user_subsidiaries": [
+                        session.get(Subsidiarie, id)
+                        for id in user.subsidiaries_id
+                        if id is not None and session.get(Subsidiarie, id) is not None
+                    ],
+                    "role_id": role.id,
+                    "role_name": role.name,
+                }
+            )
+
+    return result
 
 
 def handle_verify_email(userData: VerifyEmail):

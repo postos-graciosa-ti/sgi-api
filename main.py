@@ -260,32 +260,7 @@ async def excel_scraping(id: int, file: UploadFile = File(...)):
 @app.get("/users", dependencies=[Depends(verify_token)])
 @error_handler
 def get_users():
-    with Session(engine) as session:
-        users = (
-            session.exec(select(User, Role).join(Role, User.role_id == Role.id))
-            .tuples()
-            .all()
-        )
-
-        result = []
-
-        for user, role in users:
-            result.append(
-                {
-                    "user_id": user.id,
-                    "user_email": user.email,
-                    "user_name": user.name,
-                    "user_subsidiaries": [
-                        session.get(Subsidiarie, id)
-                        for id in user.subsidiaries_id
-                        if id is not None and session.get(Subsidiarie, id) is not None
-                    ],
-                    "role_id": role.id,
-                    "role_name": role.name,
-                }
-            )
-
-    return result
+    return handle_get_users()
 
 
 @app.get("/users/{id}", dependencies=[Depends(verify_token)])
@@ -683,36 +658,43 @@ def delete_worker_notation(id: int):
 
 
 @app.get("/subsidiaries/{id}/functions", dependencies=[Depends(verify_token)])
+@error_handler
 def get_functions_by_subsidiarie(id: int):
     return handle_get_functions_by_subsidiarie(id)
 
 
 @app.get("/functions", dependencies=[Depends(verify_token)])
+@error_handler
 def get_functions():
     return handle_get_functions()
 
 
 @app.get("/functions/for-users", dependencies=[Depends(verify_token)])
+@error_handler
 def get_functions_for_users():
     return handle_get_functions_for_users()
 
 
 @app.get("/functions/for-workers", dependencies=[Depends(verify_token)])
+@error_handler
 def get_functions_for_users():
     return handle_get_functions_for_workers()
 
 
 @app.post("/functions", dependencies=[Depends(verify_token)])
+@error_handler
 def post_function(function: Function):
     return handle_post_function(function)
 
 
 @app.put("/functions/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def put_function(id: int, function: Function):
     return handle_put_function(id, function)
 
 
 @app.delete("/functions/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def delete_function(id: int):
     return handle_delete_function(id)
 
@@ -721,11 +703,13 @@ def delete_function(id: int):
 
 
 @app.get("/subsidiaries/{id}/functions/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def get_functions_logs(id: int):
     return handle_get_functions_logs(id)
 
 
 @app.post("/subsidiaries/{id}/functions/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def post_functions_logs(id: int, function_log: FunctionLogs):
     return handle_post_functions_logs(id, function_log)
 
@@ -733,24 +717,26 @@ def post_functions_logs(id: int, function_log: FunctionLogs):
 # jobs
 
 
-@app.get("/jobs")
-def get_jobs(token: dict = Depends(verify_token)):
+@app.get("/jobs", dependencies=[Depends(verify_token)])
+@error_handler
+def get_jobs():
     return handle_get_jobs()
 
 
-@app.get("/jobs/subsidiarie/{subsidiarie_id}")
-def get_jobs_by_subsidiarie_id(
-    subsidiarie_id: int, token: dict = Depends(verify_token)
-):
+@app.get("/jobs/subsidiarie/{subsidiarie_id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_jobs_by_subsidiarie_id(subsidiarie_id: int):
     return handle_get_jobs_by_subsidiarie_id(subsidiarie_id)
 
 
 @app.post("/jobs")
+@error_handler
 def post_job(job: Jobs, token: dict = Depends(verify_token)):
     return handle_post_job(job)
 
 
 @app.delete("/jobs/{job_id}")
+@error_handler
 def delete_job(job_id: int, token: dict = Depends(verify_token)):
     return handle_delete_job(job_id)
 
@@ -759,6 +745,7 @@ def delete_job(job_id: int, token: dict = Depends(verify_token)):
 
 
 @app.get("/roles")
+@error_handler
 def get_roles(token: dict = Depends(verify_token)):
     return handle_get_roles()
 
@@ -767,16 +754,19 @@ def get_roles(token: dict = Depends(verify_token)):
 
 
 @app.get("/candidates")
+@error_handler
 def get_candidates(token: dict = Depends(verify_token)):
     return handle_get_candidates()
 
 
 @app.get("/candidates/status/{id}")
+@error_handler
 def get_candidates_by_status(id: int, token: dict = Depends(verify_token)):
     return handle_get_candidates_by_status(id)
 
 
 @app.post("/candidates")
+@error_handler
 def post_candidate(candidate: Candidate, token: dict = Depends(verify_token)):
     return handle_post_candidate(candidate)
 
@@ -785,21 +775,25 @@ def post_candidate(candidate: Candidate, token: dict = Depends(verify_token)):
 
 
 @app.get("/scales/subsidiaries/{subsidiarie_id}")
+@error_handler
 def get_scales_by_subsidiarie_id(subsidiarie_id: int):
     return handle_get_scales_by_subsidiarie_id(subsidiarie_id)
 
 
 @app.get("/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+@error_handler
 def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int):
     return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
 
 
 @app.get("/scales/day-off/quantity")
+@error_handler
 async def get_days_off_quantity():
     return await handle_database_operation(handle_get_days_off_quantity)
 
 
 @app.post("/scales")
+@error_handler
 def post_scale(form_data: PostScaleInput):
     return handle_post_scale(form_data)
 
@@ -810,11 +804,13 @@ async def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
 
 
 @app.post("/delete-scale")
+@error_handler
 def handle_scale(form_data: PostScaleInput):
     return handle_handle_scale(form_data)
 
 
 @app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
+@error_handler
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
 
@@ -823,6 +819,7 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 
 
 @app.get("/subsidiaries/{id}/scales/logs")
+@error_handler
 def get_subsidiarie_scales_logs(id: int):
     return handle_get_subsidiarie_scales_logs(id)
 
@@ -864,6 +861,7 @@ async def generate_scale_days_off_report(
 
 
 @app.get("/subsidiaries/{id}/scales/print")
+@error_handler
 def get_subsidiarie_scale_to_print(id: int):
     return handle_get_subsidiarie_scale_to_print(id)
 

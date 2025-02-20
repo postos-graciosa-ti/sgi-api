@@ -1,5 +1,6 @@
 import json
-from datetime import datetime, timedelta
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -986,3 +987,50 @@ def get_subsidiarie_scales_logs(id: int):
             }
             for scale_log in scales_logs
         ]
+
+
+@app.get("/subsidiaries/{id}/scales/print")
+def get_subsidiarie_scale_to_print(id: int):
+    with Session(engine) as session:
+        hoje = date.today()
+
+        start_date = hoje.replace(day=1)
+
+        ultimo_dia = monthrange(hoje.year, hoje.month)[1]
+
+        end_date = hoje.replace(day=ultimo_dia)
+
+        scales_print = []
+
+        scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+
+            valid_dates = []
+
+            scale_days_off = eval(scale.days_off)
+
+            for day_off in scale_days_off:
+                if isinstance(day_off, dict):
+                    day_str = day_off.get("date")
+
+                    if not day_str:
+                        continue
+
+                else:
+                    day_str = day_off
+
+                try:
+                    day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+
+                except Exception:
+                    continue
+
+                if start_date <= day_date <= end_date:
+                    valid_dates.append(day_date)
+
+            if valid_dates:
+                scales_print.append({"worker": worker, "dates": valid_dates})
+
+    return scales_print

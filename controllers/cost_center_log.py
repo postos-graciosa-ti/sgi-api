@@ -4,7 +4,7 @@ from database.sqlite import engine
 from models.cost_center_logs import CostCenterLogs
 
 
-async def handle_get_cost_center_logs(id: int):
+def handle_get_cost_center_logs(id: int):
     with Session(engine) as session:
         query = select(CostCenterLogs).where(CostCenterLogs.subsidiarie_id == id)
 

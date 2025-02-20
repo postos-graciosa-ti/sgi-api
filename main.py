@@ -887,34 +887,32 @@ async def get_city_by_id(id: int, token: dict = Depends(verify_token)):
 
 
 @app.get("/cost-center")
-async def get_cost_center(token: dict = Depends(verify_token)):
-    return await handle_database_operation(handle_get_cost_center)
+def get_cost_center(token: dict = Depends(verify_token)):
+    return handle_get_cost_center()
 
 
 @app.get("/cost-center/{id}")
 async def get_cost_center_by_id(id: int, token: dict = Depends(verify_token)):
-    return await handle_database_operation(handle_get_cost_center_by_id, id)
+    return handle_get_cost_center_by_id(id)
 
 
 @app.post("/cost-center")
-async def post_cost_center(
+def post_cost_center(
     cost_center_input: CostCenter, token: dict = Depends(verify_token)
 ):
-    return await handle_database_operation(handle_post_cost_center, cost_center_input)
+    return handle_post_cost_center(cost_center_input)
 
 
 @app.put("/cost-center/{id}")
-async def put_cost_center(
+def put_cost_center(
     id: int, cost_center_input: CostCenter, token: dict = Depends(verify_token)
 ):
-    return await handle_database_operation(
-        handle_put_cost_center, id, cost_center_input
-    )
+    return handle_put_cost_center(id, cost_center_input)
 
 
 @app.delete("/cost-center/{id}")
-async def delete_cost_center(id: int, token: dict = Depends(verify_token)):
-    return await handle_database_operation(handle_delete_cost_center, id)
+def delete_cost_center(id: int, token: dict = Depends(verify_token)):
+    return handle_delete_cost_center(id)
 
 
 # cost center logs

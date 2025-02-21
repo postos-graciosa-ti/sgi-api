@@ -733,52 +733,52 @@ def get_jobs_by_subsidiarie_id(subsidiarie_id: int):
     return handle_get_jobs_by_subsidiarie_id(subsidiarie_id)
 
 
-@app.post("/jobs")
+@app.post("/jobs", dependencies=[Depends(verify_token)])
 @error_handler
-def post_job(job: Jobs, token: dict = Depends(verify_token)):
+def post_job(job: Jobs):
     return handle_post_job(job)
 
 
-@app.delete("/jobs/{job_id}")
+@app.delete("/jobs/{job_id}", dependencies=[Depends(verify_token)])
 @error_handler
-def delete_job(job_id: int, token: dict = Depends(verify_token)):
+def delete_job(job_id: int):
     return handle_delete_job(job_id)
 
 
 # roles
 
 
-@app.get("/roles")
+@app.get("/roles", dependencies=[Depends(verify_token)])
 @error_handler
-def get_roles(token: dict = Depends(verify_token)):
+def get_roles():
     return handle_get_roles()
 
 
 # candidates
 
 
-@app.get("/candidates")
+@app.get("/candidates", dependencies=[Depends(verify_token)])
 @error_handler
-def get_candidates(token: dict = Depends(verify_token)):
+def get_candidates():
     return handle_get_candidates()
 
 
-@app.get("/candidates/status/{id}")
+@app.get("/candidates/status/{id}", dependencies=[Depends(verify_token)])
 @error_handler
-def get_candidates_by_status(id: int, token: dict = Depends(verify_token)):
+def get_candidates_by_status(id: int):
     return handle_get_candidates_by_status(id)
 
 
-@app.post("/candidates")
+@app.post("/candidates", dependencies=[Depends(verify_token)])
 @error_handler
-def post_candidate(candidate: Candidate, token: dict = Depends(verify_token)):
+def post_candidate(candidate: Candidate):
     return handle_post_candidate(candidate)
 
 
 # scales
 
 
-@app.get("/scales/subsidiaries/{subsidiarie_id}")
+@app.get("/scales/subsidiaries/{subsidiarie_id}", dependencies=[Depends(verify_token)])
 @error_handler
 def get_scales_by_subsidiarie_id(subsidiarie_id: int):
     return handle_get_scales_by_subsidiarie_id(subsidiarie_id)
@@ -828,30 +828,32 @@ def get_subsidiarie_scales_logs(id: int):
     return handle_get_subsidiarie_scales_logs(id)
 
 
-@app.get("/logs/scales")
-def get_scales_logs(token: dict = Depends(verify_token)):
+@app.get("/logs/scales", dependencies=[Depends(verify_token)])
+def get_scales_logs():
     return handle_get_scales_logs()
 
 
-@app.post("/logs/scales")
-def post_scales_logs(scales_logs_input: ScaleLogs, token: dict = Depends(verify_token)):
+@app.post("/logs/scales", dependencies=[Depends(verify_token)])
+def post_scales_logs(scales_logs_input: ScaleLogs):
     return handle_post_scale_logs(scales_logs_input)
 
 
 # scale reports
 
 
-@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
-def generate_scale_days_on_report(
-    subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
-):
+@app.post(
+    "/reports/subsidiaries/{subsidiarie_id}/scales/days-on",
+    dependencies=[Depends(verify_token)],
+)
+def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     return handle_generate_scale_days_on_report(subsidiarie_id, input)
 
 
-@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
-def generate_scale_days_off_report(
-    subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
-):
+@app.post(
+    "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
+    dependencies=[Depends(verify_token)],
+)
+def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
     return handle_generate_scale_days_off_report(subsidiarie_id, input)
 
 
@@ -867,58 +869,63 @@ def get_subsidiarie_scale_to_print(id: int):
 # states
 
 
-@app.get("/states")
-def get_states(token: dict = Depends(verify_token)):
+@app.get("/states", dependencies=[Depends(verify_token)])
+@error_handler
+def get_states():
     return handle_get_states()
 
 
-@app.get("/states/{id}")
-def get_states_by_id(id: int, token: dict = Depends(verify_token)):
+@app.get("/states/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_states_by_id(id: int):
     return handle_get_states_by_id(id)
 
 
 # cities
 
 
-@app.get("/cities")
-def get_cities(token: dict = Depends(verify_token)):
+@app.get("/cities", dependencies=[Depends(verify_token)])
+@error_handler
+def get_cities():
     return handle_get_cities()
 
 
-@app.get("/cities/{id}")
-def get_city_by_id(id: int, token: dict = Depends(verify_token)):
+@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_city_by_id(id: int):
     return handle_get_city_by_id(id)
 
 
 # cost center
 
 
-@app.get("/cost-center")
-def get_cost_center(token: dict = Depends(verify_token)):
+@app.get("/cost-center", dependencies=[Depends(verify_token)])
+@error_handler
+def get_cost_center():
     return handle_get_cost_center()
 
 
-@app.get("/cost-center/{id}")
-def get_cost_center_by_id(id: int, token: dict = Depends(verify_token)):
+@app.get("/cost-center/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_cost_center_by_id(id: int):
     return handle_get_cost_center_by_id(id)
 
 
-@app.post("/cost-center")
-def post_cost_center(
-    cost_center_input: CostCenter, token: dict = Depends(verify_token)
-):
+@app.post("/cost-center", dependencies=[Depends(verify_token)])
+@error_handler
+def post_cost_center(cost_center_input: CostCenter):
     return handle_post_cost_center(cost_center_input)
 
 
-@app.put("/cost-center/{id}")
-def put_cost_center(
-    id: int, cost_center_input: CostCenter, token: dict = Depends(verify_token)
-):
+@app.put("/cost-center/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def put_cost_center(id: int, cost_center_input: CostCenter):
     return handle_put_cost_center(id, cost_center_input)
 
 
-@app.delete("/cost-center/{id}")
-def delete_cost_center(id: int, token: dict = Depends(verify_token)):
+@app.delete("/cost-center/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def delete_cost_center(id: int):
     return handle_delete_cost_center(id)
 
 
@@ -926,11 +933,13 @@ def delete_cost_center(id: int, token: dict = Depends(verify_token)):
 
 
 @app.get("/subsidiaries/{id}/logs/costs-centers")
+@error_handler
 def get_cost_center_logs(id: int):
     return handle_get_cost_center_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/costs-centers", dependencies=[Depends(verify_token)])
+@error_handler
 def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
     return handle_post_cost_center_logs(id, cost_center_log)
 
@@ -939,26 +948,31 @@ def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
 
 
 @app.get("/departments", dependencies=[Depends(verify_token)])
+@error_handler
 def get_departments():
     return handle_get_departments()
 
 
 @app.get("/departments/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def get_department_by_id(id: int):
     return handle_get_department_by_id(id)
 
 
 @app.post("/departments", dependencies=[Depends(verify_token)])
+@error_handler
 def post_department(department_input: Department):
     return handle_post_department(department_input)
 
 
 @app.put("/departments/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def put_department(id: int, department_input: Department):
     return handle_put_department(id, department_input)
 
 
 @app.delete("/departments/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def delete_department(id: int):
     return handle_delete_department(id)
 
@@ -967,11 +981,13 @@ def delete_department(id: int):
 
 
 @app.get("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
+@error_handler
 def get_departments_logs(id: int):
     return handle_get_departments_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
+@error_handler
 def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
     return handle_post_departments_logs(id, department_logs_input)
 
@@ -980,7 +996,8 @@ def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
 
 
 @app.get("/resignable-reasons", dependencies=[Depends(verify_token)])
-def get_resignable_reasons(token: dict = Depends(verify_token)):
+@error_handler
+def get_resignable_reasons():
     return handle_get_resignable_reasons()
 
 
@@ -988,5 +1005,6 @@ def get_resignable_reasons(token: dict = Depends(verify_token)):
 
 
 @app.post("/resignable-reasons/report", dependencies=[Depends(verify_token)])
+@error_handler
 def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(input)

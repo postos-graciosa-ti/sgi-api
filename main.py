@@ -899,7 +899,7 @@ def get_cost_center(token: dict = Depends(verify_token)):
 
 
 @app.get("/cost-center/{id}")
-async def get_cost_center_by_id(id: int, token: dict = Depends(verify_token)):
+def get_cost_center_by_id(id: int, token: dict = Depends(verify_token)):
     return handle_get_cost_center_by_id(id)
 
 
@@ -954,13 +954,13 @@ def post_department(department_input: Department):
 
 
 @app.put("/departments/{id}", dependencies=[Depends(verify_token)])
-async def put_department(id: int, department_input: Department):
-    return await handle_put_department(id, department_input)
+def put_department(id: int, department_input: Department):
+    return handle_put_department(id, department_input)
 
 
 @app.delete("/departments/{id}", dependencies=[Depends(verify_token)])
-async def delete_department(id: int):
-    return await handle_delete_department(id)
+def delete_department(id: int):
+    return handle_delete_department(id)
 
 
 # department logs

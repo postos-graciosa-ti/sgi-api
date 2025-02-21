@@ -29,7 +29,7 @@ def handle_post_department(department_input: Department):
         return department_input
 
 
-async def handle_put_department(id: int, department_input: Department):
+def handle_put_department(id: int, department_input: Department):
     with Session(engine) as session:
         department = session.get(Department, id)
 
@@ -52,7 +52,7 @@ async def handle_put_department(id: int, department_input: Department):
         return department
 
 
-async def handle_delete_department(id: int):
+def handle_delete_department(id: int):
     with Session(engine) as session:
         department = session.get(Department, id)
 

@@ -13,7 +13,7 @@ def handle_get_cost_center_logs(id: int):
         return costs_center_logs
 
 
-async def handle_post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
+def handle_post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
     with Session(engine) as session:
         cost_center_log.subsidiarie_id = id
 

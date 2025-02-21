@@ -13,7 +13,7 @@ async def handle_get_turns_logs(id: int):
         return turns_logs
 
 
-async def handle_post_turns_logs(id: int, turn_log: TurnsLogs):
+def handle_post_turns_logs(id: int, turn_log: TurnsLogs):
     with Session(engine) as session:
         turn_log.subsidiarie_id = id
 

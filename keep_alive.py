@@ -1,3 +1,6 @@
+# Why is this needed?
+# because we are using a free instance of render, which kills the application after 50 seconds of inactivity
+
 import os
 import time
 

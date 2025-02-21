@@ -169,7 +169,6 @@ from controllers.workers_logs import (
 from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
 from functions.error_handling import error_handler
-from functions.handle_operation import handle_database_operation
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
@@ -229,7 +228,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -399,13 +398,13 @@ def get_subsidiaries_status(id: int):
 
 
 @app.get("/subsidiaries-logs", dependencies=[Depends(verify_token)])
-async def get_subsidiarie_logs():
-    return await handle_get_subsidiarie_logs()
+def get_subsidiarie_logs():
+    return handle_get_subsidiarie_logs()
 
 
 @app.post("/subsidiaries/logs", dependencies=[Depends(verify_token)])
-async def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
-    return await handle_post_subsidiaries_logs(subsidiarie_log)
+def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
+    return handle_post_subsidiaries_logs(subsidiarie_log)
 
 
 # turns
@@ -455,8 +454,8 @@ def get_turns_logs(id: int):
 
 
 @app.post("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
-async def post_turns_logs(id: int, turn_log: TurnsLogs):
-    return await handle_post_turns_logs(id, turn_log)
+def post_turns_logs(id: int, turn_log: TurnsLogs):
+    return handle_post_turns_logs(id, turn_log)
 
 
 # workers
@@ -843,7 +842,7 @@ def post_scales_logs(scales_logs_input: ScaleLogs, token: dict = Depends(verify_
 
 
 @app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
-async def generate_scale_days_on_report(
+def generate_scale_days_on_report(
     subsidiarie_id: int, input: ScalesReportInput, token: dict = Depends(verify_token)
 ):
     return handle_generate_scale_days_on_report(subsidiarie_id, input)
@@ -869,26 +868,26 @@ def get_subsidiarie_scale_to_print(id: int):
 
 
 @app.get("/states")
-async def get_states(token: dict = Depends(verify_token)):
-    return await handle_get_states()
+def get_states(token: dict = Depends(verify_token)):
+    return handle_get_states()
 
 
 @app.get("/states/{id}")
-async def get_states_by_id(id: int, token: dict = Depends(verify_token)):
-    return await handle_get_states_by_id(id)
+def get_states_by_id(id: int, token: dict = Depends(verify_token)):
+    return handle_get_states_by_id(id)
 
 
 # cities
 
 
 @app.get("/cities")
-async def get_cities(token: dict = Depends(verify_token)):
-    return await handle_get_cities()
+def get_cities(token: dict = Depends(verify_token)):
+    return handle_get_cities()
 
 
 @app.get("/cities/{id}")
-async def get_city_by_id(id: int, token: dict = Depends(verify_token)):
-    return await handle_get_city_by_id(id)
+def get_city_by_id(id: int, token: dict = Depends(verify_token)):
+    return handle_get_city_by_id(id)
 
 
 # cost center
@@ -927,33 +926,31 @@ def delete_cost_center(id: int, token: dict = Depends(verify_token)):
 
 
 @app.get("/subsidiaries/{id}/logs/costs-centers")
-async def get_cost_center_logs(id: int):
-    return await handle_database_operation(handle_get_cost_center_logs, id)
+def get_cost_center_logs(id: int):
+    return handle_get_cost_center_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/costs-centers", dependencies=[Depends(verify_token)])
-async def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
-    return await handle_database_operation(
-        handle_post_cost_center_logs, id, cost_center_log
-    )
+def post_cost_center_logs(id: int, cost_center_log: CostCenterLogs):
+    return handle_post_cost_center_logs(id, cost_center_log)
 
 
 # department
 
 
 @app.get("/departments", dependencies=[Depends(verify_token)])
-async def get_departments():
-    return await handle_database_operation(handle_get_departments)
+def get_departments():
+    return handle_get_departments()
 
 
 @app.get("/departments/{id}", dependencies=[Depends(verify_token)])
-async def get_department_by_id(id: int):
-    return await handle_database_operation(handle_get_department_by_id, id)
+def get_department_by_id(id: int):
+    return handle_get_department_by_id(id)
 
 
 @app.post("/departments", dependencies=[Depends(verify_token)])
-async def post_department(department_input: Department):
-    return await handle_database_operation(handle_post_department, department_input)
+def post_department(department_input: Department):
+    return handle_post_department(department_input)
 
 
 @app.put("/departments/{id}", dependencies=[Depends(verify_token)])
@@ -970,28 +967,26 @@ async def delete_department(id: int):
 
 
 @app.get("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
-async def get_departments_logs(id: int):
-    return await handle_database_operation(handle_get_departments_logs, id)
+def get_departments_logs(id: int):
+    return handle_get_departments_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/departments", dependencies=[Depends(verify_token)])
-async def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
-    return await handle_database_operation(
-        handle_post_departments_logs, id, department_logs_input
-    )
+def post_departments_logs(id: int, department_logs_input: DepartmentsLogs):
+    return handle_post_departments_logs(id, department_logs_input)
 
 
 # resignable reasons
 
 
 @app.get("/resignable-reasons", dependencies=[Depends(verify_token)])
-async def get_resignable_reasons(token: dict = Depends(verify_token)):
-    return await handle_database_operation(handle_get_resignable_reasons)
+def get_resignable_reasons(token: dict = Depends(verify_token)):
+    return handle_get_resignable_reasons()
 
 
 # resignable reasons reports
 
 
 @app.post("/resignable-reasons/report", dependencies=[Depends(verify_token)])
-async def get_resignable_reasons_report(input: StatusResignableReasonsInput):
-    return await handle_database_operation(handle_resignable_reasons_report, input)
+def get_resignable_reasons_report(input: StatusResignableReasonsInput):
+    return handle_resignable_reasons_report(input)

@@ -1,30 +1,13 @@
-import json
-import os
 import threading
-import time
-from calendar import monthrange
-from datetime import date, datetime, timedelta
 
-import requests
-from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
-from pydantic import BaseModel
-from sqlalchemy import inspect
-from sqlalchemy.exc import OperationalError
-from sqlalchemy_utils import database_exists
-from sqlmodel import Session, and_, select
+from fastapi import Depends, FastAPI, File, UploadFile
+from sqlmodel import Session, select
 
 from controllers.candidates import (
     handle_get_candidates,
     handle_get_candidates_by_status,
     handle_post_candidate,
-)
-from controllers.candidato import (
-    handle_delete_candidato,
-    handle_get_candidato,
-    handle_get_candidato_by_id,
-    handle_post_candidato,
 )
 from controllers.cities_states import (
     handle_get_cities,
@@ -166,13 +149,12 @@ from controllers.workers_logs import (
     handle_post_update_workers_logs,
     handle_post_workers_logs,
 )
-from database.sqlite import create_db_and_tables, engine
+from database.sqlite import engine
 from functions.auth import verify_token
 from functions.error_handling import error_handler
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
-from models.candidato import Candidato
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
 from models.department import Department
@@ -180,9 +162,6 @@ from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.jobs import Jobs
-from models.resignable_reasons import ResignableReasons
-from models.role import Role
-from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
@@ -192,10 +171,6 @@ from models.user import User
 from models.users_logs import UsersLogs
 from models.workers import Workers
 from models.workers_logs import WorkersLogs
-from models.workers_logs_create import WorkersLogsCreate
-from models.workers_logs_delete import WorkersLogsDelete
-from models.workers_logs_update import WorkersLogsUpdate
-from models.workers_notations import WorkersNotations
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
     PostScaleInput,
@@ -218,7 +193,6 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
-from seeds.seed_all import seed_database
 
 # pre settings
 
@@ -228,7 +202,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-# threading.Thread(target=keep_alive_function, daemon=True).start()
+threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -246,7 +220,7 @@ def get_docs_info():
     return handle_get_docs_info()
 
 
-@app.get("/healthz")
+@app.get("/health-check")
 def health_check():
     return handle_health_check()
 

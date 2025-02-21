@@ -1,4 +1,5 @@
 import json
+import threading
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 
@@ -162,6 +163,7 @@ from controllers.workers_logs import (
 from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
 from functions.handle_operation import handle_database_operation
+from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
@@ -220,6 +222,8 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
+threading.Thread(target=keep_alive_function, daemon=True).start()
+
 # startup function
 
 
@@ -236,7 +240,7 @@ def get_docs_info():
     return handle_get_docs_info()
 
 
-@app.get("/healthz")
+@app.get("/health-check")
 def health_check():
     return handle_health_check()
 

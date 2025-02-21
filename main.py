@@ -1,7 +1,12 @@
 import json
+import os
+import threading
+import time
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -165,6 +170,7 @@ from database.sqlite import create_db_and_tables, engine
 from functions.auth import verify_token
 from functions.error_handling import error_handler
 from functions.handle_operation import handle_database_operation
+from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.candidate import Candidate
 from models.candidato import Candidato
@@ -222,6 +228,8 @@ load_dotenv()
 app = FastAPI()
 
 add_cors_middleware(app)
+
+threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 

@@ -1,6 +1,10 @@
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.cost_center import CostCenter
+from models.department import Department
+from models.function import Function
+from models.turn import Turn
 from models.user import User
 from models.workers import Workers
 from models.workers_logs import WorkersLogs
@@ -166,3 +170,33 @@ def handle_post_workers_logs(id: int, workers_log: WorkersLogs):
         session.refresh(workers_log)
 
         return workers_log
+
+
+def handle_get_worker_by_id_in_subsidiarie(subsidiarie_id: int, worker_id: int):
+    with Session(engine) as session:
+        result = session.exec(
+            select(
+                Workers,
+                Function,
+                Turn,
+                CostCenter,
+                Department,
+            )
+            .join(Function, Workers.function_id == Function.id)
+            .join(Turn, Workers.turn_id == Turn.id)
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .where(Workers.id == worker_id)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+        ).first()
+
+        worker = [
+            {
+                "name": result[0].name,
+                "function": result[1].name,
+                "turn": result[2].name,
+                "cost_center": result[3].name,
+                "setor": result[4].name,
+            }
+        ]
+
+        return worker

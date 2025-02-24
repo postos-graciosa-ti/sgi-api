@@ -148,6 +148,7 @@ from controllers.workers_logs import (
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,
     handle_post_workers_logs,
+    handle_get_worker_by_id_in_subsidiarie,
 )
 from database.sqlite import engine
 from functions.auth import verify_token
@@ -519,33 +520,7 @@ def reactivate_worker(id: int):
 )
 @error_handler
 def get_worker_by_id_in_subsidiarie(subsidiarie_id: int, worker_id: int):
-    with Session(engine) as session:
-        result = session.exec(
-            select(
-                Workers,
-                Function,
-                Turn,
-                CostCenter,
-                Department,
-            )
-            .join(Function, Workers.function_id == Function.id)
-            .join(Turn, Workers.turn_id == Turn.id)
-            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
-            .where(Workers.id == worker_id)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-        ).first()
-
-        worker = [
-            {
-                "name": result[0].name,
-                "function": result[1].name,
-                "turn": result[2].name,
-                "cost_center": result[3].name,
-                "setor": result[4].name,
-            }
-        ]
-
-        return worker
+    return handle_get_worker_by_id_in_subsidiarie(subsidiarie_id, worker_id)
 
 
 @app.get("/subsidiaries/{id}/workers/logs", dependencies=[Depends(verify_token)])

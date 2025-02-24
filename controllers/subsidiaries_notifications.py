@@ -70,7 +70,7 @@ async def handle_get_subsidiarie_notifications(id: int):
     }
 
 
-async def handle_get_subsidiaries_status(id: int):
+def handle_get_subsidiaries_status(id: int):
     with Session(engine) as session:
         frentistas = session.exec(
             select(Workers)

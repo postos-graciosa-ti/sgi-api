@@ -5,28 +5,28 @@ from models.cities import Cities
 from models.states import States
 
 
-async def handle_get_states():
+def handle_get_states():
     with Session(engine) as session:
         states = session.exec(select(States)).all()
 
         return [{"label": state.name, "value": state.id} for state in states]
 
 
-async def handle_get_states_by_id(id: int):
+def handle_get_states_by_id(id: int):
     with Session(engine) as session:
         state = session.exec(select(States).where(States.id == id)).all()
 
         return state
 
 
-async def handle_get_cities():
+def handle_get_cities():
     with Session(engine) as session:
         cities = session.exec(select(Cities)).all()
 
         return [{"label": city.name, "value": city.id} for city in cities]
 
 
-async def handle_get_city_by_id(id: int):
+def handle_get_city_by_id(id: int):
     with Session(engine) as session:
         city = session.exec(select(Cities).where(Cities.id == id)).one()
 

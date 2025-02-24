@@ -4,21 +4,21 @@ from database.sqlite import engine
 from models.department import Department
 
 
-async def handle_get_departments():
+def handle_get_departments():
     with Session(engine) as session:
         departments = session.exec(select(Department)).all()
 
         return departments
 
 
-async def handle_get_department_by_id(id: int):
+def handle_get_department_by_id(id: int):
     with Session(engine) as session:
         department = session.get(Department, id)
 
         return department
 
 
-async def handle_post_department(department_input: Department):
+def handle_post_department(department_input: Department):
     with Session(engine) as session:
         session.add(department_input)
 
@@ -29,7 +29,7 @@ async def handle_post_department(department_input: Department):
         return department_input
 
 
-async def handle_put_department(id: int, department_input: Department):
+def handle_put_department(id: int, department_input: Department):
     with Session(engine) as session:
         department = session.get(Department, id)
 
@@ -52,7 +52,7 @@ async def handle_put_department(id: int, department_input: Department):
         return department
 
 
-async def handle_delete_department(id: int):
+def handle_delete_department(id: int):
     with Session(engine) as session:
         department = session.get(Department, id)
 

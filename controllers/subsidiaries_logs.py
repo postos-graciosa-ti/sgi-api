@@ -4,14 +4,14 @@ from database.sqlite import engine
 from models.subsidiarie_logs import SubsidiarieLogs
 
 
-async def handle_get_subsidiarie_logs():
+def handle_get_subsidiarie_logs():
     with Session(engine) as session:
         subsidiarie_logs = session.exec(select(SubsidiarieLogs)).all()
 
         return subsidiarie_logs
 
 
-async def handle_post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
+def handle_post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
     with Session(engine) as session:
         session.add(subsidiarie_log)
 

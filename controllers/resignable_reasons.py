@@ -9,14 +9,14 @@ from models.workers import Workers
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 
 
-async def handle_get_resignable_reasons():
+def handle_get_resignable_reasons():
     with Session(engine) as session:
         resignable_reasons = session.exec(select(ResignableReasons)).all()
 
     return resignable_reasons
 
 
-async def handle_resignable_reasons_report(input: StatusResignableReasonsInput):
+def handle_resignable_reasons_report(input: StatusResignableReasonsInput):
     with Session(engine) as session:
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
 

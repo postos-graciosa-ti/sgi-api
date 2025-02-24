@@ -1,3 +1,6 @@
+# Why is this needed?
+# because we are using a free instance of render, which kills the application after 50 seconds of inactivity
+
 import os
 import time
 
@@ -14,4 +17,4 @@ def keep_alive_function():
         except Exception as e:
             print("Erro ao tentar manter o servidor ativo:", e)
 
-        time.sleep(130)
+        time.sleep(30)

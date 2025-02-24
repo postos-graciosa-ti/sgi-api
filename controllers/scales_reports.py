@@ -9,9 +9,7 @@ from models.workers import Workers
 from pyhints.scales import ScalesReportInput
 
 
-async def handle_generate_scale_days_on_report(
-    subsidiarie_id: int, input: ScalesReportInput
-):
+def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     with Session(engine) as session:
         turns = session.exec(select(Turn).where(Turn.id.in_([1, 2, 3, 4, 5]))).all()
 
@@ -90,7 +88,7 @@ async def handle_generate_scale_days_on_report(
         return all_turns_reports
 
 
-async def handle_generate_scale_days_off_report(
+def handle_generate_scale_days_off_report(
     subsidiarie_id: int, input: ScalesReportInput
 ):
     with Session(engine) as session:

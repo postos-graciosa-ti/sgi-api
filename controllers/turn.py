@@ -23,7 +23,7 @@ def handle_get_turns():
         return turns
 
 
-async def handle_get_turn_by_id(id: int):
+def handle_get_turn_by_id(id: int):
     with Session(engine) as session:
         turn = session.exec(select(Turn).where(Turn.id == id)).one()
 

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException
 from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -7,6 +9,10 @@ from sqlmodel import Session, select
 from database.sqlite import create_db_and_tables, engine
 from models.user import User
 from seeds.seed_all import seed_database
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 
 def handle_on_startup():
@@ -40,50 +46,35 @@ def handle_get_docs_info():
 
 def handle_health_check():
     try:
-        print("Iniciando o health check...")
+        logger.info("Iniciando o health check...")
 
         with Session(engine) as session:
-            print("Conectando-se ao banco de dados...")
-
             inspector = inspect(engine)
-
-            print("Inspecionando o banco de dados para tabelas...")
 
             tables = inspector.get_table_names()
 
-            print(f"Tabelas encontradas: {tables}")
-
-            # Verifica se a tabela 'user' existe
             if "user" not in tables:
-                print("Tabela 'user' não encontrada no banco de dados.")
+                logger.warning("Tabela 'user' não encontrada no banco de dados.")
 
                 return {
                     "success": False,
                     "detail": "Tabela 'user' não encontrada no banco de dados.",
                 }
 
-            print("Tabela 'user' encontrada.")
+            logger.info("Tabela 'user' encontrada. Verificando usuários...")
 
-            has_users = session.exec(select(User)).first()
+            has_users = session.scalar(select(User)) is not None
 
-            if has_users:
-                print(f"Usuário encontrado: {has_users}")
+            logger.info(f"Usuário encontrado: {has_users}")
 
-            else:
-                print("Nenhum usuário encontrado.")
-
-            result = bool(has_users)
-
-            print(f"Resultado de ativação: {result}")
-
-            return {"success": True, "activated": result}
+            return {"success": True, "activated": has_users}
 
     except SQLAlchemyError as e:
-        print(f"Erro no banco de dados: {e}")
+        logger.error(f"Erro no banco de dados: {e}")
 
         return {"success": False, "detail": "Operação no banco de dados falhou."}
 
     except Exception as e:
-        print(f"Ocorreu um erro inesperado: {e}")
+        logger.exception("Ocorreu um erro inesperado")
 
         return {"success": False, "detail": "Ocorreu um erro inesperado."}

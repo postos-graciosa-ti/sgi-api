@@ -143,12 +143,12 @@ from controllers.workers_logs import (
     handle_get_create_workers_logs,
     handle_get_delete_workers_logs,
     handle_get_update_workers_logs,
+    handle_get_worker_by_id_in_subsidiarie,
     handle_get_workers_logs,
     handle_post_create_workers_logs,
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,
     handle_post_workers_logs,
-    handle_get_worker_by_id_in_subsidiarie,
 )
 from database.sqlite import engine
 from functions.auth import verify_token
@@ -203,7 +203,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-# threading.Thread(target=keep_alive_function, daemon=True).start()
+threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 

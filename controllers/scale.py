@@ -1,7 +1,5 @@
 import calendar
 import json
-import locale
-from calendar import monthrange
 from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
@@ -12,12 +10,7 @@ from models.function import Function
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
-from pyhints.scales import (
-    GetScalesByDate,
-    PostScaleInput,
-    PostSomeWorkersScaleInput,
-    ScalesReportInput,
-)
+from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput
 
 
 def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
@@ -97,15 +90,15 @@ def handle_get_days_off_quantity():
 
 
 def handle_get_subsidiarie_scale_to_print(id: int):
+    hoje = date.today()
+
+    start_date = (
+        hoje - timedelta(days=hoje.weekday() + 1) if hoje.weekday() != 6 else hoje
+    )
+
+    end_date = start_date + timedelta(days=6)
+
     with Session(engine) as session:
-        hoje = date.today()
-
-        start_date = hoje.replace(day=1)
-
-        ultimo_dia = monthrange(hoje.year, hoje.month)[1]
-
-        end_date = hoje.replace(day=ultimo_dia)
-
         scales_print = []
 
         scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
@@ -113,31 +106,54 @@ def handle_get_subsidiarie_scale_to_print(id: int):
         for scale in scales:
             worker = session.get(Workers, scale.worker_id)
 
-            valid_dates = []
+            valid_days_off = []
+
+            valid_days_on = []
 
             scale_days_off = eval(scale.days_off)
 
+            scale_days_on = eval(scale.days_on)
+
             for day_off in scale_days_off:
-                if isinstance(day_off, dict):
-                    day_str = day_off.get("date")
+                day_str = day_off.get("date") if isinstance(day_off, dict) else day_off
 
-                    if not day_str:
-                        continue
-
-                else:
-                    day_str = day_off
+                if not day_str:
+                    continue
 
                 try:
                     day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
 
-                except Exception:
+                except ValueError:
                     continue
 
                 if start_date <= day_date <= end_date:
-                    valid_dates.append(day_date)
+                    valid_days_off.append(day_date)
 
-            if valid_dates:
-                scales_print.append({"worker": worker, "dates": valid_dates})
+            for day_on in scale_days_on:
+                day_str = day_on.get("date") if isinstance(day_on, dict) else day_on
+
+                if not day_str:
+                    continue
+
+                try:
+                    day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+
+                except ValueError:
+                    continue
+
+                if start_date <= day_date <= end_date:
+                    valid_days_on.append(day_date)
+
+            if valid_days_off or valid_days_on:
+                scales_print.append(
+                    {
+                        "worker": worker,
+                        "days_on": valid_days_on,
+                        "days_off": valid_days_off,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                    }
+                )
 
     return scales_print
 

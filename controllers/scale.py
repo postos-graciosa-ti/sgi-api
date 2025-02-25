@@ -10,7 +10,7 @@ from models.function import Function
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
-from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput
+from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput, ScalesPrintInput
 
 
 def handle_get_scales_by_subsidiarie_id(subsidiarie_id: int):
@@ -570,3 +570,73 @@ def handle_delete_scale(scale_id: int, subsidiarie_id: int):
         all_scales_by_subsidiarie = session.exec(statement).all()
 
     return all_scales_by_subsidiarie
+
+
+def handle_post_subsidiarie_scale_to_print(
+    id: int, scales_print_input: ScalesPrintInput
+):
+    try:
+        start_date = datetime.strptime(scales_print_input.start_date, "%d-%m-%Y").date()
+        end_date = datetime.strptime(scales_print_input.end_date, "%d-%m-%Y").date()
+    except ValueError:
+        return {"error": "Invalid date format. Use DD-MM-YYYY."}
+
+    scales_print = []
+
+    with Session(engine) as session:
+        scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+            if not worker:
+                continue
+
+            valid_days_off = []
+            valid_days_on = []
+
+            try:
+                scale_days_off = (
+                    eval(scale.days_off)
+                    if isinstance(scale.days_off, str)
+                    else scale.days_off
+                )
+                scale_days_on = (
+                    eval(scale.days_on)
+                    if isinstance(scale.days_on, str)
+                    else scale.days_on
+                )
+            except Exception:
+                continue
+
+            for day_off in scale_days_off:
+                day_str = day_off.get("date") if isinstance(day_off, dict) else day_off
+                if day_str:
+                    try:
+                        day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+                        if start_date <= day_date <= end_date:
+                            valid_days_off.append(day_date)
+                    except ValueError:
+                        continue
+
+            for day_on in scale_days_on:
+                day_str = day_on.get("date") if isinstance(day_on, dict) else day_on
+                if day_str:
+                    try:
+                        day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
+                        if start_date <= day_date <= end_date:
+                            valid_days_on.append(day_date)
+                    except ValueError:
+                        continue
+
+            if valid_days_off or valid_days_on:
+                scales_print.append(
+                    {
+                        "worker": worker,
+                        "days_on": valid_days_on,
+                        "days_off": valid_days_off,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                    }
+                )
+
+    return scales_print

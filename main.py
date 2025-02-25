@@ -1,7 +1,9 @@
 import threading
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from controllers.candidates import (
@@ -76,6 +78,7 @@ from controllers.scale import (
     handle_handle_scale,
     handle_post_scale,
     handle_post_some_workers_scale,
+    handle_post_subsidiarie_scale_to_print,
 )
 from controllers.scales_logs import (
     handle_get_scales_logs,
@@ -163,6 +166,7 @@ from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.jobs import Jobs
+from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
@@ -176,6 +180,7 @@ from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
     PostScaleInput,
     PostSomeWorkersScaleInput,
+    ScalesPrintInput,
     ScalesReportInput,
     WorkerDeactivateInput,
 )
@@ -203,7 +208,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -809,10 +814,9 @@ def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput
 # scales print
 
 
-@app.get("/subsidiaries/{id}/scales/print")
-@error_handler
-def get_subsidiarie_scale_to_print(id: int):
-    return handle_get_subsidiarie_scale_to_print(id)
+@app.post("/subsidiaries/{id}/scales/print", dependencies=[Depends(verify_token)])
+def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
+    return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
 
 
 # states

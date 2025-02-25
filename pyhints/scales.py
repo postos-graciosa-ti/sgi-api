@@ -42,3 +42,8 @@ class WorkerDeactivateInput(BaseModel):
     is_active: bool
     resignation_date: str
     resignation_reason: int
+
+
+class ScalesPrintInput(BaseModel):
+    start_date: str
+    end_date: str

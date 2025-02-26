@@ -38,6 +38,7 @@ def seed_subsidiaries():
                     phone="(47) 3436-0030",
                     email="matriz@postosgraciosa.com.br",
                     coordinator=7,
+                    manager=6,
                 ),
                 Subsidiarie(
                     name="Auto Posto Fátima",
@@ -59,6 +60,7 @@ def seed_subsidiaries():
                     phone="(47) 3466-4665",
                     email="jariva@postosgraciosa.com.br",
                     coordinator=10,
+                    manager=6,
                 ),
                 Subsidiarie(
                     name="Posto Graciosa V",
@@ -66,6 +68,7 @@ def seed_subsidiaries():
                     phone="(47) 3436-1763",
                     email="graciosav@postosgraciosa.com.br",
                     coordinator=5,
+                    manager=6,
                 ),
                 Subsidiarie(
                     name="Auto Posto Piraí",
@@ -73,6 +76,7 @@ def seed_subsidiaries():
                     phone="(47) 3422-9676",
                     email="pirai@postosgraciosa.com.br",
                     coordinator=12,
+                    manager=6,
                 ),
             ]
             session.add_all(subsidiaries)

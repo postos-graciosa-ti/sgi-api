@@ -7,3 +7,4 @@ class PutSubsidiarie(BaseModel):
     phone: str
     email: str
     coordinator: int
+    manager: int

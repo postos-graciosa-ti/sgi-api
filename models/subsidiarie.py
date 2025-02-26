@@ -7,4 +7,4 @@ class Subsidiarie(SQLModel, table=True):
     phone: str = Field(index=True)
     email: str = Field(index=True)
     coordinator: int = Field(default=None, foreign_key="user.id")
-    
+    manager: int = Field(default=None, nullable=True, foreign_key="user.id")

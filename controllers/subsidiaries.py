@@ -51,6 +51,9 @@ def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
         if formData.coordinator:
             subsidiarie.coordinator = formData.coordinator
 
+        if formData.manager:
+            subsidiarie.manager = formData.manager
+
         session.commit()
 
         session.refresh(subsidiarie)

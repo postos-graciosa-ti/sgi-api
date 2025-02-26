@@ -208,7 +208,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -349,10 +349,38 @@ def post_subsidiaries(formData: Subsidiarie):
     return handle_post_subsidiaries(formData)
 
 
-@app.put("/subsidiaries/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_subsidiaries(id: int, formData: PutSubsidiarie):
-    return handle_put_subsidiarie(id, formData)
+@app.put("/subsidiaries/{id}")
+def put_subsidiarie(id: int, subsidiarie: Subsidiarie):
+    with Session(engine) as session:
+        db_subsidiarie = session.exec(
+            select(Subsidiarie).where(Subsidiarie.id == id)
+        ).first()
+
+        if subsidiarie.name:
+            db_subsidiarie.name = subsidiarie.name
+
+        if subsidiarie.adress:
+            db_subsidiarie.adress = subsidiarie.adress
+
+        if subsidiarie.phone:
+            db_subsidiarie.phone = subsidiarie.phone
+
+        if subsidiarie.email:
+            db_subsidiarie.email = subsidiarie.email
+
+        if subsidiarie.coordinator is not None:
+            db_subsidiarie.coordinator = subsidiarie.coordinator
+
+        if subsidiarie.manager is not None:
+            db_subsidiarie.manager = subsidiarie.manager
+
+        session.add(db_subsidiarie)
+
+        session.commit()
+
+        session.refresh(db_subsidiarie)
+
+        return db_subsidiarie
 
 
 @app.delete("/subsidiaries/{id}", dependencies=[Depends(verify_token)])

@@ -97,7 +97,7 @@ def seed_candidate_status():
 def seed_users():
     with Session(engine) as session:
         existing_users = session.exec(select(User)).all()
-        
+
         if not existing_users:
             users = [
                 User(
@@ -209,9 +209,9 @@ def seed_users():
                     phone="47996",
                 ),
             ]
-            
+
             session.add_all(users)
-            
+
             session.commit()
 
 
@@ -596,10 +596,10 @@ def demission_reasons():
 
 
 def seed_database():
-    seed_users()
-    seed_subsidiaries()
     demission_reasons()
     seed_roles()
+    seed_users()
+    seed_subsidiaries()
     seed_candidate_status()
     seed_months()
     create_cost_centers()

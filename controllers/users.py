@@ -143,17 +143,23 @@ def handle_put_user(id: int, user: User):
 
         db_user = session.exec(statement).first()
 
-        db_user.email = user.email
+        db_user.email = user.email if user.email else db_user.email
 
-        db_user.name = user.name
+        db_user.name = user.name if user.name else db_user.name
 
-        db_user.role_id = user.role_id
+        db_user.role_id = user.role_id if user.role_id else db_user.role_id
 
-        db_user.subsidiaries_id = user.subsidiaries_id
+        db_user.subsidiaries_id = (
+            user.subsidiaries_id if user.subsidiaries_id else db_user.subsidiaries_id
+        )
 
-        db_user.function_id = user.function_id
+        db_user.function_id = (
+            user.function_id if user.function_id else db_user.function_id
+        )
 
-        db_user.is_active = user.is_active
+        db_user.is_active = user.is_active if user.is_active else db_user.is_active
+
+        db_user.phone = user.phone if user.phone else db_user.phone
 
         session.add(db_user)
 
@@ -177,12 +183,9 @@ def handle_delete_user(id: int):
 
 def handle_get_users_roles():
     with Session(engine) as session:
-        statement = select(
-            User.id,
-            User.name,
-            User.email,
-            Role.name,
-        ).join(Role, User.role_id == Role.id, isouter=True)
+        statement = select(User.id, User.name, User.email, Role.name, User.phone).join(
+            Role, User.role_id == Role.id, isouter=True
+        )
 
         results = session.exec(statement)
 
@@ -192,6 +195,7 @@ def handle_get_users_roles():
                 name=result[1],
                 email=result[2],
                 role=result[3],
+                phone=result[4],
             )
             for result in results
         ]
@@ -244,6 +248,7 @@ def handle_get_users():
                     ],
                     "role_id": role.id,
                     "role_name": role.name,
+                    "user_phone": user.phone,
                 }
             )
 

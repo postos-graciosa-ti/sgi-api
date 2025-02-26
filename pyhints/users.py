@@ -6,6 +6,7 @@ class GetUserRoles(BaseModel):
     name: str
     email: str
     role: str
+    phone: str
 
 
 class Test(BaseModel):

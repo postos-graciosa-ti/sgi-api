@@ -12,3 +12,4 @@ class User(SQLModel, table=True):
     subsidiaries_id: str = Field(default="[]")
     function_id: Optional[int] = Field(default=None, foreign_key="function.id")
     is_active: bool = Field(default=True)
+    phone: str = Field(nullable=True)

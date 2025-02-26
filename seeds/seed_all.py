@@ -37,36 +37,42 @@ def seed_subsidiaries():
                     adress="R. Florianópolis, 510 – Itaum, Joinville – SC, 89207-000",
                     phone="(47) 3436-0030",
                     email="matriz@postosgraciosa.com.br",
+                    coordinator=7,
                 ),
                 Subsidiarie(
                     name="Auto Posto Fátima",
                     adress="R. Fátima, 1730 – Fátima, Joinville – SC, 89229-102",
                     phone="(47) 3466-0248",
                     email="fatima@postosgraciosa.com.br",
+                    coordinator=8,
                 ),
                 Subsidiarie(
                     name="Posto Bemer",
                     adress="R. Boehmerwald, 675 – Boehmerwald, Joinville – SC, 89232-485",
                     phone="(47) 3465-0328",
                     email="bemer@postosgraciosa.com.br",
+                    coordinator=9,
                 ),
                 Subsidiarie(
                     name="Posto Jariva",
                     adress="R. Monsenhor Gercino, 5085 – Jarivatuba, Joinville – SC, 89230-290",
                     phone="(47) 3466-4665",
                     email="jariva@postosgraciosa.com.br",
+                    coordinator=10,
                 ),
                 Subsidiarie(
                     name="Posto Graciosa V",
                     adress="R. Santa Catarina, 1870 – Floresta, Joinville – SC, 89212-000",
                     phone="(47) 3436-1763",
                     email="graciosav@postosgraciosa.com.br",
+                    coordinator=5,
                 ),
                 Subsidiarie(
                     name="Auto Posto Piraí",
                     adress="R. Quinze de Novembro, 5031 – Vila Nova, Joinville – SC, 89237-000",
                     phone="(47) 3422-9676",
                     email="pirai@postosgraciosa.com.br",
+                    coordinator=12,
                 ),
             ]
             session.add_all(subsidiaries)
@@ -193,9 +199,9 @@ def seed_users():
                     subsidiaries_id="[5]",
                 ),
                 User(
-                    email="luciano@gmail.com",
+                    email="gisele@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
-                    name="Luciano",
+                    name="Gisele",
                     role_id=2,
                     # function_id=3,
                     is_active=True,
@@ -587,11 +593,11 @@ def demission_reasons():
 
 
 def seed_database():
+    seed_users()
+    seed_subsidiaries()
     demission_reasons()
     seed_roles()
-    seed_subsidiaries()
     seed_candidate_status()
     seed_months()
     create_cost_centers()
     create_departments()
-    seed_users()

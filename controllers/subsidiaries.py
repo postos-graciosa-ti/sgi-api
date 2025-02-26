@@ -48,6 +48,9 @@ def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
         if formData.email:
             subsidiarie.email = formData.email
 
+        if formData.coordinator:
+            subsidiarie.coordinator = formData.coordinator
+
         session.commit()
 
         session.refresh(subsidiarie)

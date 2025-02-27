@@ -286,7 +286,37 @@ def handle_create_user_password(userData: CreateUserPasswordInput):
 
             session.refresh(user)
 
-            return user
+            db_user_subsidiaries_ids = json.loads(user.subsidiaries_id)
+
+            user_subsidiaries = []
+
+            for subsidiarie_id in db_user_subsidiaries_ids:
+                user_subsidiarie = session.get(Subsidiarie, subsidiarie_id)
+
+                if user_subsidiarie:
+                    user_subsidiaries.append(
+                        {"label": user_subsidiarie.name, "value": user_subsidiarie.id}
+                    )
+
+            payload = {"id": user.id, "email": user.email}
+
+            token = jwt.encode(payload, secret, algorithm)
+
+            return JSONResponse(
+                {
+                    "data": {
+                        "id": user.id,
+                        "email": user.email,
+                        "name": user.name,
+                        "role_id": user.role_id,
+                        "subsidiaries_id": user.subsidiaries_id,
+                        "user_subsidiaries": user_subsidiaries,
+                        "function_id": user.function_id,
+                        "is_active": user.is_active,
+                    },
+                    "token": token,
+                }
+            )
 
 
 def handle_confirm_password(userData: ConfirmPassword):

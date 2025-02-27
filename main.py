@@ -236,6 +236,11 @@ def user_login(user: User):
     return handle_user_login(user)
 
 
+@app.post("/users/create-password")
+def create_user_password(userData: CreateUserPasswordInput):
+    return handle_create_user_password(userData)
+
+
 @app.post("/subsidiaries/{id}/scripts/excel-scraping")
 async def excel_scraping(id: int, file: UploadFile = File(...)):
     return await handle_excel_scraping(id, file)
@@ -284,12 +289,6 @@ def delete_user(id: int):
 @error_handler
 def test(arr: Test):
     return handle_get_test(arr)
-
-
-@app.post("/users/create-password", dependencies=[Depends(verify_token)])
-@error_handler
-def create_user_password(userData: CreateUserPasswordInput):
-    return handle_create_user_password(userData)
 
 
 @app.post("/confirm-password", dependencies=[Depends(verify_token)])

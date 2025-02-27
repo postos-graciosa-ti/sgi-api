@@ -547,23 +547,17 @@ def reactivate_worker(id: int):
 # workers logs
 
 
-@app.get(
-    "/subsidiaries/{subsidiarie_id}/workers/{worker_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_worker_by_id_in_subsidiarie(subsidiarie_id: int, worker_id: int):
-    return handle_get_worker_by_id_in_subsidiarie(subsidiarie_id, worker_id)
-
-
-@app.get("/subsidiaries/{id}/workers/logs", dependencies=[Depends(verify_token)])
-@error_handler
+@app.get("/logs/subsidiaries/{id}/workers")
 def get_workers_logs(id: int):
-    return handle_get_workers_logs(id)
+    with Session(engine) as session:
+        query = select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
+
+        workers_logs = session.exec(query).all()
+
+        return workers_logs
 
 
-@app.post("/subsidiaries/{id}/workers/logs", dependencies=[Depends(verify_token)])
-@error_handler
+@app.post("/logs/subsidiaries/{id}/workers")
 def post_workers_logs(id: int, workers_log: WorkersLogs):
     return handle_post_workers_logs(id, workers_log)
 

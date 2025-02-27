@@ -147,7 +147,6 @@ from controllers.workers_logs import (
     handle_get_delete_workers_logs,
     handle_get_update_workers_logs,
     handle_get_worker_by_id_in_subsidiarie,
-    handle_get_workers_logs,
     handle_post_create_workers_logs,
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,

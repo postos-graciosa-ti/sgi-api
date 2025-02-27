@@ -21,15 +21,19 @@ from scripts.cities_states import get_cities_from_ibge, get_states_from_ibge
 def seed_roles():
     with Session(engine) as session:
         existing_roles = session.exec(select(Role)).all()
+
         if not existing_roles:
             roles = [Role(name="Administrador"), Role(name="Usuário")]
+
             session.add_all(roles)
+
             session.commit()
 
 
 def seed_subsidiaries():
     with Session(engine) as session:
         existing_subsidiaries = session.exec(select(Subsidiarie)).all()
+        
         if not existing_subsidiaries:
             subsidiaries = [
                 Subsidiarie(
@@ -37,55 +41,58 @@ def seed_subsidiaries():
                     adress="R. Florianópolis, 510 – Itaum, Joinville – SC, 89207-000",
                     phone="(47) 3436-0030",
                     email="matriz@postosgraciosa.com.br",
-                    coordinator=7,
-                    manager=6,
+                    coordinator=3,
+                    manager=2,
                 ),
                 Subsidiarie(
                     name="Auto Posto Fátima",
                     adress="R. Fátima, 1730 – Fátima, Joinville – SC, 89229-102",
                     phone="(47) 3466-0248",
                     email="fatima@postosgraciosa.com.br",
-                    coordinator=8,
+                    coordinator=4,
                 ),
                 Subsidiarie(
                     name="Posto Bemer",
                     adress="R. Boehmerwald, 675 – Boehmerwald, Joinville – SC, 89232-485",
                     phone="(47) 3465-0328",
                     email="bemer@postosgraciosa.com.br",
-                    coordinator=9,
+                    coordinator=5,
                 ),
                 Subsidiarie(
                     name="Posto Jariva",
                     adress="R. Monsenhor Gercino, 5085 – Jarivatuba, Joinville – SC, 89230-290",
                     phone="(47) 3466-4665",
                     email="jariva@postosgraciosa.com.br",
-                    coordinator=10,
-                    manager=6,
+                    coordinator=6,
+                    manager=2,
                 ),
                 Subsidiarie(
                     name="Posto Graciosa V",
                     adress="R. Santa Catarina, 1870 – Floresta, Joinville – SC, 89212-000",
                     phone="(47) 3436-1763",
                     email="graciosav@postosgraciosa.com.br",
-                    coordinator=5,
-                    manager=6,
+                    coordinator=7,
+                    manager=2,
                 ),
                 Subsidiarie(
                     name="Auto Posto Piraí",
                     adress="R. Quinze de Novembro, 5031 – Vila Nova, Joinville – SC, 89237-000",
                     phone="(47) 3422-9676",
                     email="pirai@postosgraciosa.com.br",
-                    coordinator=12,
-                    manager=6,
+                    coordinator=8,
+                    manager=2,
                 ),
             ]
+
             session.add_all(subsidiaries)
+
             session.commit()
 
 
 def seed_candidate_status():
     with Session(engine) as session:
         existing_candidate_status = session.exec(select(CandidateStatus)).all()
+
         if not existing_candidate_status:
             candidate_status = [
                 CandidateStatus(name="Cadastrado"),
@@ -94,7 +101,9 @@ def seed_candidate_status():
                 CandidateStatus(name="Aguardando Exame Médico"),
                 CandidateStatus(name="Contratado"),
             ]
+
             session.add_all(candidate_status)
+
             session.commit()
 
 
@@ -105,49 +114,13 @@ def seed_users():
         if not existing_users:
             users = [
                 User(
-                    email="admin@gmail.com",
+                    email="dev@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
-                    name="Admin",
+                    name="Dev",
                     role_id=1,
                     is_active=True,
                     subsidiaries_id="[1,2,3,4,5,6]",
-                    phone="47996",
-                ),
-                User(
-                    email="regiane@gmail.com",
-                    password=pbkdf2_sha256.hash("teste"),
-                    name="Regiane",
-                    role_id=1,
-                    is_active=True,
-                    subsidiaries_id="[1,2,3,4,5,6]",
-                    phone="47996",
-                ),
-                User(
-                    email="mauricio@gmail.com",
-                    password=pbkdf2_sha256.hash("teste"),
-                    name="Mauricio",
-                    role_id=1,
-                    is_active=True,
-                    subsidiaries_id="[1,2,3,4,5,6]",
-                    phone="47996",
-                ),
-                User(
-                    email="mariele@gmail.com",
-                    password=pbkdf2_sha256.hash("teste"),
-                    name="Mariele",
-                    role_id=1,
-                    is_active=True,
-                    subsidiaries_id="[1,2,3,4,5,6]",
-                    phone="47996",
-                ),
-                User(
-                    email="thiago@gmail.com",
-                    password=pbkdf2_sha256.hash("teste"),
-                    name="Thiago",
-                    role_id=1,
-                    is_active=True,
-                    subsidiaries_id="[1,2,3,4,5,6]",
-                    phone="47996",
+                    phone="(47) 99688-4562",
                 ),
                 User(
                     email="michel@gmail.com",
@@ -195,9 +168,9 @@ def seed_users():
                     phone="(47) 99195-9966",
                 ),
                 User(
-                    email="tiago@gmail.com",
+                    email="thiago@gmail.com",
                     password=pbkdf2_sha256.hash("teste"),
-                    name="Tiago",
+                    name="Thiago",
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[5]",
@@ -222,6 +195,7 @@ def seed_users():
 def seed_functions():
     with Session(engine) as session:
         existing_functions = session.exec(select(Function)).all()
+
         if not existing_functions:
             functions = [
                 Function(
@@ -257,13 +231,16 @@ def seed_functions():
                     description="Trocador de óleo do posto de combustível",
                 ),
             ]
+
             session.add_all(functions)
+
             session.commit()
 
 
 def seed_turns():
     with Session(engine) as session:
         existing_turns = session.exec(select(Turn)).all()
+        
         if not existing_turns:
             turns = [
                 Turn(

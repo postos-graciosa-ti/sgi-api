@@ -156,7 +156,7 @@ def seed_users():
                     role_id=1,
                     is_active=True,
                     subsidiaries_id="[1,4,5,6]",
-                    phone="47996",
+                    phone="(47) 99100-3040",
                 ),
                 User(
                     email="nilson@gmail.com",
@@ -165,7 +165,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[1]",
-                    phone="47996",
+                    phone="(47) 99137-7949",
                 ),
                 User(
                     email="daniel@gmail.com",
@@ -174,7 +174,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[2]",
-                    phone="47996",
+                    phone="(47)",
                 ),
                 User(
                     email="rudinick@gmail.com",
@@ -183,7 +183,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[3]",
-                    phone="47996",
+                    phone="(47)",
                 ),
                 User(
                     email="marcia@gmail.com",
@@ -192,7 +192,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[4]",
-                    phone="47996",
+                    phone="(47) 99195-9966",
                 ),
                 User(
                     email="tiago@gmail.com",
@@ -201,7 +201,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[5]",
-                    phone="47996",
+                    phone="(47) 98841-4102",
                 ),
                 User(
                     email="gisele@gmail.com",
@@ -210,7 +210,7 @@ def seed_users():
                     role_id=2,
                     is_active=True,
                     subsidiaries_id="[6]",
-                    phone="47996",
+                    phone="(47) 98459-9344",
                 ),
             ]
 

@@ -13,7 +13,28 @@ from models.turn import Turn
 from models.workers import Workers
 
 
-async def handle_excel_scraping(id, file: UploadFile = File(...)):
+async def save_uploaded_file(file: UploadFile, upload_dir: str) -> Path:
+    Path(upload_dir).mkdir(parents=True, exist_ok=True)
+
+    file_location = Path(upload_dir) / file.filename
+
+    with open(file_location, "wb") as f:
+        content = await file.read()
+
+        f.write(content)
+
+    return file_location
+
+
+def clean_up_file(file_location: Path):
+    os.remove(file_location)
+
+    dir_path = os.path.dirname(file_location)
+
+    os.rmdir(dir_path)
+
+
+def get_unit_name(id: int) -> str:
     units_mapping = {
         1: "Posto Graciosa (1º)",
         2: "Posto Fatima (2º)",
@@ -23,125 +44,150 @@ async def handle_excel_scraping(id, file: UploadFile = File(...)):
         6: "Posto Pirai (6º)",
     }
 
-    unit = units_mapping.get(id)
+    return units_mapping if id == 0 else {id: units_mapping.get(id)}
 
-    UPLOAD_DIR = "uploads"
 
-    Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-
-    file_location = Path(UPLOAD_DIR) / file.filename
-
-    with open(file_location, "wb") as f:
-        content = await file.read()
-
-        f.write(content)
-
+def extract_workers_from_excel(file_location: Path, units: dict):
     df = pd.read_excel(file_location)
 
-    subsidiarie_workers = df[(df["Unidade"] == unit) & (df["Status(F)"] == "Ativo")]
+    filtered_df = df[df["Unidade"].isin(units.values()) & (df["Status(F)"] == "Ativo")]
 
-    workers_columns = subsidiarie_workers[
-        ["Nome do Colaborador", "Cargo Atual", "Turno de Trabalho"]
+    workers_columns = filtered_df[
+        ["Nome do Colaborador", "Cargo Atual", "Turno de Trabalho", "Unidade"]
     ]
 
-    workers_columns = workers_columns.where(pd.notna(workers_columns), None)
+    return workers_columns.where(pd.notna(workers_columns), None).to_dict(
+        orient="records"
+    )
 
-    workers_list = workers_columns.to_dict(orient="records")
 
-    os.remove(file_location)
+def get_or_create_function(session: Session, function_name: str, subsidiarie_id: int):
+    function = session.exec(
+        select(Function).where(
+            Function.name == function_name, Function.subsidiarie_id == subsidiarie_id
+        )
+    ).first()
 
-    dir_path = os.path.dirname(file_location)
+    if not function:
+        function = Function(
+            name=function_name, description=function_name, subsidiarie_id=subsidiarie_id
+        )
 
-    os.rmdir(dir_path)
+        session.add(function)
 
-    with Session(engine) as session:
-        turns_dict = {}
-        
-        existing_worker_names = set()
+        session.commit()
 
-        for worker in workers_list:
-            function = session.exec(
-                select(Function).where(
-                    Function.name == worker["Cargo Atual"],
-                    Function.subsidiarie_id == id,
-                )
-            ).first()
+        session.refresh(function)
 
-            if not function:
-                function = Function(
-                    name=worker["Cargo Atual"],
-                    description=worker["Cargo Atual"],
-                    subsidiarie_id=id,
-                )
+    return function
 
-                session.add(function)
-                
-                session.commit()
-                
-                session.refresh(function)
 
-            regex = r"^(.*)-(.*)$"
-            
-            turn_parts = re.match(regex, worker["Turno de Trabalho"])
+def parse_turn(turn_str: str):
+    regex = r"^(.*)-(.*)$"
 
-            if turn_parts:
-                turn_start_time = datetime.strptime(
-                    turn_parts.group(1).strip(), "%H:%M"
-                ).time()
-                
-                turn_end_time = datetime.strptime(
-                    turn_parts.group(2).strip(), "%H:%M"
-                ).time()
-            
-            else:
-                continue
+    match = re.match(regex, turn_str)
 
-            turn = session.exec(
-                select(Turn).where(
-                    Turn.start_time == turn_start_time,
-                    Turn.end_time == turn_end_time,
-                    Turn.subsidiarie_id == id,
-                )
-            ).first()
+    if match:
+        return (
+            datetime.strptime(match.group(1).strip(), "%H:%M").time(),
+            datetime.strptime(match.group(2).strip(), "%H:%M").time(),
+        )
 
-            if not turn:
-                turn = Turn(
-                    name=worker["Turno de Trabalho"],
-                    start_time=turn_start_time,
-                    end_time=turn_end_time,
-                    start_interval_time=time(0, 0),
-                    end_interval_time=time(0, 0),
-                    subsidiarie_id=id,
-                )
+    return None, None
 
-                session.add(turn)
 
-                session.commit()
-                
-                session.refresh(turn)
+def get_or_create_turn(session: Session, turn_str: str, subsidiarie_id: int):
+    start_time, end_time = parse_turn(turn_str)
 
+    if not start_time or not end_time:
+        return None
+
+    turn = session.exec(
+        select(Turn).where(
+            Turn.start_time == start_time,
+            Turn.end_time == end_time,
+            Turn.subsidiarie_id == subsidiarie_id,
+        )
+    ).first()
+
+    if not turn:
+        turn = Turn(
+            name=turn_str,
+            start_time=start_time,
+            end_time=end_time,
+            start_interval_time=time(0, 0),
+            end_interval_time=time(0, 0),
+            subsidiarie_id=subsidiarie_id,
+        )
+
+        session.add(turn)
+
+        session.commit()
+
+        session.refresh(turn)
+
+    return turn
+
+
+def get_or_create_worker(
+    session: Session, worker: dict, function_id: int, turn_id: int, subsidiarie_id: int
+):
+    existing_worker = session.exec(
+        select(Workers).where(
+            Workers.name == worker["Nome do Colaborador"],
+            Workers.subsidiarie_id == subsidiarie_id,
+        )
+    ).first()
+
+    if not existing_worker:
+        new_worker = Workers(
+            name=worker["Nome do Colaborador"],
+            function_id=function_id,
+            subsidiarie_id=subsidiarie_id,
+            is_active=True,
+            turn_id=turn_id,
+            cost_center_id=1,
+            department_id=1,
+            admission_date=date(2025, 1, 1),
+            resignation_date=date(2025, 1, 1),
+        )
+
+        session.add(new_worker)
+
+        session.commit()
+
+
+def process_workers(session: Session, workers_list: list, units: dict):
+    turns_dict = {}
+
+    for worker in workers_list:
+        subsidiarie_id = next(k for k, v in units.items() if v == worker["Unidade"])
+
+        function = get_or_create_function(
+            session, worker["Cargo Atual"], subsidiarie_id
+        )
+
+        turn = get_or_create_turn(session, worker["Turno de Trabalho"], subsidiarie_id)
+
+        if turn:
             turns_dict[worker["Turno de Trabalho"].strip().lower()] = turn.id
 
-            existing_worker = session.exec(
-                select(Workers).where(
-                    Workers.name == worker["Nome do Colaborador"],
-                    Workers.subsidiarie_id == id,
-                )
-            ).first()
+            get_or_create_worker(session, worker, function.id, turn.id, subsidiarie_id)
 
-            if not existing_worker:
-                new_worker = Workers(
-                    name=worker["Nome do Colaborador"],
-                    function_id=function.id,
-                    subsidiarie_id=id,
-                    is_active=True,
-                    turn_id=turn.id,
-                    cost_center_id=1,
-                    department_id=1,
-                    admission_date=date(2025, 1, 1),
-                    resignation_date=date(2025, 1, 1),
-                )
-                session.add(new_worker)
-                session.commit()
+
+async def handle_excel_scraping(id: int, file: UploadFile = File(...)):
+    units = get_unit_name(id)
+    
+    if not units:
+        return {"status": "error", "message": "Invalid unit ID"}
+
+    file_location = await save_uploaded_file(file, "uploads")
+    
+    workers_list = extract_workers_from_excel(file_location, units)
+    
+    clean_up_file(file_location)
+
+    with Session(engine) as session:
+        process_workers(session, workers_list, units)
 
     return {"status": "ok"}

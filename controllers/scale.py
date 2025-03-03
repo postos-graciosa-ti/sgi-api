@@ -584,7 +584,11 @@ def handle_post_subsidiarie_scale_to_print(
     scales_print = []
 
     with Session(engine) as session:
-        scales = session.exec(select(Scale).where(Scale.subsidiarie_id == id)).all()
+        scales = session.exec(
+            select(Scale)
+            .where(Scale.subsidiarie_id == id)
+            .where(Scale.worker_turn_id == scales_print_input.turn_id)
+        ).all()
 
         for scale in scales:
             worker = session.get(Workers, scale.worker_id)

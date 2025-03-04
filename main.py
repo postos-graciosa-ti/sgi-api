@@ -816,17 +816,20 @@ def post_scales_logs(scales_logs_input: ScaleLogs):
 # scale reports
 
 
-@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
-def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
-    return handle_generate_scale_days_on_report(subsidiarie_id, input)
+@app.post(
+    "/reports/subsidiaries/{subsidiarie_id}/scales/days-on",
+    dependencies=[Depends(verify_token)],
+)
+async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
+    return await handle_generate_scale_days_on_report(subsidiarie_id, input)
 
 
 @app.post(
     "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
     dependencies=[Depends(verify_token)],
 )
-def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
-    return handle_generate_scale_days_off_report(subsidiarie_id, input)
+async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
+    return await handle_generate_scale_days_off_report(subsidiarie_id, input)
 
 
 # scales print

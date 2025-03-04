@@ -10,7 +10,7 @@ from pyhints.scales import ScalesReportInput
 from models.function import Function
 
 
-def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
+async def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     with Session(engine) as session:
         caixas_id = session.exec(
             select(Function)
@@ -109,7 +109,7 @@ def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesRepor
         return all_turns_reports
 
 
-def handle_generate_scale_days_off_report(
+async def handle_generate_scale_days_off_report(
     subsidiarie_id: int, input: ScalesReportInput
 ):
     with Session(engine) as session:

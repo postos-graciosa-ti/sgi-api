@@ -7,11 +7,32 @@ from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
 from pyhints.scales import ScalesReportInput
+from models.function import Function
 
 
 def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     with Session(engine) as session:
-        turns = session.exec(select(Turn).where(Turn.id.in_([1, 2, 3, 4, 5]))).all()
+        caixas_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Operador(a) de Caixa I")
+        ).first()
+
+        frentistas_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Frentista I")
+        ).first()
+
+        trocadores_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Trocador de Óleo / Frentista II")
+        ).first()
+
+        turns = session.exec(
+            select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)
+        ).all()
 
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
 
@@ -37,7 +58,7 @@ def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesRepor
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_on.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 1)
+                    .where(Scale.worker_function_id == caixas_id.id)
                 ).all()
 
                 frentistas_ao_turno_e_dia = session.exec(
@@ -45,7 +66,7 @@ def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesRepor
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_on.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 4)
+                    .where(Scale.worker_function_id == frentistas_id.id)
                 ).all()
 
                 trocadores_ao_turno_e_dia = session.exec(
@@ -53,7 +74,7 @@ def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesRepor
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_on.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 9)
+                    .where(Scale.worker_function_id == trocadores_id.id)
                 ).all()
 
                 turn_report.append(
@@ -92,7 +113,25 @@ def handle_generate_scale_days_off_report(
     subsidiarie_id: int, input: ScalesReportInput
 ):
     with Session(engine) as session:
-        turns = session.exec(select(Turn).where(Turn.id.in_([1, 2, 3, 4, 5]))).all()
+        caixas_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Operador(a) de Caixa I")
+        ).first()
+
+        frentistas_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Frentista I")
+        ).first()
+
+        trocadores_id = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == subsidiarie_id)
+            .where(Function.name == "Trocador de Óleo / Frentista II")
+        ).first()
+
+        turns = session.exec(select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)).all()
 
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
 
@@ -118,7 +157,7 @@ def handle_generate_scale_days_off_report(
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_off.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 1)
+                    .where(Scale.worker_function_id == caixas_id.id)
                 ).all()
 
                 frentistas_ao_turno_e_dia = session.exec(
@@ -126,7 +165,7 @@ def handle_generate_scale_days_off_report(
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_off.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 4)
+                    .where(Scale.worker_function_id == frentistas_id.id)
                 ).all()
 
                 trocadores_ao_turno_e_dia = session.exec(
@@ -134,7 +173,7 @@ def handle_generate_scale_days_off_report(
                     .where(Scale.subsidiarie_id == subsidiarie_id)
                     .where(Scale.days_off.contains(dia_do_mes))
                     .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == 9)
+                    .where(Scale.worker_function_id == trocadores_id.id)
                 ).all()
 
                 turn_report.append(

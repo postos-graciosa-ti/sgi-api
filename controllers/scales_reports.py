@@ -10,72 +10,86 @@ from pyhints.scales import ScalesReportInput
 from models.function import Function
 
 
-async def handle_generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
+async def handle_generate_scale_days_on_report(
+    subsidiarie_id: int, input: ScalesReportInput
+):
     with Session(engine) as session:
-        caixas_id = session.exec(
+        # Buscar funções de uma vez
+        functions = session.exec(
             select(Function)
             .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Operador(a) de Caixa I")
-        ).first()
+            .where(
+                Function.name.in_(
+                    [
+                        "Operador(a) de Caixa I",
+                        "Frentista I",
+                        "Trocador de Óleo / Frentista II",
+                    ]
+                )
+            )
+        ).all()
 
-        frentistas_id = session.exec(
-            select(Function)
-            .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Frentista I")
-        ).first()
+        caixas_id = next(f for f in functions if f.name == "Operador(a) de Caixa I")
+        frentistas_id = next(f for f in functions if f.name == "Frentista I")
+        trocadores_id = next(
+            f for f in functions if f.name == "Trocador de Óleo / Frentista II"
+        )
 
-        trocadores_id = session.exec(
-            select(Function)
-            .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Trocador de Óleo / Frentista II")
-        ).first()
-
+        # Buscar todos os turnos de uma vez
         turns = session.exec(
             select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)
         ).all()
 
+        # Parse das datas
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
-
         last_day = datetime.strptime(input.last_day, "%d-%m-%Y")
 
+        # Criando a lista de dias
         dias_do_mes = []
-
         data_atual = first_day
-
         while data_atual <= last_day:
             dias_do_mes.append(data_atual.strftime("%d-%m-%Y"))
-
             data_atual += timedelta(days=1)
 
-        all_turns_reports = []
+        # Coletar escalas para os três tipos de função de uma vez
+        scales = session.exec(
+            select(Scale)
+            .where(Scale.subsidiarie_id == subsidiarie_id)
+            .where(
+                Scale.worker_function_id.in_(
+                    [caixas_id.id, frentistas_id.id, trocadores_id.id]
+                )
+            )
+            .where(Scale.worker_turn_id.in_([turn.id for turn in turns]))
+        ).all()
 
+        # Organizar as escalas por turno, função e dia
+        all_turns_reports = []
         for turn in turns:
             turn_report = [{"turn_info": turn}]
-
             for dia_do_mes in dias_do_mes:
-                caixas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_on.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == caixas_id.id)
-                ).all()
+                # Filtrar escalas para o dia e turno atuais
+                turn_scales = [
+                    scale
+                    for scale in scales
+                    if scale.worker_turn_id == turn.id and dia_do_mes in scale.days_on
+                ]
 
-                frentistas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_on.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == frentistas_id.id)
-                ).all()
-
-                trocadores_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_on.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == trocadores_id.id)
-                ).all()
+                caixas_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == caixas_id.id
+                ]
+                frentistas_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == frentistas_id.id
+                ]
+                trocadores_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == trocadores_id.id
+                ]
 
                 turn_report.append(
                     {
@@ -103,7 +117,6 @@ async def handle_generate_scale_days_on_report(subsidiarie_id: int, input: Scale
                         ),
                     }
                 )
-
             all_turns_reports.append(turn_report)
 
         return all_turns_reports
@@ -131,7 +144,9 @@ async def handle_generate_scale_days_off_report(
             .where(Function.name == "Trocador de Óleo / Frentista II")
         ).first()
 
-        turns = session.exec(select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)).all()
+        turns = session.exec(
+            select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)
+        ).all()
 
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
 

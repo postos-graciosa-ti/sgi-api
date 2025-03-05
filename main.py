@@ -979,3 +979,15 @@ def get_resignable_reasons():
 @error_handler
 def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(input)
+
+
+@app.get("/subsidiaries/{subsidiarie_id}/turns/{turn_id}/workers")
+def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers

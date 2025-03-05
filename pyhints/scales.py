@@ -48,3 +48,4 @@ class ScalesPrintInput(BaseModel):
     start_date: str
     end_date: str
     turn_id: int
+    workers_ids: list

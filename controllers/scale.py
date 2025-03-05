@@ -638,6 +638,7 @@ def handle_post_subsidiarie_scale_to_print(
                         "worker": worker,
                         "days_on": valid_days_on,
                         "days_off": valid_days_off,
+                        "proportion": scale.proportion,  # Adicionando o campo proportion
                         "start_date": start_date,
                         "end_date": end_date,
                     }

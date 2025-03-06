@@ -572,19 +572,12 @@ def handle_delete_scale(scale_id: int, subsidiarie_id: int):
     return all_scales_by_subsidiarie
 
 
-def handle_post_subsidiarie_scale_to_print(
-    id: int, scales_print_input: ScalesPrintInput
-):
-    try:
-        start_date = datetime.strptime(scales_print_input.start_date, "%d-%m-%Y").date()
-        end_date = datetime.strptime(scales_print_input.end_date, "%d-%m-%Y").date()
-    except ValueError:
-        return {"error": "Invalid date format. Use DD-MM-YYYY."}
+def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
+    start_date = datetime.strptime(scales_print_input.start_date, "%d-%m-%Y").date()
+    end_date = datetime.strptime(scales_print_input.end_date, "%d-%m-%Y").date()
 
+    workers_ids_filter = set(scales_print_input.workers_ids) if scales_print_input.workers_ids else None
     scales_print = []
-    workers_ids_filter = (
-        set(scales_print_input.workers_ids) if scales_print_input.workers_ids else None
-    )
 
     with Session(engine) as session:
         scales = session.exec(
@@ -595,77 +588,43 @@ def handle_post_subsidiarie_scale_to_print(
 
         for scale in scales:
             if workers_ids_filter and scale.worker_id not in workers_ids_filter:
-                continue  # Pula os workers que não estão na lista de filtragem
+                continue  # Pula os workers que não estão na lista
 
             worker = session.get(Workers, scale.worker_id)
             if not worker:
                 continue
 
-            valid_days_off = []
-            valid_days_on = []
-            valid_proportion = None  # Inicializa como None
+            # Converte JSON armazenado, se necessário
+            scale_days_off = json.loads(scale.days_off) if isinstance(scale.days_off, str) else scale.days_off or []
+            scale_days_on = json.loads(scale.days_on) if isinstance(scale.days_on, str) else scale.days_on or []
+            scale_proportion = json.loads(scale.proportion) if isinstance(scale.proportion, str) else scale.proportion or []
 
-            # Converter JSON armazenado corretamente
-            try:
-                scale_days_off = (
-                    json.loads(scale.days_off)
-                    if isinstance(scale.days_off, str)
-                    else scale.days_off
-                )
-                scale_days_on = (
-                    json.loads(scale.days_on)
-                    if isinstance(scale.days_on, str)
-                    else scale.days_on
-                )
+            # Filtra os dias dentro do intervalo especificado
+            valid_days_off = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_off if isinstance(day, dict) and "date" in day
+                and start_date <= datetime.strptime(day["date"], "%d-%m-%Y").date() <= end_date
+            ]
 
-                if not isinstance(scale_days_off, list):
-                    scale_days_off = []
-                if not isinstance(scale_days_on, list):
-                    scale_days_on = []
+            valid_days_on = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_on if isinstance(day, dict) and "date" in day
+                and start_date <= datetime.strptime(day["date"], "%d-%m-%Y").date() <= end_date
+            ]
 
-            except (json.JSONDecodeError, TypeError):
-                print(f"Erro ao carregar JSON de dias off/on para o worker {worker.id}")
-                continue
+            valid_proportion = [
+                day  # Retorna o objeto completo de "proportion" (não apenas a data)
+                for day in scale_proportion if isinstance(day, dict)
+                and start_date <= datetime.strptime(day["data"], "%d-%m-%Y").date() <= end_date
+            ]
 
-            # Processamento de dias off
-            for day_off in scale_days_off:
-                day_str = day_off.get("date") if isinstance(day_off, dict) else day_off
-                if isinstance(day_str, str):
-                    try:
-                        day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
-                        if start_date <= day_date <= end_date:
-                            valid_days_off.append(day_date)
-                    except ValueError:
-                        print(f"Formato de data inválido em days_off: {day_str}")
-                        continue
-
-            # Processamento de dias on
-            for day_on in scale_days_on:
-                day_str = day_on.get("date") if isinstance(day_on, dict) else day_on
-                if isinstance(day_str, str):
-                    try:
-                        day_date = datetime.strptime(day_str, "%d-%m-%Y").date()
-                        if start_date <= day_date <= end_date:
-                            valid_days_on.append(day_date)
-                    except ValueError:
-                        print(f"Formato de data inválido em days_on: {day_str}")
-                        continue
-
-            # Verifica se há pelo menos um dia dentro do range antes de pegar o proportion
-            if valid_days_off or valid_days_on:
-                valid_proportion = (
-                    scale.proportion
-                )  # Apenas adiciona se houver dias válidos
-
-                scales_print.append(
-                    {
-                        "worker": worker,
-                        "days_on": valid_days_on,
-                        "days_off": valid_days_off,
-                        "proportion": valid_proportion,
-                        "start_date": start_date,
-                        "end_date": end_date,
-                    }
-                )
+            scales_print.append({
+                "worker": worker,
+                "days_on": valid_days_on,
+                "days_off": valid_days_off,
+                "proportion": valid_proportion,  # Propriedade completa agora
+                "start_date": start_date,
+                "end_date": end_date,
+            })
 
     return scales_print

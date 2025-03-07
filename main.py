@@ -208,7 +208,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -831,19 +831,45 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 
 
 @app.get("/subsidiaries/{id}/scales/logs")
-@error_handler
-def get_subsidiarie_scales_logs(id: int):
-    return handle_get_subsidiarie_scales_logs(id)
+def get_scales_logs(id: int):
+    with Session(engine) as session:
+        scales_logs = session.exec(
+            select(ScaleLogs)
+            .where(ScaleLogs.subsidiarie_id == id)
+            .order_by(ScaleLogs.id.desc())
+        ).all()
+
+        return scales_logs
 
 
-@app.get("/logs/scales", dependencies=[Depends(verify_token)])
-def get_scales_logs():
-    return handle_get_scales_logs()
+@app.post("/subsidiaries/{id}/scales/logs")
+def post_scales_logs(id: int, scale_log: ScaleLogs):
+    with Session(engine) as session:
+        scale_log.subsidiarie_id = id
+
+        session.add(scale_log)
+
+        session.commit()
+
+        session.refresh(scale_log)
+
+        return scale_log
 
 
-@app.post("/logs/scales", dependencies=[Depends(verify_token)])
-def post_scales_logs(scales_logs_input: ScaleLogs):
-    return handle_post_scale_logs(scales_logs_input)
+# @app.get("/subsidiaries/{id}/scales/logs")
+# @error_handler
+# def get_subsidiarie_scales_logs(id: int):
+#     return handle_get_subsidiarie_scales_logs(id)
+
+
+# @app.get("/logs/scales", dependencies=[Depends(verify_token)])
+# def get_scales_logs():
+#     return handle_get_scales_logs()
+
+
+# @app.post("/logs/scales", dependencies=[Depends(verify_token)])
+# def post_scales_logs(scales_logs_input: ScaleLogs):
+#     return handle_post_scale_logs(scales_logs_input)
 
 
 # scale reports

@@ -1,9 +1,7 @@
 import threading
-from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from controllers.candidates import (
@@ -74,16 +72,10 @@ from controllers.scale import (
     handle_get_days_off_quantity,
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
-    handle_get_subsidiarie_scale_to_print,
     handle_handle_scale,
     handle_post_scale,
     handle_post_some_workers_scale,
     handle_post_subsidiarie_scale_to_print,
-)
-from controllers.scales_logs import (
-    handle_get_scales_logs,
-    handle_get_subsidiarie_scales_logs,
-    handle_post_scale_logs,
 )
 from controllers.scales_reports import (
     handle_generate_scale_days_off_report,
@@ -146,8 +138,6 @@ from controllers.workers_logs import (
     handle_get_create_workers_logs,
     handle_get_delete_workers_logs,
     handle_get_update_workers_logs,
-    handle_get_worker_by_id_in_subsidiarie,
-    handle_get_workers_logs,
     handle_post_create_workers_logs,
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,
@@ -166,7 +156,6 @@ from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.jobs import Jobs
-from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
@@ -184,7 +173,6 @@ from pyhints.scales import (
     ScalesReportInput,
     WorkerDeactivateInput,
 )
-from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
     ChangeUserPasswordInput,
@@ -350,36 +338,7 @@ def post_subsidiaries(formData: Subsidiarie):
 
 @app.put("/subsidiaries/{id}")
 def put_subsidiarie(id: int, subsidiarie: Subsidiarie):
-    with Session(engine) as session:
-        db_subsidiarie = session.exec(
-            select(Subsidiarie).where(Subsidiarie.id == id)
-        ).first()
-
-        if subsidiarie.name:
-            db_subsidiarie.name = subsidiarie.name
-
-        if subsidiarie.adress:
-            db_subsidiarie.adress = subsidiarie.adress
-
-        if subsidiarie.phone:
-            db_subsidiarie.phone = subsidiarie.phone
-
-        if subsidiarie.email:
-            db_subsidiarie.email = subsidiarie.email
-
-        if subsidiarie.coordinator is not None:
-            db_subsidiarie.coordinator = subsidiarie.coordinator
-
-        if subsidiarie.manager is not None:
-            db_subsidiarie.manager = subsidiarie.manager
-
-        session.add(db_subsidiarie)
-
-        session.commit()
-
-        session.refresh(db_subsidiarie)
-
-        return db_subsidiarie
+    return handle_put_subsidiarie(id, subsidiarie)
 
 
 @app.delete("/subsidiaries/{id}", dependencies=[Depends(verify_token)])

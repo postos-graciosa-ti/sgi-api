@@ -32,33 +32,37 @@ def handle_post_subsidiaries(formData: Subsidiarie):
     return formData
 
 
-def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
+def handle_put_subsidiarie(id: int, subsidiarie: Subsidiarie):
     with Session(engine) as session:
-        subsidiarie = session.get(Subsidiarie, id)
+        db_subsidiarie = session.exec(
+            select(Subsidiarie).where(Subsidiarie.id == id)
+        ).first()
 
-        if formData.name:
-            subsidiarie.name = formData.name
+        if subsidiarie.name:
+            db_subsidiarie.name = subsidiarie.name
 
-        if formData.adress:
-            subsidiarie.adress = formData.adress
+        if subsidiarie.adress:
+            db_subsidiarie.adress = subsidiarie.adress
 
-        if formData.phone:
-            subsidiarie.phone = formData.phone
+        if subsidiarie.phone:
+            db_subsidiarie.phone = subsidiarie.phone
 
-        if formData.email:
-            subsidiarie.email = formData.email
+        if subsidiarie.email:
+            db_subsidiarie.email = subsidiarie.email
 
-        if formData.coordinator:
-            subsidiarie.coordinator = formData.coordinator
+        if subsidiarie.coordinator is not None:
+            db_subsidiarie.coordinator = subsidiarie.coordinator
 
-        if formData.manager:
-            subsidiarie.manager = formData.manager
+        if subsidiarie.manager is not None:
+            db_subsidiarie.manager = subsidiarie.manager
+
+        session.add(db_subsidiarie)
 
         session.commit()
 
-        session.refresh(subsidiarie)
+        session.refresh(db_subsidiarie)
 
-        return subsidiarie
+        return db_subsidiarie
 
 
 def handle_delete_subsidiarie(id: int):

@@ -895,10 +895,7 @@ async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReport
     return await handle_generate_scale_days_on_report(subsidiarie_id, input)
 
 
-@app.post(
-    "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
-    dependencies=[Depends(verify_token)],
-)
+@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
 async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
     return await handle_generate_scale_days_off_report(subsidiarie_id, input)
 

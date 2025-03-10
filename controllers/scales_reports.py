@@ -3,11 +3,11 @@ from datetime import datetime, timedelta
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.function import Function
 from models.scale import Scale
 from models.turn import Turn
 from models.workers import Workers
 from pyhints.scales import ScalesReportInput
-from models.function import Function
 
 
 async def handle_generate_scale_days_on_report(
@@ -126,23 +126,27 @@ async def handle_generate_scale_days_off_report(
     subsidiarie_id: int, input: ScalesReportInput
 ):
     with Session(engine) as session:
-        caixas_id = session.exec(
+        functions = session.exec(
             select(Function)
             .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Operador(a) de Caixa I")
-        ).first()
+            .where(
+                Function.name.in_(
+                    [
+                        "Operador(a) de Caixa I",
+                        "Frentista I",
+                        "Trocador de Óleo / Frentista II",
+                    ]
+                )
+            )
+        ).all()
 
-        frentistas_id = session.exec(
-            select(Function)
-            .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Frentista I")
-        ).first()
+        caixas_id = next(f for f in functions if f.name == "Operador(a) de Caixa I")
 
-        trocadores_id = session.exec(
-            select(Function)
-            .where(Function.subsidiarie_id == subsidiarie_id)
-            .where(Function.name == "Trocador de Óleo / Frentista II")
-        ).first()
+        frentistas_id = next(f for f in functions if f.name == "Frentista I")
+
+        trocadores_id = next(
+            f for f in functions if f.name == "Trocador de Óleo / Frentista II"
+        )
 
         turns = session.exec(
             select(Turn).where(Turn.subsidiarie_id == subsidiarie_id)
@@ -161,35 +165,46 @@ async def handle_generate_scale_days_off_report(
 
             data_atual += timedelta(days=1)
 
+        scales = session.exec(
+            select(Scale)
+            .where(Scale.subsidiarie_id == subsidiarie_id)
+            .where(
+                Scale.worker_function_id.in_(
+                    [caixas_id.id, frentistas_id.id, trocadores_id.id]
+                )
+            )
+            .where(Scale.worker_turn_id.in_([turn.id for turn in turns]))
+        ).all()
+
         all_turns_reports = []
 
         for turn in turns:
             turn_report = [{"turn_info": turn}]
 
             for dia_do_mes in dias_do_mes:
-                caixas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == caixas_id.id)
-                ).all()
+                turn_scales = [
+                    scale
+                    for scale in scales
+                    if scale.worker_turn_id == turn.id and dia_do_mes in scale.days_off
+                ]
 
-                frentistas_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == frentistas_id.id)
-                ).all()
+                caixas_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == caixas_id.id
+                ]
 
-                trocadores_ao_turno_e_dia = session.exec(
-                    select(Scale)
-                    .where(Scale.subsidiarie_id == subsidiarie_id)
-                    .where(Scale.days_off.contains(dia_do_mes))
-                    .where(Scale.worker_turn_id == turn.id)
-                    .where(Scale.worker_function_id == trocadores_id.id)
-                ).all()
+                frentistas_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == frentistas_id.id
+                ]
+
+                trocadores_ao_turno_e_dia = [
+                    scale
+                    for scale in turn_scales
+                    if scale.worker_function_id == trocadores_id.id
+                ]
 
                 turn_report.append(
                     {
@@ -210,10 +225,10 @@ async def handle_generate_scale_days_off_report(
                         ],
                         "quantidade_trocadores": len(trocadores_ao_turno_e_dia),
                         "status": (
-                            "quantidade de colaboradores suficiente"
+                            "qtde de colaboradores suficiente"
                             if len(frentistas_ao_turno_e_dia) >= 3
                             and len(trocadores_ao_turno_e_dia) >= 1
-                            else "quantidade de colaboradores insuficiente"
+                            else "qtde de colaboradores insuficiente"
                         ),
                     }
                 )

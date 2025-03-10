@@ -4,7 +4,7 @@ from database.sqlite import engine
 from models.TurnsLogs import TurnsLogs
 
 
-async def handle_get_turns_logs(id: int):
+def handle_get_turns_logs(id: int):
     with Session(engine) as session:
         turns_logs = session.exec(
             select(TurnsLogs).where(TurnsLogs.subsidiarie_id == id)

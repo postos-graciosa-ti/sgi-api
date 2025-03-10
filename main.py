@@ -199,6 +199,7 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
+from models.role import Role
 
 # pre settings
 
@@ -208,7 +209,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -355,22 +356,28 @@ def put_subsidiarie(id: int, subsidiarie: Subsidiarie):
             select(Subsidiarie).where(Subsidiarie.id == id)
         ).first()
 
-        if subsidiarie.name:
+        if subsidiarie.name and subsidiarie.name != db_subsidiarie.name:
             db_subsidiarie.name = subsidiarie.name
 
-        if subsidiarie.adress:
+        if subsidiarie.adress and subsidiarie.adress != db_subsidiarie.adress:
             db_subsidiarie.adress = subsidiarie.adress
 
-        if subsidiarie.phone:
+        if subsidiarie.phone and subsidiarie.phone != db_subsidiarie.phone:
             db_subsidiarie.phone = subsidiarie.phone
 
-        if subsidiarie.email:
+        if subsidiarie.email and subsidiarie.email != db_subsidiarie.email:
             db_subsidiarie.email = subsidiarie.email
 
-        if subsidiarie.coordinator is not None:
+        if (
+            subsidiarie.coordinator is not None
+            and subsidiarie.coordinator != db_subsidiarie.coordinator
+        ):
             db_subsidiarie.coordinator = subsidiarie.coordinator
 
-        if subsidiarie.manager is not None:
+        if (
+            subsidiarie.manager is not None
+            and subsidiarie.manager != db_subsidiarie.manager
+        ):
             db_subsidiarie.manager = subsidiarie.manager
 
         session.add(db_subsidiarie)
@@ -455,7 +462,7 @@ def delete_turn(id: int):
 # turns logs
 
 
-@app.get("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
+@app.get("/subsidiaries/{id}/logs/turns")
 def get_turns_logs(id: int):
     return handle_get_turns_logs(id)
 
@@ -760,6 +767,14 @@ def delete_job(job_id: int):
 @error_handler
 def get_roles():
     return handle_get_roles()
+
+
+@app.get("/roles/{id}")
+def get_roles_by_id(id: int):
+    with Session(engine) as session:
+        role = session.exec(select(Role).where(Role.id == id)).first()
+
+        return role
 
 
 # candidates

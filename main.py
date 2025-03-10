@@ -892,7 +892,6 @@ def post_scales_logs(id: int, scale_log: ScaleLogs):
     "/reports/subsidiaries/{subsidiarie_id}/scales/days-on",
     dependencies=[Depends(verify_token)],
 )
-@error_handler
 async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     return await handle_generate_scale_days_on_report(subsidiarie_id, input)
 
@@ -901,7 +900,6 @@ async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReport
     "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
     dependencies=[Depends(verify_token)],
 )
-@error_handler
 async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
     return await handle_generate_scale_days_off_report(subsidiarie_id, input)
 

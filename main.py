@@ -1,9 +1,7 @@
 import threading
-from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from controllers.candidates import (
@@ -74,16 +72,10 @@ from controllers.scale import (
     handle_get_days_off_quantity,
     handle_get_scales_by_subsidiarie_and_worker_id,
     handle_get_scales_by_subsidiarie_id,
-    handle_get_subsidiarie_scale_to_print,
     handle_handle_scale,
     handle_post_scale,
     handle_post_some_workers_scale,
     handle_post_subsidiarie_scale_to_print,
-)
-from controllers.scales_logs import (
-    handle_get_scales_logs,
-    handle_get_subsidiarie_scales_logs,
-    handle_post_scale_logs,
 )
 from controllers.scales_reports import (
     handle_generate_scale_days_off_report,
@@ -94,7 +86,6 @@ from controllers.subsidiaries import (
     handle_get_subsidiarie_by_id,
     handle_get_subsidiaries,
     handle_post_subsidiaries,
-    handle_put_subsidiarie,
 )
 from controllers.subsidiaries_logs import (
     handle_get_subsidiarie_logs,
@@ -146,8 +137,6 @@ from controllers.workers_logs import (
     handle_get_create_workers_logs,
     handle_get_delete_workers_logs,
     handle_get_update_workers_logs,
-    handle_get_worker_by_id_in_subsidiarie,
-    handle_get_workers_logs,
     handle_post_create_workers_logs,
     handle_post_delete_workers_logs,
     handle_post_update_workers_logs,
@@ -166,7 +155,7 @@ from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.jobs import Jobs
-from models.scale import Scale
+from models.role import Role
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
@@ -184,7 +173,6 @@ from pyhints.scales import (
     ScalesReportInput,
     WorkerDeactivateInput,
 )
-from pyhints.subsidiaries import PutSubsidiarie
 from pyhints.turns import PutTurn
 from pyhints.users import (
     ChangeUserPasswordInput,
@@ -199,7 +187,6 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
-from models.role import Role
 
 # pre settings
 
@@ -349,7 +336,8 @@ def post_subsidiaries(formData: Subsidiarie):
     return handle_post_subsidiaries(formData)
 
 
-@app.put("/subsidiaries/{id}")
+@app.put("/subsidiaries/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def put_subsidiarie(id: int, subsidiarie: Subsidiarie):
     with Session(engine) as session:
         db_subsidiarie = session.exec(
@@ -399,11 +387,13 @@ def delete_subsidiaries(id: int):
 
 
 @app.get("/subsidiaries/{id}/notifications", dependencies=[Depends(verify_token)])
+@error_handler
 async def get_subsidiarie_notifications(id: int):
     return await handle_get_subsidiarie_notifications(id)
 
 
 @app.get("/subsidiaries/{id}/workers-status", dependencies=[Depends(verify_token)])
+@error_handler
 def get_subsidiaries_status(id: int):
     handle_get_subsidiaries_status(id)
 
@@ -412,11 +402,13 @@ def get_subsidiaries_status(id: int):
 
 
 @app.get("/subsidiaries-logs", dependencies=[Depends(verify_token)])
+@error_handler
 def get_subsidiarie_logs():
     return handle_get_subsidiarie_logs()
 
 
 @app.post("/subsidiaries/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
     return handle_post_subsidiaries_logs(subsidiarie_log)
 
@@ -437,6 +429,7 @@ def get_turns():
 
 
 @app.get("/turns/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def get_turn_by_id(id: int):
     return handle_get_turn_by_id(id)
 
@@ -462,12 +455,14 @@ def delete_turn(id: int):
 # turns logs
 
 
-@app.get("/subsidiaries/{id}/logs/turns")
+@app.get("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
+@error_handler
 def get_turns_logs(id: int):
     return handle_get_turns_logs(id)
 
 
 @app.post("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
+@error_handler
 def post_turns_logs(id: int, turn_log: TurnsLogs):
     return handle_post_turns_logs(id, turn_log)
 
@@ -476,6 +471,7 @@ def post_turns_logs(id: int, turn_log: TurnsLogs):
 
 
 @app.get("/workers/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def get_worker_by_id(id: int):
     return handle_get_worker_by_id(id)
 
@@ -521,6 +517,7 @@ def get_workers_by_subsidiarie(subsidiarie_id: int):
     "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}",
     dependencies=[Depends(verify_token)],
 )
+@error_handler
 def get_workers_by_subsidiaries_functions_and_turns(
     subsidiarie_id: int, function_id: int, turn_id: int
 ):
@@ -533,6 +530,7 @@ def get_workers_by_subsidiaries_functions_and_turns(
     "/subsidiaries/{subsidiarie_id}/turns/{turn_id}/functions/{function_id}/workers",
     dependencies=[Depends(verify_token)],
 )
+@error_handler
 def get_workers_by_turn_and_function(
     subsidiarie_id: int, turn_id: int, function_id: int
 ):
@@ -551,6 +549,7 @@ def get_workers_by_turn_and_function(
     "/subsidiaries/{subsidiarie_id}/turns/{turn_id}/workers",
     dependencies=[Depends(verify_token)],
 )
+@error_handler
 def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
     with Session(engine) as session:
         workers = session.exec(
@@ -563,16 +562,19 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
 
 
 @app.post("/workers", dependencies=[Depends(verify_token)])
+@error_handler
 def post_worker(worker: Workers):
     return handle_post_worker(worker)
 
 
 @app.put("/workers/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def put_worker(id: int, worker: Workers):
     return handle_put_worker(id, worker)
 
 
 @app.put("/workers/{id}/deactivate", dependencies=[Depends(verify_token)])
+@error_handler
 def deactivate_worker(id: int, worker: WorkerDeactivateInput):
     return handle_deactivate_worker(id, worker)
 
@@ -586,7 +588,8 @@ def reactivate_worker(id: int):
 # workers logs
 
 
-@app.get("/logs/subsidiaries/{id}/workers")
+@app.get("/logs/subsidiaries/{id}/workers", dependencies=[Depends(verify_token)])
+@error_handler
 def get_workers_logs(id: int):
     with Session(engine) as session:
         query = select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
@@ -596,7 +599,8 @@ def get_workers_logs(id: int):
         return workers_logs
 
 
-@app.post("/logs/subsidiaries/{id}/workers")
+@app.post("/logs/subsidiaries/{id}/workers", dependencies=[Depends(verify_token)])
+@error_handler
 def post_workers_logs(id: int, workers_log: WorkersLogs):
     return handle_post_workers_logs(id, workers_log)
 
@@ -769,7 +773,8 @@ def get_roles():
     return handle_get_roles()
 
 
-@app.get("/roles/{id}")
+@app.get("/roles/{id}", dependencies=[Depends(verify_token)])
+@error_handler
 def get_roles_by_id(id: int):
     with Session(engine) as session:
         role = session.exec(select(Role).where(Role.id == id)).first()
@@ -807,36 +812,43 @@ def get_scales_by_subsidiarie_id(subsidiarie_id: int):
     return handle_get_scales_by_subsidiarie_id(subsidiarie_id)
 
 
-@app.get("/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+@app.get(
+    "/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}",
+    dependencies=[Depends(verify_token)],
+)
 @error_handler
 def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int):
     return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
 
 
-@app.get("/scales/day-off/quantity")
+@app.get("/scales/day-off/quantity", dependencies=[Depends(verify_token)])
 @error_handler
 def get_days_off_quantity():
     return handle_get_days_off_quantity()
 
 
-@app.post("/scales")
+@app.post("/scales", dependencies=[Depends(verify_token)])
 @error_handler
 def post_scale(form_data: PostScaleInput):
     return handle_post_scale(form_data)
 
 
-@app.post("/scales/some-workers")
+@app.post("/scales/some-workers", dependencies=[Depends(verify_token)])
+@error_handler
 def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
     return handle_post_some_workers_scale(form_data)
 
 
-@app.post("/delete-scale")
+@app.post("/delete-scale", dependencies=[Depends(verify_token)])
 @error_handler
 def handle_scale(form_data: PostScaleInput):
     return handle_handle_scale(form_data)
 
 
-@app.delete("/scales/{scale_id}/subsidiaries/{subsidiarie_id}")
+@app.delete(
+    "/scales/{scale_id}/subsidiaries/{subsidiarie_id}",
+    dependencies=[Depends(verify_token)],
+)
 @error_handler
 def delete_scale(scale_id: int, subsidiarie_id: int):
     return handle_delete_scale(scale_id, subsidiarie_id)
@@ -845,7 +857,8 @@ def delete_scale(scale_id: int, subsidiarie_id: int):
 # scale logs
 
 
-@app.get("/subsidiaries/{id}/scales/logs")
+@app.get("/subsidiaries/{id}/scales/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def get_scales_logs(id: int):
     with Session(engine) as session:
         scales_logs = session.exec(
@@ -857,7 +870,8 @@ def get_scales_logs(id: int):
         return scales_logs
 
 
-@app.post("/subsidiaries/{id}/scales/logs")
+@app.post("/subsidiaries/{id}/scales/logs", dependencies=[Depends(verify_token)])
+@error_handler
 def post_scales_logs(id: int, scale_log: ScaleLogs):
     with Session(engine) as session:
         scale_log.subsidiarie_id = id
@@ -871,31 +885,23 @@ def post_scales_logs(id: int, scale_log: ScaleLogs):
         return scale_log
 
 
-# @app.get("/subsidiaries/{id}/scales/logs")
-# @error_handler
-# def get_subsidiarie_scales_logs(id: int):
-#     return handle_get_subsidiarie_scales_logs(id)
-
-
-# @app.get("/logs/scales", dependencies=[Depends(verify_token)])
-# def get_scales_logs():
-#     return handle_get_scales_logs()
-
-
-# @app.post("/logs/scales", dependencies=[Depends(verify_token)])
-# def post_scales_logs(scales_logs_input: ScaleLogs):
-#     return handle_post_scale_logs(scales_logs_input)
-
-
 # scale reports
 
 
-@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-on")
+@app.post(
+    "/reports/subsidiaries/{subsidiarie_id}/scales/days-on",
+    dependencies=[Depends(verify_token)],
+)
+@error_handler
 async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
     return await handle_generate_scale_days_on_report(subsidiarie_id, input)
 
 
-@app.post("/reports/subsidiaries/{subsidiarie_id}/scales/days-off")
+@app.post(
+    "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
+    dependencies=[Depends(verify_token)],
+)
+@error_handler
 async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
     return await handle_generate_scale_days_off_report(subsidiarie_id, input)
 
@@ -903,7 +909,8 @@ async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesRepor
 # scales print
 
 
-@app.post("/subsidiaries/{id}/scales/print")
+@app.post("/subsidiaries/{id}/scales/print", dependencies=[Depends(verify_token)])
+@error_handler
 def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
     return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
 

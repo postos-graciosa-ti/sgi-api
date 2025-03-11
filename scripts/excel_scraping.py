@@ -8,6 +8,8 @@ from fastapi import File, UploadFile
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.cost_center import CostCenter  # Modelo de CostCenter
+from models.department import Department  # Modelo de Department
 from models.function import Function
 from models.turn import Turn
 from models.workers import Workers
@@ -50,10 +52,20 @@ def get_unit_name(id: int) -> str:
 def extract_workers_from_excel(file_location: Path, units: dict):
     df = pd.read_excel(file_location)
 
+    # Filtrando apenas as linhas ativas e as unidades desejadas
     filtered_df = df[df["Unidade"].isin(units.values()) & (df["Status(F)"] == "Ativo")]
 
+    # Ajustando os nomes das colunas para corresponder à sua planilha
     workers_columns = filtered_df[
-        ["Nome do Colaborador", "Cargo Atual", "Turno de Trabalho", "Unidade"]
+        [
+            "Nome do Colaborador",
+            "Cargo Atual",
+            "Turno de Trabalho",
+            "Unidade",
+            "C.Custo",
+            "Setor",
+            "Admissão",
+        ]
     ]
 
     return workers_columns.where(pd.notna(workers_columns), None).to_dict(
@@ -129,8 +141,52 @@ def get_or_create_turn(session: Session, turn_str: str, subsidiarie_id: int):
     return turn
 
 
+def get_or_create_cost_center(
+    session: Session, cost_center_name: str, subsidiarie_id: int
+):
+    cost_center = session.exec(
+        select(CostCenter).where(CostCenter.name == cost_center_name)
+    ).first()
+
+    if not cost_center:
+        cost_center = CostCenter(name=cost_center_name, description=cost_center_name)
+
+        session.add(cost_center)
+
+        session.commit()
+
+        session.refresh(cost_center)
+
+    return cost_center
+
+
+def get_or_create_department(
+    session: Session, department_name: str, subsidiarie_id: int
+):
+    department = session.exec(
+        select(Department).where(Department.name == department_name)
+    ).first()
+
+    if not department:
+        department = Department(name=department_name, description=department_name)
+
+        session.add(department)
+
+        session.commit()
+
+        session.refresh(department)
+
+    return department
+
+
 def get_or_create_worker(
-    session: Session, worker: dict, function_id: int, turn_id: int, subsidiarie_id: int
+    session: Session,
+    worker: dict,
+    function_id: int,
+    turn_id: int,
+    cost_center_id: int,
+    department_id: int,
+    subsidiarie_id: int,
 ):
     existing_worker = session.exec(
         select(Workers).where(
@@ -140,15 +196,20 @@ def get_or_create_worker(
     ).first()
 
     if not existing_worker:
+        admission_date = worker["Admissão"]
+
+        if isinstance(admission_date, pd.Timestamp):
+            admission_date = admission_date.date()
+
         new_worker = Workers(
             name=worker["Nome do Colaborador"],
             function_id=function_id,
             subsidiarie_id=subsidiarie_id,
             is_active=True,
             turn_id=turn_id,
-            cost_center_id=1,
-            department_id=1,
-            admission_date=date(2025, 1, 1),
+            cost_center_id=cost_center_id,
+            department_id=department_id,
+            admission_date=admission_date,
             resignation_date=date(2025, 1, 1),
         )
 
@@ -169,22 +230,36 @@ def process_workers(session: Session, workers_list: list, units: dict):
 
         turn = get_or_create_turn(session, worker["Turno de Trabalho"], subsidiarie_id)
 
+        cost_center = get_or_create_cost_center(
+            session, worker["C.Custo"], subsidiarie_id
+        )
+
+        department = get_or_create_department(session, worker["Setor"], subsidiarie_id)
+
         if turn:
             turns_dict[worker["Turno de Trabalho"].strip().lower()] = turn.id
 
-            get_or_create_worker(session, worker, function.id, turn.id, subsidiarie_id)
+            get_or_create_worker(
+                session,
+                worker,
+                function.id,
+                turn.id,
+                cost_center.id,
+                department.id,
+                subsidiarie_id,
+            )
 
 
 async def handle_excel_scraping(id: int, file: UploadFile = File(...)):
     units = get_unit_name(id)
-    
+
     if not units:
         return {"status": "error", "message": "Invalid unit ID"}
 
     file_location = await save_uploaded_file(file, "uploads")
-    
+
     workers_list = extract_workers_from_excel(file_location, units)
-    
+
     clean_up_file(file_location)
 
     with Session(engine) as session:

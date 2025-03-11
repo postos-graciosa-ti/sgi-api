@@ -8,11 +8,11 @@ from fastapi import File, UploadFile
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.cost_center import CostCenter  # Modelo de CostCenter
+from models.department import Department  # Modelo de Department
 from models.function import Function
 from models.turn import Turn
 from models.workers import Workers
-from models.cost_center import CostCenter  # Modelo de CostCenter
-from models.department import Department  # Modelo de Department
 
 
 async def save_uploaded_file(file: UploadFile, upload_dir: str) -> Path:
@@ -64,6 +64,7 @@ def extract_workers_from_excel(file_location: Path, units: dict):
             "Unidade",
             "C.Custo",
             "Setor",
+            "Admissão",
         ]
     ]
 
@@ -195,6 +196,11 @@ def get_or_create_worker(
     ).first()
 
     if not existing_worker:
+        admission_date = worker["Admissão"]
+
+        if isinstance(admission_date, pd.Timestamp):
+            admission_date = admission_date.date()
+
         new_worker = Workers(
             name=worker["Nome do Colaborador"],
             function_id=function_id,
@@ -203,7 +209,7 @@ def get_or_create_worker(
             turn_id=turn_id,
             cost_center_id=cost_center_id,
             department_id=department_id,
-            admission_date=date(2025, 1, 1),
+            admission_date=admission_date,
             resignation_date=date(2025, 1, 1),
         )
 

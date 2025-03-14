@@ -4,7 +4,7 @@ from seeds.seed_months import seed_months
 from seeds.seed_roles import seed_roles
 from seeds.seed_subsidiaries import seed_subsidiaries
 from seeds.seed_users import seed_users
-
+from seeds.seed_neighborhoods import seed_neighborhoods
 
 def seed_database():
     demission_reasons()
@@ -13,3 +13,4 @@ def seed_database():
     seed_subsidiaries()
     seed_candidate_status()
     seed_months()
+    seed_neighborhoods()

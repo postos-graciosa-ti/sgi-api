@@ -187,6 +187,7 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
+from models.neighborhoods import Neighborhoods
 
 # pre settings
 
@@ -196,7 +197,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1055,3 +1056,65 @@ def get_resignable_reasons():
 @error_handler
 def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(input)
+
+
+# neighborhoods
+
+
+@app.get("/neighborhoods")
+def get_neighborhoods():
+    with Session(engine) as session:
+        neighborhoods = session.exec(select(Neighborhoods)).all()
+
+        return neighborhoods
+
+
+@app.get("/neighborhoods/{id}")
+def get_neighborhood_by_id(id: int):
+    with Session(engine) as session:
+        neighborhood = session.get(Neighborhoods, id)
+
+        return neighborhood
+
+
+@app.post("/neighborhoods")
+def post_neighborhood(neighborhood: Neighborhoods):
+    with Session(engine) as session:
+        session.add(neighborhood)
+
+        session.commit()
+
+        session.refresh(neighborhood)
+
+        return neighborhood
+
+
+@app.put("/neighborhoods/{id}")
+def put_neighborhood(id: int, neighborhood: Neighborhoods):
+    with Session(engine) as session:
+        db_neighborhood = session.exec(
+            select(Neighborhoods).where(Neighborhoods.id == id)
+        ).one()
+
+        if neighborhood is not None and neighborhood.name != db_neighborhood.name:
+            db_neighborhood.name = neighborhood.name
+
+        session.add(db_neighborhood)
+
+        session.commit()
+
+        session.refresh(db_neighborhood)
+
+        return db_neighborhood
+
+
+@app.delete("/neighborhoods/{neighborhood_id}")
+def delete_neighborhood(neighborhood_id: int):
+    with Session(engine) as session:
+        neighborhood = session.get(Neighborhoods, neighborhood_id)
+
+        session.delete(neighborhood)
+
+        session.commit()
+
+        return {"message": "Neighborhood deleted successfully"}

@@ -33,6 +33,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.admission_date,
                 Workers.resignation_date,
                 Workers.resignation_reason_id,
+                Workers.enrolment,
+                Workers.sales_code,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -43,12 +45,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 CostCenter.name.label("cost_center"),
                 Department.id.label("department_id"),
                 Department.name.label("department"),
-                ResignableReasons.id.label(
-                    "resignation_reason_id"
-                ),  # Incluindo o ID do motivo de demissão
-                ResignableReasons.name.label(
-                    "resignation_reason_name"
-                ),  # Incluindo o nome do motivo de demissão
+                ResignableReasons.id.label("resignation_reason_id"),
+                ResignableReasons.name.label("resignation_reason_name"),
             )
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .join(Function, Function.id == Workers.function_id)
@@ -59,7 +57,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 ResignableReasons,
                 ResignableReasons.id == Workers.resignation_reason_id,
                 isouter=True,
-            )  # Join com ResignableReasons
+            )
         ).all()
 
         return [
@@ -69,8 +67,10 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "worker_is_active": worker.is_active,
                 "admission_date": worker.admission_date,
                 "resignation_date": worker.resignation_date,
-                "resignation_reason_id": worker.resignation_reason_id,  # ID do motivo de demissão
-                "resignation_reason_name": worker.resignation_reason_name,  # Nome do motivo de demissão
+                "resignation_reason_id": worker.resignation_reason_id,
+                "resignation_reason_name": worker.resignation_reason_name,
+                "worker_enrolment": worker.enrolment,
+                "worker_sales_code": worker.sales_code,
                 "function_id": worker.function_id,
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
@@ -237,6 +237,14 @@ def handle_put_worker(id: int, worker: Workers):
             worker.resignation_date
             if worker.resignation_date
             else db_worker.resignation_date
+        )
+
+        db_worker.enrolment = (
+            worker.enrolment if worker.enrolment else db_worker.enrolment
+        )
+
+        db_worker.sales_code = (
+            worker.sales_code if worker.sales_code else db_worker.sales_code
         )
 
         session.add(db_worker)

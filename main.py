@@ -188,6 +188,7 @@ from pyhints.workers import (
 )
 from scripts.excel_scraping import handle_excel_scraping
 from models.neighborhoods import Neighborhoods
+from models.applicants import Applicants
 
 # pre settings
 
@@ -197,7 +198,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1118,3 +1119,23 @@ def delete_neighborhood(neighborhood_id: int):
         session.commit()
 
         return {"message": "Neighborhood deleted successfully"}
+
+
+@app.get("/applicants")
+def get_applicant():
+    with Session(engine) as session:
+        applicants = session.exec(select(Applicants)).all()
+
+        return applicants
+
+
+@app.post("/applicants")
+def post_applicant(applicant: Applicants):
+    with Session(engine) as session:
+        session.add(applicant)
+
+        session.commit()
+
+        session.refresh(applicant)
+
+        return applicant

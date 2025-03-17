@@ -17,3 +17,5 @@ class Workers(SQLModel, table=True):
     resignation_reason_id: Optional[int] = Field(
         default=None, foreign_key="resignablereasons.id", nullable=True
     )
+    sales_code: str = Field(default=None, nullable=True)
+    enrolment: str = Field(default=None, nullable=True)

@@ -35,6 +35,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.resignation_reason_id,
                 Workers.enrolment,
                 Workers.sales_code,
+                Workers.picture,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -71,6 +72,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "resignation_reason_name": worker.resignation_reason_name,
                 "worker_enrolment": worker.enrolment,
                 "worker_sales_code": worker.sales_code,
+                "picture": worker.picture,
                 "function_id": worker.function_id,
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
@@ -247,11 +249,14 @@ def handle_put_worker(id: int, worker: Workers):
             worker.sales_code if worker.sales_code else db_worker.sales_code
         )
 
+        db_worker.picture = worker.picture if worker.picture else db_worker.picture
+
         session.add(db_worker)
 
         session.commit()
 
         session.refresh(db_worker)
+
     return db_worker
 
 

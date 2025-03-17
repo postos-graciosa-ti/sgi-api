@@ -19,3 +19,4 @@ class Workers(SQLModel, table=True):
     )
     sales_code: str = Field(default=None, nullable=True)
     enrolment: str = Field(default=None, nullable=True)
+    picture: str = Field(default=None, nullable=True)

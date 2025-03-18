@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from sqlmodel import Session, select, update
 
@@ -36,6 +36,9 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.enrolment,
                 Workers.sales_code,
                 Workers.picture,
+                Workers.timecode,
+                Workers.first_review_date,
+                Workers.second_review_date,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -73,6 +76,9 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "worker_enrolment": worker.enrolment,
                 "worker_sales_code": worker.sales_code,
                 "picture": worker.picture,
+                "timecode": worker.timecode,
+                "first_review_date": worker.first_review_date,
+                "second_review_date": worker.second_review_date,
                 "function_id": worker.function_id,
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
@@ -187,7 +193,8 @@ def handle_post_worker(worker: Workers):
         session.commit()
 
         session.refresh(worker)
-    return worker
+
+        return worker
 
 
 def handle_post_worker_notation(id: int, data: PostWorkerNotationInput):
@@ -235,6 +242,14 @@ def handle_put_worker(id: int, worker: Workers):
             worker.admission_date if worker.admission_date else db_worker.admission_date
         )
 
+        db_worker.first_review_date = (
+            datetime.strptime(db_worker.admission_date, "%Y-%m-%d") + timedelta(days=30)
+        ).strftime("%Y-%m-%d")
+
+        db_worker.second_review_date = (
+            datetime.strptime(db_worker.admission_date, "%Y-%m-%d") + timedelta(days=60)
+        ).strftime("%Y-%m-%d")
+
         db_worker.resignation_date = (
             worker.resignation_date
             if worker.resignation_date
@@ -250,6 +265,8 @@ def handle_put_worker(id: int, worker: Workers):
         )
 
         db_worker.picture = worker.picture if worker.picture else db_worker.picture
+
+        db_worker.timecode = worker.timecode if worker.timecode else db_worker.timecode
 
         session.add(db_worker)
 

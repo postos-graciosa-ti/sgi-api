@@ -13,6 +13,7 @@ from models.department import Department  # Modelo de Department
 from models.function import Function
 from models.turn import Turn
 from models.workers import Workers
+from datetime import datetime, timedelta
 
 
 async def save_uploaded_file(file: UploadFile, upload_dir: str) -> Path:
@@ -201,6 +202,10 @@ def get_or_create_worker(
         if isinstance(admission_date, pd.Timestamp):
             admission_date = admission_date.date()
 
+        first_review_date = (admission_date + timedelta(days=30)).strftime("%Y-%m-%d")
+
+        second_review_date = (admission_date + timedelta(days=60)).strftime("%Y-%m-%d")
+
         new_worker = Workers(
             name=worker["Nome do Colaborador"],
             function_id=function_id,
@@ -211,6 +216,8 @@ def get_or_create_worker(
             department_id=department_id,
             admission_date=admission_date,
             resignation_date=date(2025, 1, 1),
+            first_review_date=first_review_date,
+            second_review_date=second_review_date,
         )
 
         session.add(new_worker)

@@ -20,3 +20,6 @@ class Workers(SQLModel, table=True):
     sales_code: str = Field(default=None, nullable=True)
     enrolment: str = Field(default=None, nullable=True)
     picture: str = Field(default=None, nullable=True)
+    timecode: str = Field(default=None, nullable=True)
+    first_review_date: str = Field(default=None, nullable=True)
+    second_review_date: str = Field(default=None, nullable=True)

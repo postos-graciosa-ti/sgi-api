@@ -189,6 +189,8 @@ from pyhints.workers import (
 from scripts.excel_scraping import handle_excel_scraping
 from models.neighborhoods import Neighborhoods
 from models.applicants import Applicants
+from datetime import datetime, timedelta
+from models.workers_first_review import WorkersFirstReview
 
 # pre settings
 
@@ -198,7 +200,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -563,10 +565,26 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
         return workers
 
 
-@app.post("/workers", dependencies=[Depends(verify_token)])
-@error_handler
+@app.post("/workers")
 def post_worker(worker: Workers):
-    return handle_post_worker(worker)
+    admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+
+    worker.first_review_date = (admission_date + timedelta(days=30)).strftime(
+        "%Y-%m-%d"
+    )
+
+    worker.second_review_date = (admission_date + timedelta(days=60)).strftime(
+        "%Y-%m-%d"
+    )
+
+    with Session(engine) as session:
+        session.add(worker)
+
+        session.commit()
+
+        session.refresh(worker)
+
+        return worker
 
 
 @app.put("/workers/{id}", dependencies=[Depends(verify_token)])
@@ -1139,3 +1157,30 @@ def post_applicant(applicant: Applicants):
         session.refresh(applicant)
 
         return applicant
+
+
+# worker first review
+
+
+@app.get("/workers/{id}/first-review")
+def get_worker_first_review(id: int):
+    with Session(engine) as session:
+        db_worker_first_review = session.exec(
+            select(WorkersFirstReview).where(WorkersFirstReview.worker_id == id)
+        ).one()
+
+        return db_worker_first_review
+
+
+@app.post("/workers/{id}/first-review")
+def post_worker_first_review(id: int, worker_first_review: WorkersFirstReview):
+    worker_first_review.worker_id = id
+
+    with Session(engine) as session:
+        session.add(worker_first_review)
+
+        session.commit()
+
+        session.refresh(worker_first_review)
+
+        return worker_first_review

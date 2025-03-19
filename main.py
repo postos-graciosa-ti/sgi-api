@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
@@ -147,6 +148,7 @@ from functions.auth import verify_token
 from functions.error_handling import error_handler
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
+from models.applicants import Applicants
 from models.candidate import Candidate
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
@@ -155,6 +157,7 @@ from models.department_logs import DepartmentsLogs
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.jobs import Jobs
+from models.neighborhoods import Neighborhoods
 from models.role import Role
 from models.scale_logs import ScaleLogs
 from models.subsidiarie import Subsidiarie
@@ -164,7 +167,9 @@ from models.TurnsLogs import TurnsLogs
 from models.user import User
 from models.users_logs import UsersLogs
 from models.workers import Workers
+from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
+from models.workers_second_review import WorkersSecondReview
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
     PostScaleInput,
@@ -187,10 +192,6 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
-from models.neighborhoods import Neighborhoods
-from models.applicants import Applicants
-from datetime import datetime, timedelta
-from models.workers_first_review import WorkersFirstReview
 
 # pre settings
 
@@ -200,7 +201,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1184,3 +1185,30 @@ def post_worker_first_review(id: int, worker_first_review: WorkersFirstReview):
         session.refresh(worker_first_review)
 
         return worker_first_review
+
+
+# worker second review
+
+
+@app.get("/workers/{id}/second-review")
+def get_worker_first_review(id: int):
+    with Session(engine) as session:
+        db_worker_first_review = session.exec(
+            select(WorkersSecondReview).where(WorkersSecondReview.worker_id == id)
+        ).one()
+
+        return db_worker_first_review
+
+
+@app.post("/workers/{id}/second-review")
+def post_worker_first_review(id: int, worker_second_review: WorkersSecondReview):
+    worker_second_review.worker_id = id
+
+    with Session(engine) as session:
+        session.add(worker_second_review)
+
+        session.commit()
+
+        session.refresh(worker_second_review)
+
+        return worker_second_review

@@ -1220,11 +1220,26 @@ def post_worker_first_review(id: int, worker_second_review: WorkersSecondReview)
 def get_workers_by_functions(subsidiarie_id: int, function_id: int, turn_id: int):
     with Session(engine) as session:
         workers_by_function = session.exec(
-            select(Workers)
+            select(
+                Workers.enrolment.label("enrolment"),
+                Workers.name.label("name"),
+                CostCenter.name.label("cost_center"),
+                Department.name.label("department"),
+            )
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .join(Department, Workers.department_id == Department.id)
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .where(Workers.is_active == True)
             .where(Workers.function_id == function_id)
             .where(Workers.turn_id == turn_id)
         ).all()
 
-        return workers_by_function
+        return [
+            {
+                "enrolment": worker.enrolment,
+                "name": worker.name,
+                "cost_center": worker.cost_center,
+                "department": worker.department,
+            }
+            for worker in workers_by_function
+        ]

@@ -39,6 +39,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.timecode,
                 Workers.first_review_date,
                 Workers.second_review_date,
+                Workers.esocial,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -79,6 +80,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "timecode": worker.timecode,
                 "first_review_date": worker.first_review_date,
                 "second_review_date": worker.second_review_date,
+                "esocial": worker.esocial,
                 "function_id": worker.function_id,
                 "function_name": worker.function_name,
                 "turn_id": worker.turn_id,
@@ -267,6 +269,8 @@ def handle_put_worker(id: int, worker: Workers):
         db_worker.picture = worker.picture if worker.picture else db_worker.picture
 
         db_worker.timecode = worker.timecode if worker.timecode else db_worker.timecode
+
+        db_worker.esocial = worker.esocial if worker.esocial else db_worker.esocial
 
         session.add(db_worker)
 

@@ -16,3 +16,4 @@ class WorkersFirstReview(SQLModel, table=True):
     hierarchy: str = Field(default=None, nullable=True)
     punctuality: str = Field(default=None, nullable=True)
     attendance: str = Field(default=None, nullable=True)
+    approved: str = Field(default=None, nullable=True)

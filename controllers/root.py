@@ -4,10 +4,9 @@ from fastapi import HTTPException
 from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy_utils import database_exists
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, select
 
 from database.sqlite import create_db_and_tables, engine
-from models import *
 from models.user import User
 from seeds.seed_all import seed_database
 
@@ -16,34 +15,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def update_tables():
-    inspector = inspect(engine)
-
-    with engine.connect() as connection:
-        for table_name, model in SQLModel.metadata.tables.items():
-            if table_name in inspector.get_table_names():
-                existing_columns = {
-                    col["name"] for col in inspector.get_columns(table_name)
-                }
-
-                model_columns = set(model.columns.keys())
-
-                new_columns = model_columns - existing_columns
-
-                if new_columns:
-                    for column in new_columns:
-                        column_obj = model.columns[column]
-
-                        alter_stmt = f'ALTER TABLE "{table_name}" ADD COLUMN "{column}" {column_obj.type}'
-
-                        connection.execute(alter_stmt)
-            else:
-                model.create(engine)
-
-
 def handle_on_startup():
     try:
-        update_tables()
+        if not database_exists(engine.url):
+            create_db_and_tables()
+
+            seed_database()
+
+        else:
+            inspector = inspect(engine)
+
+            tables = inspector.get_table_names()
+
+            if not tables:
+                create_db_and_tables()
+
+                seed_database()
 
     except OperationalError as e:
         print(f"Erro ao conectar ao banco de dados: {e}")

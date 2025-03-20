@@ -1212,3 +1212,19 @@ def post_worker_first_review(id: int, worker_second_review: WorkersSecondReview)
         session.refresh(worker_second_review)
 
         return worker_second_review
+
+
+@app.get(
+    "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
+)
+def get_workers_by_functions(subsidiarie_id: int, function_id: int, turn_id: int):
+    with Session(engine) as session:
+        workers_by_function = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.is_active == True)
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers_by_function

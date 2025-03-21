@@ -1243,3 +1243,68 @@ def get_workers_by_functions(subsidiarie_id: int, function_id: int, turn_id: int
             }
             for worker in workers_by_function
         ]
+
+
+from datetime import datetime, timedelta
+
+from sqlmodel import Session, select
+
+
+@app.get("/subsidiaries/{subsidiarie_id}/workers/experience-time-no-first-review")
+def get_workers_without_first_review_in_range(subsidiarie_id: int):
+    with Session(engine) as session:
+        today = datetime.today()
+
+        start_of_week = today - timedelta(days=today.weekday())
+
+        end_of_week = start_of_week + timedelta(days=6)
+
+        start_of_week_str = start_of_week.strftime("%Y-%m-%d")
+
+        end_of_week_str = end_of_week.strftime("%Y-%m-%d")
+
+        workers_without_first_review = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.first_review_date >= start_of_week_str)
+            .where(Workers.first_review_date <= end_of_week_str)
+            .where(
+                ~Workers.id.in_(
+                    select(WorkersFirstReview.worker_id).where(
+                        WorkersFirstReview.worker_id == Workers.id
+                    )
+                )
+            )
+        ).all()
+
+        return workers_without_first_review
+
+
+@app.get("/subsidiaries/{subsidiarie_id}/workers/experience-time-no-second-review")
+def get_workers_without_second_review_in_range(subsidiarie_id: int):
+    with Session(engine) as session:
+        today = datetime.today()
+
+        start_of_week = today - timedelta(days=today.weekday())
+
+        end_of_week = start_of_week + timedelta(days=6)
+
+        start_of_week_str = start_of_week.strftime("%Y-%m-%d")
+
+        end_of_week_str = end_of_week.strftime("%Y-%m-%d")
+
+        workers_without_second_review = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.second_review_date >= start_of_week_str)
+            .where(Workers.second_review_date <= end_of_week_str)
+            .where(
+                ~Workers.id.in_(
+                    select(WorkersSecondReview.worker_id).where(
+                        WorkersSecondReview.worker_id == Workers.id
+                    )
+                )
+            )
+        ).all()
+
+        return workers_without_second_review

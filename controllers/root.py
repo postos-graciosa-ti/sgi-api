@@ -18,19 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# def handle_on_startup():
-#     database_url = os.environ.get("SQLITE_URL")
-
-#     if not database_exists(engine):
-#         create_db_and_tables()
-
-#         seed_database()
-
-# alembic_cfg = Config("alembic.ini")
-
-# alembic_cfg.set_main_option("sqlalchemy.url", database_url)
-
-# command.upgrade(alembic_cfg, "head")
+from sqlalchemy.exc import OperationalError
 
 
 def handle_on_startup():
@@ -38,34 +26,47 @@ def handle_on_startup():
         database_url = os.environ.get("SQLITE_URL")
 
         if not database_exists(engine.url):
+            print("Banco de dados não encontrado. Criando...")
+
             create_db_and_tables()
 
             seed_database()
 
-            alembic_cfg = Config("alembic.ini")
-
-            alembic_cfg.set_main_option("sqlalchemy.url", database_url)
-
-            command.upgrade(alembic_cfg, "head")
+            run_migrations(database_url)
 
         else:
             inspector = inspect(engine)
 
             tables = inspector.get_table_names()
 
+            print(f"Tabelas encontradas: {tables}")
+
             if not tables:
+                print("Nenhuma tabela encontrada. Criando e rodando migrações...")
+
                 create_db_and_tables()
 
                 seed_database()
 
-                alembic_cfg = Config("alembic.ini")
-
-                alembic_cfg.set_main_option("sqlalchemy.url", database_url)
-
-                command.upgrade(alembic_cfg, "head")
+                run_migrations(database_url)
+                
+            else:
+                print("Tabelas já existem. Nenhuma ação necessária.")
 
     except OperationalError as e:
         print(f"Erro ao conectar ao banco de dados: {e}")
+
+
+def run_migrations(database_url):
+    print("Executando migrações do Alembic...")
+    
+    alembic_cfg = Config("alembic.ini")
+    
+    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+    
+    command.upgrade(alembic_cfg, "head")
+    
+    print("Migrações aplicadas com sucesso!")
 
 
 def handle_get_docs_info():

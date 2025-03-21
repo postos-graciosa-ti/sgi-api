@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import HTTPException
 from sqlalchemy import inspect
@@ -6,6 +7,8 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy_utils import database_exists
 from sqlmodel import Session, select
 
+from alembic import command
+from alembic.config import Config
 from database.sqlite import create_db_and_tables, engine
 from models.user import User
 from seeds.seed_all import seed_database
@@ -15,12 +18,35 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# def handle_on_startup():
+#     database_url = os.environ.get("SQLITE_URL")
+
+#     if not database_exists(engine):
+#         create_db_and_tables()
+
+#         seed_database()
+
+# alembic_cfg = Config("alembic.ini")
+
+# alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+# command.upgrade(alembic_cfg, "head")
+
+
 def handle_on_startup():
     try:
+        database_url = os.environ.get("SQLITE_URL")
+
         if not database_exists(engine.url):
             create_db_and_tables()
 
             seed_database()
+
+            alembic_cfg = Config("alembic.ini")
+
+            alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+            command.upgrade(alembic_cfg, "head")
 
         else:
             inspector = inspect(engine)
@@ -31,6 +57,12 @@ def handle_on_startup():
                 create_db_and_tables()
 
                 seed_database()
+
+                alembic_cfg = Config("alembic.ini")
+
+                alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+                command.upgrade(alembic_cfg, "head")
 
     except OperationalError as e:
         print(f"Erro ao conectar ao banco de dados: {e}")

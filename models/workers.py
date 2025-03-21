@@ -24,3 +24,4 @@ class Workers(SQLModel, table=True):
     first_review_date: str = Field(default=None, nullable=True)
     second_review_date: str = Field(default=None, nullable=True)
     esocial: str = Field(default=None, nullable=True)
+    teste: str = Field(default=None, nullable=True)

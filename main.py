@@ -1,6 +1,7 @@
 import threading
 from datetime import datetime, timedelta
 
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
 from sqlmodel import Session, select
@@ -568,21 +569,18 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
 
 @app.post("/workers")
 def post_worker(worker: Workers):
-    admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+    if isinstance(worker.admission_date, str):
+        admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+    else:
+        admission_date = worker.admission_date
 
-    worker.first_review_date = (admission_date + timedelta(days=30)).strftime(
-        "%Y-%m-%d"
-    )
-
-    worker.second_review_date = (admission_date + timedelta(days=60)).strftime(
-        "%Y-%m-%d"
-    )
+    # Adicionando meses corretamente
+    worker.first_review_date = admission_date + relativedelta(months=1)
+    worker.second_review_date = admission_date + relativedelta(months=2)
 
     with Session(engine) as session:
         session.add(worker)
-
         session.commit()
-
         session.refresh(worker)
 
         return worker
@@ -1245,8 +1243,10 @@ def get_workers_by_functions(subsidiarie_id: int, function_id: int, turn_id: int
         ]
 
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
+from fastapi import FastAPI
 from sqlmodel import Session, select
 
 
@@ -1255,12 +1255,13 @@ def get_workers_without_first_review_in_range(subsidiarie_id: int):
     with Session(engine) as session:
         today = datetime.today()
 
-        start_of_week = today - timedelta(days=today.weekday())
+        # Obtém o início da semana (segunda-feira)
+        start_of_week = today - relativedelta(days=today.weekday())
 
-        end_of_week = start_of_week + timedelta(days=6)
+        # Obtém o final da semana (domingo)
+        end_of_week = start_of_week + relativedelta(days=6)
 
         start_of_week_str = start_of_week.strftime("%Y-%m-%d")
-
         end_of_week_str = end_of_week.strftime("%Y-%m-%d")
 
         workers_without_first_review = session.exec(
@@ -1308,3 +1309,52 @@ def get_workers_without_second_review_in_range(subsidiarie_id: int):
         ).all()
 
         return workers_without_second_review
+
+
+@app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+def sla(subsidiarie_id: int, worker_id: int):
+    today = datetime.today().date()
+
+    with Session(engine) as session:
+        first_review = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.id == worker_id)
+            .where(Workers.first_review_date >= today)
+        ).first()
+
+        can_open_first_review_modal = (
+            True
+            if session.exec(
+                select(Workers)
+                .where(Workers.subsidiarie_id == subsidiarie_id)
+                .where(Workers.id == worker_id)
+                .where(Workers.first_review_date >= today)
+            ).first()
+            else False
+        )
+
+        second_review = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.id == worker_id)
+            .where(Workers.second_review_date >= today)
+        ).first()
+
+        can_open_second_review_modal = (
+            True
+            if session.exec(
+                select(Workers)
+                .where(Workers.subsidiarie_id == subsidiarie_id)
+                .where(Workers.id == worker_id)
+                .where(Workers.second_review_date >= today)
+            ).first()
+            else False
+        )
+
+        return {
+            "first_review": first_review,
+            "second_review": second_review,
+            "can_open_first_review_modal": can_open_first_review_modal,
+            "can_open_second_review_modal": can_open_second_review_modal,
+        }

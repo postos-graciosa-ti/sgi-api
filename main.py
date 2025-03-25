@@ -193,6 +193,7 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
+from models.dates_events import DatesEvents
 
 # pre settings
 
@@ -1418,3 +1419,68 @@ def get_nr_list_by_subsidiarie(id: int):
         ).all()
 
         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
+
+
+# dates events
+
+
+@app.get("/subsidiaries/{id}/dates-events")
+def get_date_event(id: int):
+    with Session(engine) as session:
+        today = date.today()
+
+        first_day = today.replace(day=1)
+
+        last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(
+            days=1
+        )
+
+        date_event = session.exec(
+            select(DatesEvents)
+            .where(DatesEvents.subsidiarie_id == id)
+            .where(DatesEvents.date.between(first_day, last_day))
+        ).all()
+
+        return date_event
+
+
+@app.get("/subsidiaries/{id}/dates/{date}/dates-events")
+def get_events_by_date(id: int, date: str):
+    with Session(engine) as session:
+        dates_events = session.exec(
+            select(DatesEvents)
+            .where(DatesEvents.subsidiarie_id == id)
+            .where(DatesEvents.date == date)
+        ).all()
+
+        return dates_events
+
+
+@app.post("/subsidiaries/{id}/dates-events")
+def post_date_event(id: int, date_event: DatesEvents):
+    date_event.subsidiarie_id = id
+
+    with Session(engine) as session:
+        session.add(date_event)
+
+        session.commit()
+
+        session.refresh(date_event)
+
+        return date_event
+
+
+@app.delete("/subsidiaries/{subsidiarie_id}/dates-events/{event_id}")
+def delete_date_event(subsidiarie_id: int, event_id: int):
+    with Session(engine) as session:
+        date_event = session.exec(
+            select(DatesEvents)
+            .where(DatesEvents.id == event_id)
+            .where(DatesEvents.subsidiarie_id == subsidiarie_id)
+        ).first()
+
+        session.delete(date_event)
+
+        session.commit()
+
+        return {"success": True}

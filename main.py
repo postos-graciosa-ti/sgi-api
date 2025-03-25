@@ -1358,3 +1358,63 @@ def sla(subsidiarie_id: int, worker_id: int):
             "can_open_first_review_modal": can_open_first_review_modal,
             "can_open_second_review_modal": can_open_second_review_modal,
         }
+
+
+from pydantic import BaseModel
+
+
+class WorkersFieldsByTurnAndFunctionInput(BaseModel):
+    fields: list
+
+
+@app.post(
+    "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
+)
+def workers_fields_by_turn_and_function(
+    subsidiarie_id: int,
+    function_id: int,
+    turn_id: int,
+    input: WorkersFieldsByTurnAndFunctionInput,
+):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        if not workers:
+            return []
+
+        valid_fields = {column.name for column in Workers.__table__.columns}
+
+        requested_fields = [field for field in input.fields if field in valid_fields]
+
+        result = [
+            {field: getattr(worker, field) for field in requested_fields}
+            for worker in workers
+        ]
+
+        return result
+
+
+from datetime import date
+
+
+@app.get("/subsidiaries/{id}/get-nr20-list")
+def get_nr_list_by_subsidiarie(id: int):
+    today = date.today()
+
+    first_day = today.replace(day=1)
+
+    last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(days=1)
+
+    with Session(engine) as session:
+        nr_list = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.admission_date.between(first_day, last_day))
+        ).all()
+
+        return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}

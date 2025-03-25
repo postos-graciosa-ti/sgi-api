@@ -1379,25 +1379,47 @@ def workers_fields_by_turn_and_function(
 ):
     with Session(engine) as session:
         workers = session.exec(
-            select(Workers)
+            select(Workers, Function, Turn, CostCenter, Department)
+            .join(Function, Workers.function_id == Function.id)
+            .join(Turn, Workers.turn_id == Turn.id)
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .join(Department, Workers.department_id == Department.id)
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .where(Workers.function_id == function_id)
             .where(Workers.turn_id == turn_id)
         ).all()
 
-        if not workers:
-            return []
-
-        valid_fields = {column.name for column in Workers.__table__.columns}
-
-        requested_fields = [field for field in input.fields if field in valid_fields]
-
         result = [
-            {field: getattr(worker, field) for field in requested_fields}
-            for worker in workers
+            {
+                "esocial": worker.esocial,
+                "enrolment": worker.enrolment,
+                "sales_code": worker.sales_code,
+                "timecode": worker.timecode,
+                "worker_name": worker.name,
+                "function_name": function.name,
+                "turn_name": turn.name,
+                "cost_center_name": cost_center.name,
+                "department_name": department.name,
+                "admission_date": worker.admission_date
+            }
+            for worker, function, turn, cost_center, department in workers
         ]
 
         return result
+
+        # if not workers:
+        #     return []
+
+        # valid_fields = {column.name for column in Workers.__table__.columns}
+
+        # requested_fields = [field for field in input.fields if field in valid_fields]
+
+        # result = [
+        #     {field: getattr(worker, field) for field in requested_fields}
+        #     for worker in workers
+        # ]
+
+        # return workers
 
 
 from datetime import date

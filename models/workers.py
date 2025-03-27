@@ -64,3 +64,7 @@ class Workers(SQLModel, table=True):
     rg_issuing_agency: str = Field(default=None, nullable=True)
     rg_state: int = Field(default=None, nullable=True, foreign_key="states.id")
     rg_expedition_date: str = Field(default=None, nullable=True)
+
+    military_cert_number: str = Field(default=None, nullable=True)
+    pis: str = Field(default=None, nullable=True)
+    pis_register_date: str = Field(default=None, nullable=True)

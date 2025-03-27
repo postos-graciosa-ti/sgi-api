@@ -53,4 +53,6 @@ class Workers(SQLModel, table=True):
 
     fathername: str = Field(default=None, nullable=True)
     mothername: str = Field(default=None, nullable=True)
-    
+
+    has_children: bool | None = Field(default=None, nullable=True)
+    children_data: str = Field(default="[]")

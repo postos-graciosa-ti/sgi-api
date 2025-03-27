@@ -38,8 +38,8 @@ class Workers(SQLModel, table=True):
         default=None, nullable=True, foreign_key="neighborhoods.id"
     )
     cep: str = Field(default=None, nullable=True)
-    city: str = Field(default=None, nullable=True)
-    state: str = Field(default=None, nullable=True)
+    city: int = Field(default=None, nullable=True, foreign_key="cities.id")
+    state: int = Field(default=None, nullable=True, foreign_key="states.id")
 
     phone: str = Field(default=None, nullable=True)
     mobile: str = Field(default=None, nullable=True)
@@ -47,8 +47,8 @@ class Workers(SQLModel, table=True):
     ethnicity_id: int = Field(default=None, nullable=True, foreign_key="ethnicity.id")
 
     birthdate: str = Field(default=None, nullable=True)
-    birthcity: str = Field(default=None, nullable=True)
-    birthstate: str = Field(default=None, nullable=True)
+    birthcity: int = Field(default=None, nullable=True, foreign_key="cities.id")
+    birthstate: int = Field(default=None, nullable=True, foreign_key="states.id")
     nationality: str = Field(default=None, nullable=True)
 
     fathername: str = Field(default=None, nullable=True)
@@ -56,3 +56,11 @@ class Workers(SQLModel, table=True):
 
     has_children: bool | None = Field(default=None, nullable=True)
     children_data: str = Field(default="[]")
+
+    # school_level
+
+    cpf: str = Field(default=None, nullable=True)
+    rg: str = Field(default=None, nullable=True)
+    rg_issuing_agency: str = Field(default=None, nullable=True)
+    rg_state: int = Field(default=None, nullable=True, foreign_key="states.id")
+    rg_expedition_date: str = Field(default=None, nullable=True)

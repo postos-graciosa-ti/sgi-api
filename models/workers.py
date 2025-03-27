@@ -72,3 +72,8 @@ class Workers(SQLModel, table=True):
     votant_title: str = Field(default=None, nullable=True)
     votant_zone: str = Field(default=None, nullable=True)
     votant_session: str = Field(default=None, nullable=True)
+
+    ctps: str = Field(default=None, nullable=True)
+    ctps_serie: str = Field(default=None, nullable=True)
+    ctps_state: int = Field(default=None, nullable=True, foreign_key="states.id")
+    ctps_emission_date: str = Field(default=None, nullable=True)

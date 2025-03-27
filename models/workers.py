@@ -50,3 +50,7 @@ class Workers(SQLModel, table=True):
     birthcity: str = Field(default=None, nullable=True)
     birthstate: str = Field(default=None, nullable=True)
     nationality: str = Field(default=None, nullable=True)
+
+    fathername: str = Field(default=None, nullable=True)
+    mothername: str = Field(default=None, nullable=True)
+    

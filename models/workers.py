@@ -40,3 +40,13 @@ class Workers(SQLModel, table=True):
     cep: str = Field(default=None, nullable=True)
     city: str = Field(default=None, nullable=True)
     state: str = Field(default=None, nullable=True)
+
+    phone: str = Field(default=None, nullable=True)
+    mobile: str = Field(default=None, nullable=True)
+    email: str = Field(default=None, nullable=True)
+    ethnicity_id: int = Field(default=None, nullable=True, foreign_key="ethnicity.id")
+
+    birthdate: str = Field(default=None, nullable=True)
+    birthcity: str = Field(default=None, nullable=True)
+    birthstate: str = Field(default=None, nullable=True)
+    nationality: str = Field(default=None, nullable=True)

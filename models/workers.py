@@ -77,3 +77,8 @@ class Workers(SQLModel, table=True):
     ctps_serie: str = Field(default=None, nullable=True)
     ctps_state: int = Field(default=None, nullable=True, foreign_key="states.id")
     ctps_emission_date: str = Field(default=None, nullable=True)
+
+    cnh: str = Field(default=None, nullable=True)
+    cnh_category: str = Field(default=None, nullable=True)
+    cnh_emition_date: str = Field(default=None, nullable=True)
+    cnh_valid_date: str = Field(default=None, nullable=True)

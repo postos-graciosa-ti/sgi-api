@@ -88,3 +88,7 @@ class Workers(SQLModel, table=True):
     union_contribute_current_year: bool | None = Field(default=None, nullable=True)
     receiving_unemployment_insurance: bool | None = Field(default=None, nullable=True)
     previous_experience: bool | None = Field(default=None, nullable=True)
+
+    month_wage: str = Field(default=None, nullable=True)
+    hour_wage: str = Field(default=None, nullable=True)
+    journey_wage: str = Field(default=None, nullable=True)

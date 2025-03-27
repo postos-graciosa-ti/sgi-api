@@ -82,3 +82,9 @@ class Workers(SQLModel, table=True):
     cnh_category: str = Field(default=None, nullable=True)
     cnh_emition_date: str = Field(default=None, nullable=True)
     cnh_valid_date: str = Field(default=None, nullable=True)
+
+    first_job: bool | None = Field(default=None, nullable=True)
+    was_employee: bool | None = Field(default=None, nullable=True)
+    union_contribute_current_year: bool | None = Field(default=None, nullable=True)
+    receiving_unemployment_insurance: bool | None = Field(default=None, nullable=True)
+    previous_experience: bool | None = Field(default=None, nullable=True)

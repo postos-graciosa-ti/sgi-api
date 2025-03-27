@@ -68,3 +68,7 @@ class Workers(SQLModel, table=True):
     military_cert_number: str = Field(default=None, nullable=True)
     pis: str = Field(default=None, nullable=True)
     pis_register_date: str = Field(default=None, nullable=True)
+
+    votant_title: str = Field(default=None, nullable=True)
+    votant_zone: str = Field(default=None, nullable=True)
+    votant_session: str = Field(default=None, nullable=True)

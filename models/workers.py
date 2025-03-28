@@ -92,3 +92,10 @@ class Workers(SQLModel, table=True):
     month_wage: str = Field(default=None, nullable=True)
     hour_wage: str = Field(default=None, nullable=True)
     journey_wage: str = Field(default=None, nullable=True)
+
+    transport_voucher: str = Field(default=None, nullable=True)
+    transport_voucher_quantity: str = Field(default=None, nullable=True)
+    
+    diary_workjourney: str = Field(default=None, nullable=True)
+    week_workjourney: str = Field(default=None, nullable=True)
+    month_workjourney: str = Field(default=None, nullable=True)

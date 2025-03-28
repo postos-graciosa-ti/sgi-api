@@ -64,6 +64,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.birthstate,
                 Workers.fathername,
                 Workers.mothername,
+                Workers.cpf,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -133,6 +134,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "birthstate": session.get(States, worker.birthstate),
                 "fathername": worker.fathername,
                 "mothername": worker.mothername,
+                "cpf": worker.cpf,
             }
             for worker in workers
         ]

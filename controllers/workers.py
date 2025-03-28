@@ -3,17 +3,23 @@ from datetime import date, datetime, timedelta
 from sqlmodel import Session, select, update
 
 from database.sqlite import engine
+from models.cities import Cities
+from models.civil_status import CivilStatus
 from models.cost_center import CostCenter
 from models.department import Department
 from models.function import Function
+from models.genders import Genders
 from models.jobs import Jobs
+from models.neighborhoods import Neighborhoods
 from models.resignable_reasons import ResignableReasons
 from models.scale import Scale
+from models.states import States
 from models.turn import Turn
 from models.workers import Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
+from models.ethnicity import Ethnicity
 
 
 def handle_get_worker_by_id(id: int):
@@ -40,6 +46,24 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.first_review_date,
                 Workers.second_review_date,
                 Workers.esocial,
+                Workers.gender_id,
+                Workers.civil_status_id,
+                Workers.street,
+                Workers.street_number,
+                Workers.street_complement,
+                Workers.neighborhood_id,
+                Workers.cep,
+                Workers.city,
+                Workers.state,
+                Workers.phone,
+                Workers.mobile,
+                Workers.email,
+                Workers.ethnicity_id,
+                Workers.birthdate,
+                Workers.birthcity,
+                Workers.birthstate,
+                Workers.fathername,
+                Workers.mothername,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -91,6 +115,24 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "cost_center": worker.cost_center,
                 "department_id": worker.department_id,
                 "department": worker.department,
+                "gender": session.get(Genders, worker.gender_id),
+                "civil_status": session.get(CivilStatus, worker.civil_status_id),
+                "street": worker.street,
+                "street_number": worker.street_number,
+                "street_complement": worker.street_complement,
+                "neighborhood": session.get(Neighborhoods, worker.neighborhood_id),
+                "cep": worker.cep,
+                "city": session.get(Cities, worker.city),
+                "state": session.get(States, worker.state),
+                "phone": worker.phone,
+                "mobile": worker.mobile,
+                "email": worker.email,
+                "ethnicity": session.get(Ethnicity, worker.ethnicity_id),
+                "birthdate": worker.birthdate,
+                "birthcity": worker.birthcity,
+                "birthstate": session.get(States, worker.birthstate),
+                "fathername": worker.fathername,
+                "mothername": worker.mothername,
             }
             for worker in workers
         ]

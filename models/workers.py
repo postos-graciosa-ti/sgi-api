@@ -99,3 +99,10 @@ class Workers(SQLModel, table=True):
     diary_workjourney: str = Field(default=None, nullable=True)
     week_workjourney: str = Field(default=None, nullable=True)
     month_workjourney: str = Field(default=None, nullable=True)
+
+    experience_time: str = Field(default=None, nullable=True)
+    nocturne_hours: str = Field(default=None, nullable=True)
+
+    dangerousness: bool | None = Field(default=None, nullable=True)
+    unhealthy: bool | None = Field(default=None, nullable=True)
+    wage_payment_method: str = Field(default=None, nullable=True)

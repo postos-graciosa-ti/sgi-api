@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from alembic import command
 from alembic.config import Config
+from alembic.util.exc import CommandError
 from database.sqlite import create_db_and_tables, engine
 from models.user import User
 from seeds.seed_all import seed_database
@@ -18,7 +19,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-from sqlalchemy.exc import OperationalError
+def safe_apply_migrations():
+    try:
+        alembic_cfg = Config("alembic.ini")
+
+        # Configura logging para evitar saída excessiva (opcional)
+        logging.getLogger("alembic").setLevel(logging.WARNING)
+
+        # Verifica e aplica migrações
+        command.upgrade(alembic_cfg, "head")
+        print("Migrações verificadas e aplicadas com sucesso.")
+        return True
+    except CommandError as e:
+        print(f"Erro ao aplicar migrações: {str(e)}")
+        print("Continuando sem aplicar migrações...")
+        return False
+    except Exception as e:
+        print(f"Erro inesperado no Alembic: {str(e)}")
+        print("Continuando a execução...")
+        return False
 
 
 def handle_on_startup():
@@ -27,46 +46,36 @@ def handle_on_startup():
 
         if not database_exists(engine.url):
             print("Banco de dados não encontrado. Criando...")
-
             create_db_and_tables()
-
             seed_database()
-
-            run_migrations(database_url)
-
         else:
             inspector = inspect(engine)
-
             tables = inspector.get_table_names()
 
-            print(f"Tabelas encontradas: {tables}")
-
             if not tables:
-                print("Nenhuma tabela encontrada. Criando e rodando migrações...")
-
+                print("Nenhuma tabela encontrada. Criando estrutura inicial...")
                 create_db_and_tables()
-
                 seed_database()
-
-                run_migrations(database_url)
-                
             else:
-                print("Tabelas já existem. Nenhuma ação necessária.")
+                print("Banco de dados existente detectado. Verificando migrações...")
+
+                # Tenta aplicar migrações, mas continua mesmo se falhar
+                migration_success = safe_apply_migrations()
+
+                if not migration_success:
+                    print(
+                        "Atenção: Não foi possível verificar/atualizar completamente as migrações."
+                    )
+                    print(
+                        "O aplicativo continuará, mas o banco de dados pode não estar atualizado."
+                    )
+
+                print("Verificação de banco de dados concluída.")
 
     except OperationalError as e:
-        print(f"Erro ao conectar ao banco de dados: {e}")
-
-
-def run_migrations(database_url):
-    print("Executando migrações do Alembic...")
-    
-    alembic_cfg = Config("alembic.ini")
-    
-    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
-    
-    command.upgrade(alembic_cfg, "head")
-    
-    print("Migrações aplicadas com sucesso!")
+        print(f"Erro crítico ao conectar ao banco de dados: {e}")
+        # Aqui você pode decidir se quer encerrar o aplicativo ou não
+        raise
 
 
 def handle_get_docs_info():

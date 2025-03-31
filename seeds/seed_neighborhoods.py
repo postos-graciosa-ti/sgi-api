@@ -1,65 +1,49 @@
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.cities import Cities
 from models.neighborhoods import Neighborhoods
 
 
 def seed_neighborhoods():
     neighborhoods = [
-        (1, "Adhemar Garcia"),
-        (2, "América"),
-        (3, "Anita Garibaldi"),
-        (4, "Atiradores"),
-        (5, "Aventureiro"),
-        (6, "Boa Vista"),
-        (7, "Boehmerwald"),
-        (8, "Bom Retiro"),
-        (9, "Bucarein"),
-        (10, "Centro"),
-        (11, "Comasa"),
-        (12, "Costa e Silva"),
-        (13, "Dona Francisca"),
-        (14, "Espinheiros"),
-        (15, "Fátima"),
-        (16, "Floresta"),
-        (17, "Glória"),
-        (18, "Guanabara"),
-        (19, "Iririú"),
-        (20, "Itaum"),
-        (21, "Itinga"),
-        (22, "Jardim Iririú"),
-        (23, "Jardim Paraíso"),
-        (24, "Jardim Sofia"),
-        (25, "Jarivatuba"),
-        (26, "João Costa"),
-        (27, "Morro do Meio"),
-        (28, "Nova Brasília"),
-        (29, "Paranaguamirim"),
-        (30, "Parque Guarani"),
-        (31, "Petrópolis"),
-        (32, "Pirabeiraba"),
-        (33, "Profipo"),
-        (34, "Rio Bonito"),
-        (35, "Saguaçu"),
-        (36, "Santa Catarina"),
-        (37, "Santo Antônio"),
-        (38, "São Marcos"),
-        (39, "Ulysses Guimarães"),
-        (40, "Vila Cubatão"),
-        (41, "Vila Nova"),
-        (42, "Zona Industrial Norte"),
-        (43, "Zona Industrial Tupy"),
+        {"name": "Itaum", "city": "Joinville"},
+        {"name": "Centro", "city": "Joinville"},
+        {"name": "Boa Vista", "city": "Joinville"},
+        {"name": "Comasa", "city": "Joinville"},
+        {"name": "Aventureiro", "city": "Joinville"},
+        {"name": "Costa e Silva", "city": "Joinville"},
+        {"name": "Iririú", "city": "Joinville"},
+        {"name": "Saguaçu", "city": "Joinville"},
+        {"name": "Petrópolis", "city": "Joinville"},
+        {"name": "Santo Antônio", "city": "Joinville"},
+        {"name": "Jarivatuba", "city": "Joinville"},
+        {"name": "Santa Catarina", "city": "Joinville"},
+        {"name": "Boehmerwald", "city": "Joinville"},
+        {"name": "Koch", "city": "Joinville"},
+        {"name": "Vila Nova", "city": "Joinville"},
+        {"name": "São Marcos", "city": "Joinville"},
+        {"name": "Anita Garibaldi", "city": "Joinville"},
+        {"name": "Floresta", "city": "Joinville"},
+        {"name": "Ponta Aguda", "city": "Joinville"},
+        {"name": "Atiradores", "city": "Joinville"},
+        {"name": "Zanellato", "city": "Joinville"},
+        {"name": "Pirabeiraba", "city": "Joinville"},
+        {"name": "João Costa", "city": "Joinville"},
+        {"name": "Bela Vista", "city": "Joinville"},
+        {"name": "Bairro das Nações", "city": "Joinville"},
+        {"name": "Chico de Paula", "city": "Joinville"},
+        {"name": "Estrada da Ribeira", "city": "Joinville"},
+        {"name": "Serraria", "city": "Joinville"},
+        {"name": "Cohab", "city": "Joinville"},
     ]
 
     with Session(engine) as session:
-        for id, name in neighborhoods:
-            exist_neighborhood = session.exec(
-                select(Neighborhoods).where(Neighborhoods.id == id)
+        for neighborhood in neighborhoods:
+            city = session.exec(
+                select(Cities).where(Cities.name == neighborhood["city"])
             ).first()
 
-            if not exist_neighborhood:
-                neighborhood = Neighborhoods(id=id, name=name)
-
-                session.add(neighborhood)
+            session.add(Neighborhoods(name=neighborhood["name"], city_id=city.id))
 
         session.commit()

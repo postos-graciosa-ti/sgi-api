@@ -151,16 +151,22 @@ from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicants import Applicants
 from models.candidate import Candidate
+from models.cities import Cities
+from models.civil_status import CivilStatus
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
+from models.dates_events import DatesEvents
 from models.department import Department
 from models.department_logs import DepartmentsLogs
+from models.ethnicity import Ethnicity
 from models.function import Function
 from models.function_logs import FunctionLogs
+from models.genders import Genders
 from models.jobs import Jobs
 from models.neighborhoods import Neighborhoods
 from models.role import Role
 from models.scale_logs import ScaleLogs
+from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
 from models.turn import Turn
@@ -193,7 +199,6 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from scripts.excel_scraping import handle_excel_scraping
-from models.dates_events import DatesEvents
 
 # pre settings
 
@@ -203,7 +208,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -514,8 +519,7 @@ def get_active_workers_by_subsidiarie_and_function(
     )
 
 
-@app.get("/workers/subsidiarie/{subsidiarie_id}", dependencies=[Depends(verify_token)])
-@error_handler
+@app.get("/workers/subsidiarie/{subsidiarie_id}")
 def get_workers_by_subsidiarie(subsidiarie_id: int):
     return handle_get_workers_by_subsidiarie(subsidiarie_id)
 
@@ -939,7 +943,10 @@ def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInpu
 @app.get("/states", dependencies=[Depends(verify_token)])
 @error_handler
 def get_states():
-    return handle_get_states()
+    with Session(engine) as session:
+        states = session.exec(select(States)).all()
+
+        return states
 
 
 @app.get("/states/{id}", dependencies=[Depends(verify_token)])
@@ -954,7 +961,18 @@ def get_states_by_id(id: int):
 @app.get("/cities", dependencies=[Depends(verify_token)])
 @error_handler
 def get_cities():
-    return handle_get_cities()
+    with Session(engine) as session:
+        cities = session.exec(select(Cities)).all()
+
+        return cities
+
+
+@app.get("/states/{id}/cities")
+def get_cities_by_state(id: int):
+    with Session(engine) as session:
+        cities = session.exec(select(Cities).where(Cities.state_id == id)).all()
+
+        return cities
 
 
 @app.get("/cities/{id}", dependencies=[Depends(verify_token)])
@@ -1400,7 +1418,7 @@ def workers_fields_by_turn_and_function(
                 "turn_name": turn.name,
                 "cost_center_name": cost_center.name,
                 "department_name": department.name,
-                "admission_date": worker.admission_date
+                "admission_date": worker.admission_date,
             }
             for worker, function, turn, cost_center, department in workers
         ]
@@ -1506,3 +1524,43 @@ def delete_date_event(subsidiarie_id: int, event_id: int):
         session.commit()
 
         return {"success": True}
+
+
+# genders
+
+
+@app.get("/genders")
+def get_genders():
+    with Session(engine) as session:
+        genders = session.exec(select(Genders)).all()
+
+        return genders
+
+
+# civil status
+
+
+@app.get("/civil-status")
+def get_civil_status():
+    with Session(engine) as session:
+        civil_status = session.exec(select(CivilStatus)).all()
+
+        return civil_status
+
+
+@app.get("/cities/{id}/neighborhoods")
+def get_neighborhoods_by_city(id: int):
+    with Session(engine) as session:
+        neighborhoods = session.exec(
+            select(Neighborhoods).where(Neighborhoods.city_id == id)
+        ).all()
+
+        return neighborhoods
+
+
+@app.get("/ethnicities")
+def get_ethnicities():
+    with Session(engine) as session:
+        ethnicities = session.exec(select(Ethnicity)).all()
+
+        return ethnicities

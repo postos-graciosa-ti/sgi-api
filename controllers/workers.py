@@ -173,7 +173,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "cpf": worker.cpf,
                 "rg": worker.rg,
                 "rg_issuing_agency": worker.rg_issuing_agency,
-                "rg_state": worker.rg_state,
+                "rg_state": session.get(States, worker.rg_state),
                 "rg_expedition_date": worker.rg_expedition_date,
                 "military_cert_number": worker.military_cert_number,
                 "pis": worker.pis,

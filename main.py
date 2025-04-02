@@ -1455,7 +1455,7 @@ def get_nr_list_by_subsidiarie(id: int):
         nr_list = session.exec(
             select(Workers)
             .where(Workers.subsidiarie_id == id)
-            .where(Workers.admission_date.between(first_day, last_day))
+            .where(Workers.second_review_date.between(first_day, last_day))
         ).all()
 
         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
@@ -1564,3 +1564,9 @@ def get_ethnicities():
         ethnicities = session.exec(select(Ethnicity)).all()
 
         return ethnicities
+
+
+@app.get("/get-nr-workers")
+def get_nr_workers():
+    with Session(engine) as session:
+        nr_workers = session.exec(select(Workers).where(Workers.second_review_date))

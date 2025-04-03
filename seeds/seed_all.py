@@ -1,4 +1,5 @@
 from seeds.demission_reasons import demission_reasons
+from seeds.seed_away_reasons import seed_away_reasons
 from seeds.seed_candidate_status import seed_candidate_status
 from seeds.seed_cities import seed_cities
 from seeds.seed_civil_status import seed_civil_status
@@ -27,3 +28,4 @@ def seed_database():
     seed_neighborhoods()
     seed_ethnicities()
     # seed_countries()
+    seed_away_reasons()

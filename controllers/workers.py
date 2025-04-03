@@ -20,6 +20,7 @@ from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 from models.ethnicity import Ethnicity
+from models.away_reasons import AwayReasons
 
 
 def handle_get_worker_by_id(id: int):
@@ -101,6 +102,10 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.dangerousness,
                 Workers.unhealthy,
                 Workers.wage_payment_method,
+                Workers.is_away,
+                Workers.away_reason_id,
+                Workers.away_start_date,
+                Workers.away_end_date,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -207,6 +212,10 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "dangerousness": worker.dangerousness,
                 "unhealthy": worker.unhealthy,
                 "wage_payment_method": worker.wage_payment_method,
+                "is_away": worker.is_away,
+                "away_reason": session.get(AwayReasons, worker.away_reason_id),
+                "away_start_date": worker.away_start_date,
+                "away_end_date": worker.away_end_date,
             }
             for worker in workers
         ]

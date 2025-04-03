@@ -95,7 +95,7 @@ class Workers(SQLModel, table=True):
 
     transport_voucher: str = Field(default=None, nullable=True)
     transport_voucher_quantity: str = Field(default=None, nullable=True)
-    
+
     diary_workjourney: str = Field(default=None, nullable=True)
     week_workjourney: str = Field(default=None, nullable=True)
     month_workjourney: str = Field(default=None, nullable=True)
@@ -106,3 +106,11 @@ class Workers(SQLModel, table=True):
     dangerousness: bool | None = Field(default=None, nullable=True)
     unhealthy: bool | None = Field(default=None, nullable=True)
     wage_payment_method: str = Field(default=None, nullable=True)
+
+    is_away: bool = Field(default=False)
+    away_start_date: str = Field(default=None, nullable=True)
+    away_end_date: str = Field(default=None, nullable=True)
+    away_reason_id: int = Field(
+        default=None, nullable=True, foreign_key="awayreasons.id"
+    )
+    time_away: str = Field(default=None, nullable=True)

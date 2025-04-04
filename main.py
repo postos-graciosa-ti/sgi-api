@@ -151,6 +151,7 @@ from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicants import Applicants
 from models.away_reasons import AwayReasons
+from models.banks import Banks
 from models.candidate import Candidate
 from models.cities import Cities
 from models.civil_status import CivilStatus
@@ -167,6 +168,7 @@ from models.jobs import Jobs
 from models.neighborhoods import Neighborhoods
 from models.role import Role
 from models.scale_logs import ScaleLogs
+from models.school_levels import SchoolLevels
 from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
@@ -1657,3 +1659,25 @@ def sla(subsidiarie_id: int, worker_id: int):
         session.commit()
 
         return db_worker
+
+
+# school levels
+
+
+@app.get("/school-levels")
+def get_school_levels():
+    with Session(engine) as session:
+        school_levels = session.exec(select(SchoolLevels)).all()
+
+        return school_levels
+
+
+# banks
+
+
+@app.get("/banks")
+def get_banks():
+    with Session(engine) as session:
+        banks = session.exec(select(Banks)).all()
+
+        return banks

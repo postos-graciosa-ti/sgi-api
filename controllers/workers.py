@@ -21,6 +21,8 @@ from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 from models.ethnicity import Ethnicity
 from models.away_reasons import AwayReasons
+from models.school_levels import SchoolLevels
+from models.banks import Banks
 
 
 def handle_get_worker_by_id(id: int):
@@ -106,6 +108,15 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.away_reason_id,
                 Workers.away_start_date,
                 Workers.away_end_date,
+                Workers.general_function_code,
+                Workers.wage,
+                Workers.last_function_date,
+                Workers.current_function_time,
+                Workers.school_level,
+                Workers.emergency_number,
+                Workers.bank,
+                Workers.bank_agency,
+                Workers.bank_account,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -216,6 +227,15 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "away_reason": session.get(AwayReasons, worker.away_reason_id),
                 "away_start_date": worker.away_start_date,
                 "away_end_date": worker.away_end_date,
+                "general_function_code": worker.general_function_code,
+                "wage": worker.wage,
+                "last_function_date": worker.last_function_date,
+                "current_function_time": worker.current_function_time,
+                "school_level": session.get(SchoolLevels, worker.school_level),
+                "emergency_number": worker.emergency_number,
+                "bank": session.get(Banks, worker.bank),
+                "bank_agency": worker.bank_agency,
+                "bank_account": worker.bank_account,
             }
             for worker in workers
         ]

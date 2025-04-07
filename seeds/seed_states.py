@@ -1,6 +1,7 @@
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.nationalities import Nationalities
 from models.states import States
 
 
@@ -36,7 +37,17 @@ def seed_states():
     ]
 
     with Session(engine) as session:
+        nationalitie = session.exec(
+            select(Nationalities).where(Nationalities.name == "Brasileiro")
+        ).first()
+
         for state in states:
-            session.add(States(name=state["name"], sail=state["sail"]))
+            session.add(
+                States(
+                    name=state["name"],
+                    sail=state["sail"],
+                    nationalities_id=nationalitie.id,
+                )
+            )
 
             session.commit()

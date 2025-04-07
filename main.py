@@ -1692,3 +1692,33 @@ def get_states_by_nationalitie(id: int):
         ).all()
 
         return states_by_nationalitie
+
+
+class WorkersByTurnAndFunctionModel(BaseModel):
+    turns: list
+    functions: list
+
+
+@app.post("/subsidiaries/{subsidiarie_id}/workers-by-turn-and-function")
+def get_workers_by_turn_and_function(
+    subsidiarie_id: int, data: WorkersByTurnAndFunctionModel
+):
+    with Session(engine) as session:
+        result = []
+
+        turns = data.turns
+
+        functions = data.functions
+
+        for turn in turns:
+            for function in functions:
+                workers = session.exec(
+                    select(Workers)
+                    .where(Workers.subsidiarie_id == subsidiarie_id)
+                    .where(Workers.turn_id == turn)
+                    .where(Workers.function_id == function)
+                ).all()
+
+                result.extend(workers)
+
+        return result

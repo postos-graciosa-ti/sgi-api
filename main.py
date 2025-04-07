@@ -165,6 +165,7 @@ from models.function import Function
 from models.function_logs import FunctionLogs
 from models.genders import Genders
 from models.jobs import Jobs
+from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
 from models.role import Role
 from models.scale_logs import ScaleLogs
@@ -1681,3 +1682,13 @@ def get_banks():
         banks = session.exec(select(Banks)).all()
 
         return banks
+
+
+@app.get("/nationalities/{id}/states")
+def get_states_by_nationalitie(id: int):
+    with Session(engine) as session:
+        states_by_nationalitie = session.exec(
+            select(States).where(States.nationalities_id == id)
+        ).all()
+
+        return states_by_nationalitie

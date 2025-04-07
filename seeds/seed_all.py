@@ -8,6 +8,7 @@ from seeds.seed_countries import seed_countries
 from seeds.seed_ethnicity import seed_ethnicities
 from seeds.seed_genders import seed_genders
 from seeds.seed_months import seed_months
+from seeds.seed_nationalities import seed_nationalities
 from seeds.seed_neighborhoods import seed_neighborhoods
 from seeds.seed_roles import seed_roles
 from seeds.seed_school_levels import seed_school_levels
@@ -17,6 +18,7 @@ from seeds.seed_users import seed_users
 
 
 def seed_database():
+    seed_nationalities()
     demission_reasons()
     seed_roles()
     seed_users()

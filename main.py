@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, UploadFile
 from sqlmodel import Session, select
 
+from controllers.applicants import handle_get_applicants, handle_post_applicant
+from controllers.banks import handle_get_banks
 from controllers.candidates import (
     handle_get_candidates,
     handle_get_candidates_by_status,
@@ -83,6 +85,7 @@ from controllers.scales_reports import (
     handle_generate_scale_days_off_report,
     handle_generate_scale_days_on_report,
 )
+from controllers.school_levels import handle_get_school_levels
 from controllers.states import (
     handle_delete_states,
     handle_get_states,
@@ -1155,23 +1158,13 @@ def delete_neighborhood(neighborhood_id: int):
 
 
 @app.get("/applicants")
-def get_applicant():
-    with Session(engine) as session:
-        applicants = session.exec(select(Applicants)).all()
-
-        return applicants
+def get_applicants():
+    return handle_get_applicants()
 
 
 @app.post("/applicants")
 def post_applicant(applicant: Applicants):
-    with Session(engine) as session:
-        session.add(applicant)
-
-        session.commit()
-
-        session.refresh(applicant)
-
-        return applicant
+    return handle_post_applicant(applicant)
 
 
 # worker first review
@@ -1660,10 +1653,7 @@ def sla(subsidiarie_id: int, worker_id: int):
 
 @app.get("/school-levels")
 def get_school_levels():
-    with Session(engine) as session:
-        school_levels = session.exec(select(SchoolLevels)).all()
-
-        return school_levels
+    return handle_get_school_levels()
 
 
 # banks
@@ -1671,10 +1661,7 @@ def get_school_levels():
 
 @app.get("/banks")
 def get_banks():
-    with Session(engine) as session:
-        banks = session.exec(select(Banks)).all()
-
-        return banks
+    return handle_get_banks()
 
 
 class WorkersByTurnAndFunctionModel(BaseModel):

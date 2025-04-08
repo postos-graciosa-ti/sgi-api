@@ -4,7 +4,7 @@ from database.sqlite import engine
 from models.applicants import Applicants
 
 
-def handle_get_applicant():
+def handle_get_applicants():
     with Session(engine) as session:
         applicants = session.exec(select(Applicants)).all()
 

@@ -11,12 +11,6 @@ from controllers.candidates import (
     handle_get_candidates_by_status,
     handle_post_candidate,
 )
-from controllers.cities_states import (
-    handle_get_cities,
-    handle_get_city_by_id,
-    handle_get_states,
-    handle_get_states_by_id,
-)
 from controllers.cost_center import (
     handle_delete_cost_center,
     handle_get_cost_center,
@@ -88,6 +82,14 @@ from controllers.scale import (
 from controllers.scales_reports import (
     handle_generate_scale_days_off_report,
     handle_generate_scale_days_on_report,
+)
+from controllers.states import (
+    handle_delete_states,
+    handle_get_states,
+    handle_get_states_by_id,
+    handle_get_states_by_nationalitie,
+    handle_post_states,
+    handle_put_states,
 )
 from controllers.subsidiaries import (
     handle_delete_subsidiarie,
@@ -947,24 +949,6 @@ def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInpu
     return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
 
 
-# states
-
-
-@app.get("/states", dependencies=[Depends(verify_token)])
-@error_handler
-def get_states():
-    with Session(engine) as session:
-        states = session.exec(select(States)).all()
-
-        return states
-
-
-@app.get("/states/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_states_by_id(id: int):
-    return handle_get_states_by_id(id)
-
-
 # cities
 
 
@@ -985,10 +969,10 @@ def get_cities_by_state(id: int):
         return cities
 
 
-@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_city_by_id(id: int):
-    return handle_get_city_by_id(id)
+# @app.get("/cities/{id}", dependencies=[Depends(verify_token)])
+# @error_handler
+# def get_city_by_id(id: int):
+#     return handle_get_city_by_id(id)
 
 
 # cost center
@@ -1165,6 +1149,9 @@ def delete_neighborhood(neighborhood_id: int):
         session.commit()
 
         return {"message": "Neighborhood deleted successfully"}
+
+
+# applicants
 
 
 @app.get("/applicants")
@@ -1690,16 +1677,6 @@ def get_banks():
         return banks
 
 
-@app.get("/nationalities/{id}/states")
-def get_states_by_nationalitie(id: int):
-    with Session(engine) as session:
-        states_by_nationalitie = session.exec(
-            select(States).where(States.nationalities_id == id)
-        ).all()
-
-        return states_by_nationalitie
-
-
 class WorkersByTurnAndFunctionModel(BaseModel):
     turns: list
     functions: list
@@ -1733,21 +1710,54 @@ def get_workers_by_turn_and_function(
 # nationalities
 
 
-@app.get("/nationalities")
+@app.get("/nationalities", dependencies=[Depends(verify_token)])
 def get_nationalities():
     return handle_get_nationalities()
 
 
-@app.post("/nationalities")
+@app.post("/nationalities", dependencies=[Depends(verify_token)])
 def post_nationalities(nationalitie: Nationalities):
     return handle_post_nationalities(nationalitie)
 
 
-@app.put("/nationalities/{id}")
+@app.put("/nationalities/{id}", dependencies=[Depends(verify_token)])
 def put_nationalities(id: int, nationalitie: Nationalities):
     return handle_put_nationalities(id, nationalitie)
 
 
-@app.delete("/nationalities/{id}")
+@app.delete("/nationalities/{id}", dependencies=[Depends(verify_token)])
 def delete_nationalities(id: int):
     return handle_delete_nationalities(id)
+
+
+# states
+
+
+@app.get("/states", dependencies=[Depends(verify_token)])
+def get_states():
+    return handle_get_states()
+
+
+@app.get("/states/{id}", dependencies=[Depends(verify_token)])
+def get_states_by_id(id: int):
+    return handle_get_states_by_id(id)
+
+
+@app.get("/nationalities/{id}/states", dependencies=[Depends(verify_token)])
+def get_states_by_nationalitie(id: int):
+    return handle_get_states_by_nationalitie(id)
+
+
+@app.post("/states", dependencies=[Depends(verify_token)])
+def post_states(state: States):
+    return handle_post_states(state)
+
+
+@app.put("/states/{id}", dependencies=[Depends(verify_token)])
+def put_states(id: int, state: States):
+    return handle_put_states(id, state)
+
+
+@app.delete("/states/{id}")
+def delete_states(id: int):
+    return handle_delete_states(id)

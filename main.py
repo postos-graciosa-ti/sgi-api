@@ -59,6 +59,12 @@ from controllers.jobs import (
     handle_post_job,
 )
 from controllers.months import handle_get_months
+from controllers.nationalities import (
+    handle_delete_nationalities,
+    handle_get_nationalities,
+    handle_post_nationalities,
+    handle_put_nationalities,
+)
 from controllers.resignable_reasons import (
     handle_get_resignable_reasons,
     handle_resignable_reasons_report,
@@ -1722,3 +1728,26 @@ def get_workers_by_turn_and_function(
                 result.extend(workers)
 
         return result
+
+
+# nationalities
+
+
+@app.get("/nationalities")
+def get_nationalities():
+    return handle_get_nationalities()
+
+
+@app.post("/nationalities")
+def post_nationalities(nationalitie: Nationalities):
+    return handle_post_nationalities(nationalitie)
+
+
+@app.put("/nationalities/{id}")
+def put_nationalities(id: int, nationalitie: Nationalities):
+    return handle_put_nationalities(id, nationalitie)
+
+
+@app.delete("/nationalities/{id}")
+def delete_nationalities(id: int):
+    return handle_delete_nationalities(id)

@@ -23,6 +23,7 @@ from models.ethnicity import Ethnicity
 from models.away_reasons import AwayReasons
 from models.school_levels import SchoolLevels
 from models.banks import Banks
+from models.nationalities import Nationalities
 
 
 def handle_get_worker_by_id(id: int):
@@ -117,6 +118,10 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.bank,
                 Workers.bank_agency,
                 Workers.bank_account,
+                Workers.nationality,
+                Workers.has_children,
+                Workers.rg_state,
+                Workers.school_level,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -168,28 +173,64 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "cost_center": worker.cost_center,
                 "department_id": worker.department_id,
                 "department": worker.department,
-                "gender": session.get(Genders, worker.gender_id) if worker.gender_id is not None else None,
-                "civil_status": session.get(CivilStatus, worker.civil_status_id) if worker.civil_status_id is not None else None,
+                "gender": (
+                    session.get(Genders, worker.gender_id)
+                    if worker.gender_id is not None
+                    else None
+                ),
+                "civil_status": (
+                    session.get(CivilStatus, worker.civil_status_id)
+                    if worker.civil_status_id is not None
+                    else None
+                ),
                 "street": worker.street,
                 "street_number": worker.street_number,
                 "street_complement": worker.street_complement,
-                "neighborhood": session.get(Neighborhoods, worker.neighborhood_id) if worker.neighborhood_id is not None else None,
+                "neighborhood": (
+                    session.get(Neighborhoods, worker.neighborhood_id)
+                    if worker.neighborhood_id is not None
+                    else None
+                ),
                 "cep": worker.cep,
-                "city": session.get(Cities, worker.city) if worker.city is not None else None,
-                "state": session.get(States, worker.state) if worker.state is not None else None,
+                "city": (
+                    session.get(Cities, worker.city)
+                    if worker.city is not None
+                    else None
+                ),
+                "state": (
+                    session.get(States, worker.state)
+                    if worker.state is not None
+                    else None
+                ),
                 "phone": worker.phone,
                 "mobile": worker.mobile,
                 "email": worker.email,
-                "ethnicity": session.get(Ethnicity, worker.ethnicity_id) if worker.ethnicity_id is not None else None,
+                "ethnicity": (
+                    session.get(Ethnicity, worker.ethnicity_id)
+                    if worker.ethnicity_id is not None
+                    else None
+                ),
                 "birthdate": worker.birthdate,
-                "birthcity": session.get(Cities, worker.birthcity) if worker.birthcity is not None else None,
-                "birthstate": session.get(States, worker.birthstate) if worker.birthstate is not None else None,
+                "birthcity": (
+                    session.get(Cities, worker.birthcity)
+                    if worker.birthcity is not None
+                    else None
+                ),
+                "birthstate": (
+                    session.get(States, worker.birthstate)
+                    if worker.birthstate is not None
+                    else None
+                ),
                 "fathername": worker.fathername,
                 "mothername": worker.mothername,
                 "cpf": worker.cpf,
                 "rg": worker.rg,
                 "rg_issuing_agency": worker.rg_issuing_agency,
-                "rg_state": session.get(States, worker.rg_state) if worker.rg_state is not None else None,
+                "rg_state": (
+                    session.get(States, worker.rg_state)
+                    if worker.rg_state is not None
+                    else None
+                ),
                 "rg_expedition_date": worker.rg_expedition_date,
                 "military_cert_number": worker.military_cert_number,
                 "pis": worker.pis,
@@ -199,7 +240,11 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "votant_session": worker.votant_session,
                 "ctps": worker.ctps,
                 "ctps_serie": worker.ctps_serie,
-                "ctps_state": session.get(States, worker.ctps_state) if worker.ctps_state is not None else None,
+                "ctps_state": (
+                    session.get(States, worker.ctps_state)
+                    if worker.ctps_state is not None
+                    else None
+                ),
                 "ctps_emission_date": worker.ctps_emission_date,
                 "cnh": worker.cnh,
                 "cnh_category": worker.cnh_category,
@@ -224,18 +269,31 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "unhealthy": worker.unhealthy,
                 "wage_payment_method": worker.wage_payment_method,
                 "is_away": worker.is_away,
-                "away_reason": session.get(AwayReasons, worker.away_reason_id) if worker.away_reason_id is not None else None,
+                "away_reason": (
+                    session.get(AwayReasons, worker.away_reason_id)
+                    if worker.away_reason_id is not None
+                    else None
+                ),
                 "away_start_date": worker.away_start_date,
                 "away_end_date": worker.away_end_date,
                 "general_function_code": worker.general_function_code,
                 "wage": worker.wage,
                 "last_function_date": worker.last_function_date,
                 "current_function_time": worker.current_function_time,
-                "school_level": session.get(SchoolLevels, worker.school_level) if worker.school_level is not None else None,
+                "school_level": (
+                    session.get(SchoolLevels, worker.school_level)
+                    if worker.school_level is not None
+                    else None
+                ),
                 "emergency_number": worker.emergency_number,
-                "bank": session.get(Banks, worker.bank) if worker.bank is not None else None,
+                "bank": (
+                    session.get(Banks, worker.bank) if worker.bank is not None else None
+                ),
                 "bank_agency": worker.bank_agency,
                 "bank_account": worker.bank_account,
+                "nationality": session.get(Nationalities, worker.nationality),
+                "has_children": worker.has_children,
+                "rg_state": session.get(States, worker.rg_state),
             }
             for worker in workers
         ]
@@ -370,8 +428,12 @@ def handle_put_worker(id: int, worker: Workers):
         if worker.admission_date:
             try:
                 admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
-                db_worker.first_review_date = (admission_date + timedelta(days=30)).strftime("%Y-%m-%d")
-                db_worker.second_review_date = (admission_date + timedelta(days=60)).strftime("%Y-%m-%d")
+                db_worker.first_review_date = (
+                    admission_date + timedelta(days=30)
+                ).strftime("%Y-%m-%d")
+                db_worker.second_review_date = (
+                    admission_date + timedelta(days=60)
+                ).strftime("%Y-%m-%d")
             except ValueError:
                 pass  # Ignora erro se o formato da data estiver incorreto
 

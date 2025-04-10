@@ -361,66 +361,22 @@ def handle_put_worker(id: int, worker: Workers):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
 
-        db_worker.name = worker.name if worker.name else db_worker.name
+        for field in worker.__fields__.keys():
+            value = getattr(worker, field)
+            if value is not None:
+                setattr(db_worker, field, value)
 
-        db_worker.function_id = (
-            worker.function_id if worker.function_id else db_worker.function_id
-        )
-
-        db_worker.subsidiarie_id = (
-            worker.subsidiarie_id if worker.subsidiarie_id else db_worker.subsidiarie_id
-        )
-
-        db_worker.is_active = (
-            worker.is_active if worker.is_active is not None else db_worker.is_active
-        )
-
-        db_worker.turn_id = worker.turn_id if worker.turn_id else db_worker.turn_id
-
-        db_worker.cost_center_id = (
-            worker.cost_center_id if worker.cost_center_id else db_worker.cost_center_id
-        )
-
-        db_worker.department_id = (
-            worker.department_id if worker.department_id else db_worker.department_id
-        )
-
-        db_worker.admission_date = (
-            worker.admission_date if worker.admission_date else db_worker.admission_date
-        )
-
-        db_worker.first_review_date = (
-            datetime.strptime(db_worker.admission_date, "%Y-%m-%d") + timedelta(days=30)
-        ).strftime("%Y-%m-%d")
-
-        db_worker.second_review_date = (
-            datetime.strptime(db_worker.admission_date, "%Y-%m-%d") + timedelta(days=60)
-        ).strftime("%Y-%m-%d")
-
-        db_worker.resignation_date = (
-            worker.resignation_date
-            if worker.resignation_date
-            else db_worker.resignation_date
-        )
-
-        db_worker.enrolment = (
-            worker.enrolment if worker.enrolment else db_worker.enrolment
-        )
-
-        db_worker.sales_code = (
-            worker.sales_code if worker.sales_code else db_worker.sales_code
-        )
-
-        db_worker.picture = worker.picture if worker.picture else db_worker.picture
-
-        db_worker.timecode = worker.timecode if worker.timecode else db_worker.timecode
-
-        db_worker.esocial = worker.esocial if worker.esocial else db_worker.esocial
+        # Atualiza datas de revisão se a data de admissão foi fornecida
+        if worker.admission_date:
+            try:
+                admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+                db_worker.first_review_date = (admission_date + timedelta(days=30)).strftime("%Y-%m-%d")
+                db_worker.second_review_date = (admission_date + timedelta(days=60)).strftime("%Y-%m-%d")
+            except ValueError:
+                pass  # Ignora erro se o formato da data estiver incorreto
 
         session.add(db_worker)
-
         session.commit()
-
         session.refresh(db_worker)
 
     return db_worker

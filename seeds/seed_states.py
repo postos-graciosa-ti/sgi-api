@@ -5,7 +5,7 @@ from models.nationalities import Nationalities
 from models.states import States
 
 
-def seed_states():
+def seed_brasil_states():
     states = [
         {"name": "Acre", "sail": "AC"},
         {"name": "Alagoas", "sail": "AL"},
@@ -51,3 +51,46 @@ def seed_states():
             )
 
             session.commit()
+
+
+def seed_venezuela_states():
+    estados_venezuela = [
+        {"name": "Amazonas", "sail": "AMA"},
+        {"name": "Anzoátegui", "sail": "ANZ"},
+        {"name": "Apure", "sail": "APU"},
+        {"name": "Aragua", "sail": "ARA"},
+        {"name": "Barinas", "sail": "BAR"},
+        {"name": "Bolívar", "sail": "BOL"},
+        {"name": "Carabobo", "sail": "CAR"},
+        {"name": "Cojedes", "sail": "COJ"},
+        {"name": "Delta Amacuro", "sail": "DEL"},
+        {"name": "Falcón", "sail": "FAL"},
+        {"name": "Guárico", "sail": "GUA"},
+        {"name": "Lara", "sail": "LAR"},
+        {"name": "Mérida", "sail": "MER"},
+        {"name": "Miranda", "sail": "MIR"},
+        {"name": "Monagas", "sail": "MON"},
+        {"name": "Nueva Esparta", "sail": "NUE"},
+        {"name": "Portuguesa", "sail": "POR"},
+        {"name": "Sucre", "sail": "SUC"},
+        {"name": "Táchira", "sail": "TAC"},
+        {"name": "Trujillo", "sail": "TRU"},
+        {"name": "Vargas", "sail": "VAR"},
+        {"name": "Yaracuy", "sail": "YAR"},
+        {"name": "Zulia", "sail": "ZUL"},
+        {"name": "Distrito Capital", "sail": "DC"},
+    ]
+
+    with Session(engine) as session:
+        nationalitie = session.exec(
+            select(Nationalities).where(Nationalities.name == "Venezuelano")
+        ).first()
+
+        for estado in estados_venezuela:
+            state = States(
+                name=estado["name"],
+                sail=estado["sail"],
+                nationalities_id=nationalitie.id,
+            )
+            session.add(state)
+        session.commit()

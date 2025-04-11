@@ -3,27 +3,28 @@ from datetime import date, datetime, timedelta
 from sqlmodel import Session, select, update
 
 from database.sqlite import engine
+from models.away_reasons import AwayReasons
+from models.banks import Banks
 from models.cities import Cities
 from models.civil_status import CivilStatus
 from models.cost_center import CostCenter
 from models.department import Department
+from models.ethnicity import Ethnicity
 from models.function import Function
 from models.genders import Genders
+from models.hierarchy_structure import HierarchyStructure
 from models.jobs import Jobs
+from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
 from models.resignable_reasons import ResignableReasons
 from models.scale import Scale
+from models.school_levels import SchoolLevels
 from models.states import States
 from models.turn import Turn
 from models.workers import Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
-from models.ethnicity import Ethnicity
-from models.away_reasons import AwayReasons
-from models.school_levels import SchoolLevels
-from models.banks import Banks
-from models.nationalities import Nationalities
 
 
 def handle_get_worker_by_id(id: int):
@@ -122,6 +123,9 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.has_children,
                 Workers.rg_state,
                 Workers.school_level,
+                Workers.hierarchy_structure,
+                Workers.enterprise_time,
+                Workers.cbo,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -294,6 +298,11 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "nationality": session.get(Nationalities, worker.nationality),
                 "has_children": worker.has_children,
                 "rg_state": session.get(States, worker.rg_state),
+                "hierarchy_structure": session.get(
+                    HierarchyStructure, worker.hierarchy_structure
+                ),
+                "enterprise_time": worker.enterprise_time,
+                "cbo": worker.cbo
             }
             for worker in workers
         ]

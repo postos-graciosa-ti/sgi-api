@@ -48,6 +48,7 @@ from controllers.functions_logs import (
     handle_get_functions_logs,
     handle_post_functions_logs,
 )
+from controllers.hierarchy_structure import handle_get_hierarchy_structure
 from controllers.jobs import (
     handle_delete_job,
     handle_get_jobs,
@@ -61,6 +62,7 @@ from controllers.nationalities import (
     handle_post_nationalities,
     handle_put_nationalities,
 )
+from controllers.parents_type import handle_get_parents_type
 from controllers.resignable_reasons import (
     handle_get_resignable_reasons,
     handle_resignable_reasons_report,
@@ -131,6 +133,7 @@ from controllers.users import (
     handle_user_login,
 )
 from controllers.users_logs import handle_get_logs_user, handle_post_logs_user
+from controllers.wage_payment_method import handle_get_wage_payment_method
 from controllers.workers import (
     handle_deactivate_worker,
     handle_delete_worker_notation,
@@ -155,6 +158,10 @@ from controllers.workers_logs import (
     handle_post_update_workers_logs,
     handle_post_workers_logs,
 )
+from controllers.workers_parents import (
+    handle_get_workers_parents,
+    handle_post_workers_parents,
+)
 from database.sqlite import engine
 from functions.auth import verify_token
 from functions.error_handling import error_handler
@@ -178,6 +185,7 @@ from models.genders import Genders
 from models.jobs import Jobs
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
+from models.parents_type import ParentsType
 from models.role import Role
 from models.scale_logs import ScaleLogs
 from models.school_levels import SchoolLevels
@@ -188,9 +196,11 @@ from models.turn import Turn
 from models.TurnsLogs import TurnsLogs
 from models.user import User
 from models.users_logs import UsersLogs
+from models.wage_payment_method import WagePaymentMethod
 from models.workers import Workers
 from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
+from models.workers_parents import WorkersParents
 from models.workers_second_review import WorkersSecondReview
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
@@ -223,7 +233,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -589,18 +599,11 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
 
 @app.post("/workers")
 def post_worker(worker: Workers):
-    if isinstance(worker.admission_date, str):
-        admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
-    else:
-        admission_date = worker.admission_date
-
-    # Adicionando meses corretamente
-    worker.first_review_date = admission_date + relativedelta(months=1)
-    worker.second_review_date = admission_date + relativedelta(months=2)
-
     with Session(engine) as session:
         session.add(worker)
+
         session.commit()
+
         session.refresh(worker)
 
         return worker
@@ -1748,3 +1751,40 @@ def put_states(id: int, state: States):
 @app.delete("/states/{id}")
 def delete_states(id: int):
     return handle_delete_states(id)
+
+
+# parents type
+
+
+@app.get("/parents-type")
+def get_parents_type():
+    return handle_get_parents_type()
+
+
+# workers parents
+
+
+@app.get("/workers/{id}/parents")
+def get_workers_parents(id: int):
+    return handle_get_workers_parents(id)
+
+
+@app.post("/workers-parents")
+def post_workers_parents(worker_parent: WorkersParents):
+    return handle_post_workers_parents(worker_parent)
+
+
+# hierarchy structure
+
+
+@app.get("/hierarchy-structure")
+def get_hierarchy_structure():
+    return handle_get_hierarchy_structure()
+
+
+# wage payment method
+
+
+@app.get("/wage-payment-methods")
+def get_wage_payment_method():
+    return handle_get_wage_payment_method()

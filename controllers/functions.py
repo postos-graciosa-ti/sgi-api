@@ -75,6 +75,10 @@ def handle_put_function(id: int, function: Function):
                 else db_function.ideal_quantity
             )
 
+            db_function.cbo = function.cbo if function.cbo else db_function.cbo
+
+            db_function.general_function_code = function.general_function_code
+
             session.add(db_function)
 
             session.commit()

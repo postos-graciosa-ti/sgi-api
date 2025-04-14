@@ -22,3 +22,16 @@ def handle_post_workers_parents(worker_parent: WorkersParents):
         session.refresh(worker_parent)
 
         return worker_parent
+
+
+def handle_delete_workers_parents(id: int):
+    with Session(engine) as session:
+        get_worker_parent = select(WorkersParents).where(WorkersParents.id == id)
+
+        worker_parent = session.exec(get_worker_parent).first()
+
+        session.delete(worker_parent)
+
+        session.commit()
+
+        return {"success": True}

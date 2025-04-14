@@ -159,6 +159,7 @@ from controllers.workers_logs import (
     handle_post_workers_logs,
 )
 from controllers.workers_parents import (
+    handle_delete_workers_parents,
     handle_get_workers_parents,
     handle_post_workers_parents,
 )
@@ -233,7 +234,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -975,10 +976,13 @@ def get_cities_by_state(id: int):
         return cities
 
 
-# @app.get("/cities/{id}", dependencies=[Depends(verify_token)])
-# @error_handler
-# def get_city_by_id(id: int):
-#     return handle_get_city_by_id(id)
+@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_city_by_id(id: int):
+    with Session(engine) as session:
+        cities = session.exec(select(Cities).where(Cities.id == id)).first()
+
+        return cities
 
 
 # cost center
@@ -1772,6 +1776,11 @@ def get_workers_parents(id: int):
 @app.post("/workers-parents")
 def post_workers_parents(worker_parent: WorkersParents):
     return handle_post_workers_parents(worker_parent)
+
+
+@app.delete("/workers-parents/{id}")
+def delete_workers_parents(id: int):
+    return handle_delete_workers_parents(id)
 
 
 # hierarchy structure

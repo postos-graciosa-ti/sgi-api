@@ -25,7 +25,7 @@ from models.workers import Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
-
+from models.wage_payment_method import WagePaymentMethod
 
 def handle_get_worker_by_id(id: int):
     with Session(engine) as session:
@@ -271,7 +271,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "nocturne_hours": worker.nocturne_hours,
                 "dangerousness": worker.dangerousness,
                 "unhealthy": worker.unhealthy,
-                "wage_payment_method": worker.wage_payment_method,
+                "wage_payment_method": session.get(WagePaymentMethod, worker.wage_payment_method),
                 "is_away": worker.is_away,
                 "away_reason": (
                     session.get(AwayReasons, worker.away_reason_id)

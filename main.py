@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from sqlmodel import Session, select
 
 from controllers.applicants import handle_get_applicants, handle_post_applicant
@@ -49,6 +49,11 @@ from controllers.functions_logs import (
     handle_post_functions_logs,
 )
 from controllers.hierarchy_structure import handle_get_hierarchy_structure
+from controllers.hollidays_scale import (
+    handle_delete_hollidays_scale,
+    handle_get_hollidays_scale,
+    handle_post_hollidays_scale,
+)
 from controllers.jobs import (
     handle_delete_job,
     handle_get_jobs,
@@ -183,6 +188,7 @@ from models.ethnicity import Ethnicity
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.genders import Genders
+from models.hollidays_scale import HollidaysScale
 from models.jobs import Jobs
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
@@ -1797,3 +1803,21 @@ def get_hierarchy_structure():
 @app.get("/wage-payment-methods")
 def get_wage_payment_method():
     return handle_get_wage_payment_method()
+
+
+# hollidays scale
+
+
+@app.get("/subsidiaries/{id}/hollidays-scale/{date}")
+def get_hollidays_scale(id: int, date: str):
+    return handle_get_hollidays_scale(id, date)
+
+
+@app.post("/hollidays-scale")
+def post_hollidays_scale(holliday_scale: HollidaysScale):
+    return handle_post_hollidays_scale(holliday_scale)
+
+
+@app.delete("/hollidays-scale/{id}")
+def delete_hollidays_scale(id: int):
+    return handle_delete_hollidays_scale(id)

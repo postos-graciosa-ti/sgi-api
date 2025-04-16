@@ -5,7 +5,8 @@ from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from sqlmodel import Session, select
-
+from models.cnh_categories import CnhCategories
+from controllers.cnh_categories import handle_get_cnh_categories
 from controllers.applicants import handle_get_applicants, handle_post_applicant
 from controllers.banks import handle_get_banks
 from controllers.candidates import (
@@ -179,6 +180,7 @@ from models.banks import Banks
 from models.candidate import Candidate
 from models.cities import Cities
 from models.civil_status import CivilStatus
+from models.cnh_categories import CnhCategories
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
 from models.dates_events import DatesEvents
@@ -1821,3 +1823,11 @@ def post_hollidays_scale(holliday_scale: HollidaysScale):
 @app.delete("/hollidays-scale/{id}")
 def delete_hollidays_scale(id: int):
     return handle_delete_hollidays_scale(id)
+
+
+# cnh categories
+
+
+@app.get("/cnh-categories")
+def get_cnh_categories():
+    return handle_get_cnh_categories()

@@ -26,6 +26,8 @@ from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 from models.wage_payment_method import WagePaymentMethod
+from models.cnh_categories import CnhCategories
+
 
 def handle_get_worker_by_id(id: int):
     with Session(engine) as session:
@@ -252,7 +254,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 ),
                 "ctps_emission_date": worker.ctps_emission_date,
                 "cnh": worker.cnh,
-                "cnh_category": worker.cnh_category,
+                # "cnh_category": worker.cnh_category,
+                "cnh_category": session.get(CnhCategories, worker.cnh_category),
                 "cnh_emition_date": worker.cnh_emition_date,
                 "cnh_valid_date": worker.cnh_valid_date,
                 "first_job": worker.first_job,
@@ -272,7 +275,9 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 "nocturne_hours": worker.nocturne_hours,
                 "dangerousness": worker.dangerousness,
                 "unhealthy": worker.unhealthy,
-                "wage_payment_method": session.get(WagePaymentMethod, worker.wage_payment_method),
+                "wage_payment_method": session.get(
+                    WagePaymentMethod, worker.wage_payment_method
+                ),
                 "is_away": worker.is_away,
                 "away_reason": (
                     session.get(AwayReasons, worker.away_reason_id)
@@ -303,7 +308,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                     HierarchyStructure, worker.hierarchy_structure
                 ),
                 "enterprise_time": worker.enterprise_time,
-                "cbo": worker.cbo
+                "cbo": worker.cbo,
             }
             for worker in workers
         ]

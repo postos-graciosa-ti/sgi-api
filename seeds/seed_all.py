@@ -4,6 +4,7 @@ from seeds.seed_banks import seed_banks
 from seeds.seed_candidate_status import seed_candidate_status
 from seeds.seed_cities import seed_brasil_cities, seed_venezuela_cities
 from seeds.seed_civil_status import seed_civil_status
+from seeds.seed_cnh_categories import seed_cnh_categories
 from seeds.seed_countries import seed_countries
 from seeds.seed_ethnicity import seed_ethnicities
 from seeds.seed_genders import seed_genders
@@ -42,3 +43,4 @@ def seed_database():
     seed_parents_type()
     seed_hierarchy_structure()
     seed_wage_payment_methods()
+    seed_cnh_categories()

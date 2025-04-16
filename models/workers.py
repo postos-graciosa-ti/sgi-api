@@ -21,7 +21,9 @@ class Workers(SQLModel, table=True):
     cbo: str = Field(default=None, nullable=True)
     general_function_code: str = Field(default=None, nullable=True)
     cost_center_id: int = Field(default=None, foreign_key="costcenter.id")
-    hierarchy_structure: int = Field(default=None, nullable=True, foreign_key="hierarchystructure.id")
+    hierarchy_structure: int = Field(
+        default=None, nullable=True, foreign_key="hierarchystructure.id"
+    )
     department_id: int = Field(default=None, foreign_key="department.id")
     gender_id: int = Field(default=None, nullable=True, foreign_key="genders.id")
     ctps: str = Field(default=None, nullable=True)
@@ -54,7 +56,9 @@ class Workers(SQLModel, table=True):
     last_function_date: str = Field(default=None, nullable=True)
     current_function_time: str = Field(default=None, nullable=True)
     email: str = Field(default=None, nullable=True)
-    school_level: int = Field(default=None, nullable=True, foreign_key="schoollevels.id")
+    school_level: int = Field(
+        default=None, nullable=True, foreign_key="schoollevels.id"
+    )
     street: str = Field(default=None, nullable=True)
     street_number: str = Field(default=None, nullable=True)
     street_complement: str = Field(default=None, nullable=True)
@@ -85,7 +89,10 @@ class Workers(SQLModel, table=True):
     votant_zone: str = Field(default=None, nullable=True)
     votant_session: str = Field(default=None, nullable=True)
     cnh: str = Field(default=None, nullable=True)
-    cnh_category: str = Field(default=None, nullable=True)
+    # cnh_category: str = Field(default=None, nullable=True)
+    cnh_category: int = Field(
+        default=None, foreign_key="cnhcategories.id", nullable=True
+    )
     cnh_emition_date: str = Field(default=None, nullable=True)
     cnh_valid_date: str = Field(default=None, nullable=True)
     first_job: bool | None = Field(default=None, nullable=True)
@@ -105,4 +112,6 @@ class Workers(SQLModel, table=True):
     nocturne_hours: str = Field(default=None, nullable=True)
     dangerousness: bool | None = Field(default=None, nullable=True)
     unhealthy: bool | None = Field(default=None, nullable=True)
-    wage_payment_method: int = Field(default=None, foreign_key="wagepaymentmethod.id", nullable=True)
+    wage_payment_method: int = Field(
+        default=None, foreign_key="wagepaymentmethod.id", nullable=True
+    )

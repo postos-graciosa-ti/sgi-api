@@ -32,7 +32,7 @@ def handle_get_states():
 
 def handle_get_states_by_id(id: int):
     with Session(engine) as session:
-        state = session.exec(select(States).where(States.id == id)).all()
+        state = session.exec(select(States).where(States.id == id)).first()
 
         return state
 

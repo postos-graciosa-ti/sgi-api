@@ -149,6 +149,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 ResignableReasons.id == Workers.resignation_reason_id,
                 isouter=True,
             )
+            .order_by(Workers.name)
         ).all()
 
         return [

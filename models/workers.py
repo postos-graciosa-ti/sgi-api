@@ -115,3 +115,5 @@ class Workers(SQLModel, table=True):
     wage_payment_method: int = Field(
         default=None, foreign_key="wagepaymentmethod.id", nullable=True
     )
+    early_payment: bool | None = Field(default=None, nullable=True)
+    harmfull_exposition: bool | None = Field(default=None, nullable=True)

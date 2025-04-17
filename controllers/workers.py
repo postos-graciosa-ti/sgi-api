@@ -128,6 +128,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 Workers.hierarchy_structure,
                 Workers.enterprise_time,
                 Workers.cbo,
+                Workers.early_payment,
+                Workers.harmfull_exposition,
                 Function.id.label("function_id"),
                 Function.name.label("function_name"),
                 Turn.id.label("turn_id"),
@@ -309,6 +311,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 ),
                 "enterprise_time": worker.enterprise_time,
                 "cbo": worker.cbo,
+                "early_payment": worker.early_payment,
+                "harmfull_exposition": worker.harmfull_exposition,
             }
             for worker in workers
         ]

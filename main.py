@@ -1843,3 +1843,11 @@ def delete_workers(id: int):
         session.commit()
 
         return {"success": True}
+
+
+@app.get("/functions/{id}")
+def get_function_by_id(id: int):
+    with Session(engine) as session:
+        function = session.exec(select(Function).where(Function.id == id)).first()
+
+        return function

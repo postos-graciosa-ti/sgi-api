@@ -7,3 +7,4 @@ class PutTurn(BaseModel):
     start_interval_time: str
     end_time: str
     end_interval_time: str
+    week: str

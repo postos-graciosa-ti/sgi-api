@@ -81,6 +81,8 @@ def handle_put_turn(id: int, formData: PutTurn):
 
         turn.end_interval_time = formData.end_interval_time
 
+        turn.week = formData.week
+
         session.commit()
 
         session.refresh(turn)

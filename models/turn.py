@@ -10,3 +10,4 @@ class Turn(SQLModel, table=True):
     end_time: time = Field(sa_column=Time())
     end_interval_time: time = Field(sa_column=Time())
     subsidiarie_id: int = Field(default=None, foreign_key="subsidiarie.id")
+    week: str = Field(default=None, nullable=True)

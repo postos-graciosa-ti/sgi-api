@@ -1831,3 +1831,15 @@ def delete_hollidays_scale(id: int):
 @app.get("/cnh-categories")
 def get_cnh_categories():
     return handle_get_cnh_categories()
+
+
+@app.delete("/workers/{id}")
+def delete_workers(id: int):
+    with Session(engine) as session:
+        worker = session.exec(select(Workers).where(Workers.id == id)).first()
+
+        session.delete(worker)
+
+        session.commit()
+
+        return {"success": True}

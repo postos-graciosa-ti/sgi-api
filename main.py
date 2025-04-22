@@ -242,7 +242,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1851,3 +1851,132 @@ def get_function_by_id(id: int):
         function = session.exec(select(Function).where(Function.id == id)).first()
 
         return function
+
+
+import httpx
+
+
+async def get_state_by_city_name(city_name: str) -> str:
+    url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Erro ao acessar a API do IBGE")
+
+    cities_data = response.json()
+
+    for city in cities_data:
+        if city["nome"].lower() == city_name.lower():
+            return city["microrregiao"]["mesorregiao"]["UF"]["sigla"]
+
+    raise HTTPException(status_code=404, detail="Cidade não encontrada na API do IBGE")
+
+
+class PostCitiesInput(BaseModel):
+    name: str
+
+
+@app.post("/cities")
+async def post_cities(city: PostCitiesInput):
+    with Session(engine) as session:
+        result = await get_state_by_city_name(city.name)
+
+        new_city_state_id = session.exec(
+            select(States.id).where(States.sail == result)
+        ).first()
+
+        new_city = Cities(name=city.name, state_id=new_city_state_id)
+
+        session.add(new_city)
+
+        session.commit()
+
+        session.refresh(new_city)
+
+        cities_list = session.exec(select(Cities)).all()
+
+        return cities_list
+
+
+import requests
+
+
+def get_city_by_neighborhood(bairro: str) -> str:
+    url = "https://nominatim.openstreetmap.org/search"
+
+    params = {
+        "q": f"{bairro}, Brasil",
+        "format": "json",
+        "addressdetails": 1,
+        "limit": 1,
+    }
+
+    headers = {"User-Agent": "MinhaAplicacao/1.0"}
+
+    response = requests.get(url, params=params, headers=headers)
+
+    data = response.json()
+
+    if not data:
+        return "Cidade não encontrada"
+
+    address = data[0].get("address", {})
+
+    return (
+        address.get("city")
+        or address.get("town")
+        or address.get("village", "Cidade não identificada")
+    )
+
+
+class PostNeighborhoodsInput(BaseModel):
+    name: str
+
+
+@app.post("/news")
+def post_cities(neighborhood: PostNeighborhoodsInput):
+    with Session(engine) as session:
+        new_neighborhood_city_name = get_city_by_neighborhood(neighborhood.name)
+
+        new_neighborhood_city_id = session.exec(
+            select(Cities.id).where(Cities.name == new_neighborhood_city_name)
+        ).first()
+
+        new_neighborhood = Neighborhoods(
+            name=neighborhood.name, city_id=new_neighborhood_city_id
+        )
+
+        session.add(new_neighborhood)
+
+        session.commit()
+
+        session.refresh(new_neighborhood)
+
+        all_neighborhoods = session.exec(select(Neighborhoods)).all()
+
+        return all_neighborhoods
+
+
+@app.get("/all-subsidiaries/no-first-review")
+def get_no_first_review_workers_in_all_subsidiaries():
+    with Session(engine) as session:
+        today = datetime.today()
+
+        start_of_week = today - relativedelta(days=today.weekday())
+        end_of_week = start_of_week + relativedelta(days=6)
+
+        start_of_week_str = start_of_week.strftime("%Y-%m-%d")
+        end_of_week_str = end_of_week.strftime("%Y-%m-%d")
+
+        subquery = select(WorkersFirstReview.worker_id)
+
+        workers_without_first_review = session.exec(
+            select(Workers)
+            .where(Workers.first_review_date >= start_of_week_str)
+            .where(Workers.first_review_date <= end_of_week_str)
+            .where(Workers.id.not_in(subquery))
+        ).all()
+
+        return workers_without_first_review

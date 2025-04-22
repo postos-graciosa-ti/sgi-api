@@ -117,3 +117,4 @@ class Workers(SQLModel, table=True):
     )
     early_payment: bool | None = Field(default=None, nullable=True)
     harmfull_exposition: bool | None = Field(default=None, nullable=True)
+    has_experience_time: bool | None = Field(default=None, nullable=True)

@@ -5,8 +5,11 @@ from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from sqlmodel import Session, select
-from models.cnh_categories import CnhCategories
-from controllers.cnh_categories import handle_get_cnh_categories
+
+from controllers.all_subsidiaries_no_review import (
+    handle_get_workers_without_first_review_in_range_all,
+    handle_get_workers_without_second_review_in_range_all,
+)
 from controllers.applicants import handle_get_applicants, handle_post_applicant
 from controllers.banks import handle_get_banks
 from controllers.candidates import (
@@ -14,6 +17,7 @@ from controllers.candidates import (
     handle_get_candidates_by_status,
     handle_post_candidate,
 )
+from controllers.cnh_categories import handle_get_cnh_categories
 from controllers.cost_center import (
     handle_delete_cost_center,
     handle_get_cost_center,
@@ -211,6 +215,7 @@ from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_parents import WorkersParents
 from models.workers_second_review import WorkersSecondReview
+from pyhints.no_reviews import SubsidiaryFilter
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
     PostScaleInput,
@@ -608,6 +613,16 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
 
 @app.post("/workers")
 def post_worker(worker: Workers):
+    admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+    first_review = admission_date + relativedelta(months=1)
+
+    second_review = admission_date + relativedelta(months=2)
+
+    worker.first_review_date = first_review.strftime("%Y-%m-%d")
+
+    worker.second_review_date = second_review.strftime("%Y-%m-%d")
+
     with Session(engine) as session:
         session.add(worker)
 
@@ -1959,24 +1974,14 @@ def post_cities(neighborhood: PostNeighborhoodsInput):
         return all_neighborhoods
 
 
-@app.get("/all-subsidiaries/no-first-review")
-def get_no_first_review_workers_in_all_subsidiaries():
-    with Session(engine) as session:
-        today = datetime.today()
+# all subsidiaries no first review and second review
 
-        start_of_week = today - relativedelta(days=today.weekday())
-        end_of_week = start_of_week + relativedelta(days=6)
 
-        start_of_week_str = start_of_week.strftime("%Y-%m-%d")
-        end_of_week_str = end_of_week.strftime("%Y-%m-%d")
+@app.post("/subsidiaries/workers/experience-time-no-first-review")
+def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
+    return handle_get_workers_without_first_review_in_range_all(data)
 
-        subquery = select(WorkersFirstReview.worker_id)
 
-        workers_without_first_review = session.exec(
-            select(Workers)
-            .where(Workers.first_review_date >= start_of_week_str)
-            .where(Workers.first_review_date <= end_of_week_str)
-            .where(Workers.id.not_in(subquery))
-        ).all()
-
-        return workers_without_first_review
+@app.post("/subsidiaries/workers/experience-time-no-second-review")
+def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
+    return handle_get_workers_without_second_review_in_range_all(data)

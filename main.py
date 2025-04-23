@@ -558,9 +558,275 @@ def get_active_workers_by_subsidiarie_and_function(
     )
 
 
+from sqlalchemy.orm import aliased
+
+from models.hierarchy_structure import HierarchyStructure
+from models.resignable_reasons import ResignableReasons
+
+
 @app.get("/workers/subsidiarie/{subsidiarie_id}")
-def get_workers_by_subsidiarie(subsidiarie_id: int):
-    return handle_get_workers_by_subsidiarie(subsidiarie_id)
+def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
+    # Criar aliases para tabelas que são referenciadas múltiplas vezes
+    City = aliased(Cities)
+    BirthCity = aliased(Cities)
+    State = aliased(States)
+    BirthState = aliased(States)
+    RgState = aliased(States)
+    CtpsState = aliased(States)
+
+    with Session(engine) as session:
+        # Consulta principal com todos os joins necessários
+        query = (
+            select(
+                Workers,
+                Function.name.label("function_name"),
+                Turn.name.label("turn_name"),
+                Turn.start_time.label("turn_start_time"),
+                Turn.end_time.label("turn_end_time"),
+                CostCenter.name.label("cost_center_name"),
+                Department.name.label("department_name"),
+                ResignableReasons.name.label("resignation_reason_name"),
+                Genders.name.label("gender_name"),
+                CivilStatus.name.label("civil_status_name"),
+                Neighborhoods.name.label("neighborhood_name"),
+                City.name.label("city_name"),
+                State.name.label("state_name"),
+                Ethnicity.name.label("ethnicity_name"),
+                BirthCity.name.label("birthcity_name"),
+                BirthState.name.label("birthstate_name"),
+                RgState.name.label("rg_state_name"),
+                CtpsState.name.label("ctps_state_name"),
+                CnhCategories.name.label("cnh_category_name"),
+                WagePaymentMethod.name.label("wage_payment_method_name"),
+                AwayReasons.name.label("away_reason_name"),
+                SchoolLevels.name.label("school_level_name"),
+                Banks.name.label("bank_name"),
+                Nationalities.name.label("nationality_name"),
+                HierarchyStructure.name.label("hierarchy_structure_name"),
+            )
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            # Joins principais
+            .join(Function, Function.id == Workers.function_id)
+            .join(Turn, Turn.id == Workers.turn_id)
+            .join(CostCenter, CostCenter.id == Workers.cost_center_id)
+            .join(Department, Department.id == Workers.department_id)
+            .join(
+                ResignableReasons,
+                ResignableReasons.id == Workers.resignation_reason_id,
+                isouter=True,
+            )
+            # Joins para campos relacionados
+            .join(Genders, Genders.id == Workers.gender_id, isouter=True)
+            .join(CivilStatus, CivilStatus.id == Workers.civil_status_id, isouter=True)
+            .join(
+                Neighborhoods, Neighborhoods.id == Workers.neighborhood_id, isouter=True
+            )
+            .join(City, City.id == Workers.city, isouter=True)
+            .join(State, State.id == Workers.state, isouter=True)
+            .join(Ethnicity, Ethnicity.id == Workers.ethnicity_id, isouter=True)
+            .join(BirthCity, BirthCity.id == Workers.birthcity, isouter=True)
+            .join(BirthState, BirthState.id == Workers.birthstate, isouter=True)
+            .join(RgState, RgState.id == Workers.rg_state, isouter=True)
+            .join(CtpsState, CtpsState.id == Workers.ctps_state, isouter=True)
+            .join(CnhCategories, CnhCategories.id == Workers.cnh_category, isouter=True)
+            .join(
+                WagePaymentMethod,
+                WagePaymentMethod.id == Workers.wage_payment_method,
+                isouter=True,
+            )
+            .join(AwayReasons, AwayReasons.id == Workers.away_reason_id, isouter=True)
+            .join(SchoolLevels, SchoolLevels.id == Workers.school_level, isouter=True)
+            .join(Banks, Banks.id == Workers.bank, isouter=True)
+            .join(Nationalities, Nationalities.id == Workers.nationality, isouter=True)
+            .join(
+                HierarchyStructure,
+                HierarchyStructure.id == Workers.hierarchy_structure,
+                isouter=True,
+            )
+            .order_by(Workers.name)
+        )
+
+        workers_data = session.exec(query).all()
+
+        # Construir o resultado completo
+        result = []
+        for row in workers_data:
+            worker = row[0]  # O primeiro elemento é o objeto Workers
+            worker_dict = {
+                "worker_id": worker.id,
+                "worker_name": worker.name,
+                "worker_is_active": worker.is_active,
+                "admission_date": worker.admission_date,
+                "resignation_date": worker.resignation_date,
+                "resignation_reason_id": worker.resignation_reason_id,
+                "resignation_reason_name": row.resignation_reason_name,
+                "worker_enrolment": worker.enrolment,
+                "worker_sales_code": worker.sales_code,
+                "picture": worker.picture,
+                "timecode": worker.timecode,
+                "first_review_date": worker.first_review_date,
+                "second_review_date": worker.second_review_date,
+                "esocial": worker.esocial,
+                "function_id": worker.function_id,
+                "function_name": row.function_name,
+                "turn_id": worker.turn_id,
+                "turn_name": row.turn_name,
+                "turn_start_time": row.turn_start_time,
+                "turn_end_time": row.turn_end_time,
+                "cost_center_id": worker.cost_center_id,
+                "cost_center": row.cost_center_name,
+                "department_id": worker.department_id,
+                "department": row.department_name,
+                "gender": (
+                    {"id": worker.gender_id, "name": row.gender_name}
+                    if worker.gender_id
+                    else None
+                ),
+                "civil_status": (
+                    {"id": worker.civil_status_id, "name": row.civil_status_name}
+                    if worker.civil_status_id
+                    else None
+                ),
+                "street": worker.street,
+                "street_number": worker.street_number,
+                "street_complement": worker.street_complement,
+                "neighborhood": (
+                    {"id": worker.neighborhood_id, "name": row.neighborhood_name}
+                    if worker.neighborhood_id
+                    else None
+                ),
+                "cep": worker.cep,
+                "city": (
+                    {"id": worker.city, "name": row.city_name} if worker.city else None
+                ),
+                "state": (
+                    {"id": worker.state, "name": row.state_name}
+                    if worker.state
+                    else None
+                ),
+                "phone": worker.phone,
+                "mobile": worker.mobile,
+                "email": worker.email,
+                "ethnicity": (
+                    {"id": worker.ethnicity_id, "name": row.ethnicity_name}
+                    if worker.ethnicity_id
+                    else None
+                ),
+                "birthdate": worker.birthdate,
+                "birthcity": (
+                    {"id": worker.birthcity, "name": row.birthcity_name}
+                    if worker.birthcity
+                    else None
+                ),
+                "birthstate": (
+                    {"id": worker.birthstate, "name": row.birthstate_name}
+                    if worker.birthstate
+                    else None
+                ),
+                "fathername": worker.fathername,
+                "mothername": worker.mothername,
+                "cpf": worker.cpf,
+                "rg": worker.rg,
+                "rg_issuing_agency": worker.rg_issuing_agency,
+                "rg_state": (
+                    {"id": worker.rg_state, "name": row.rg_state_name}
+                    if worker.rg_state
+                    else None
+                ),
+                "rg_expedition_date": worker.rg_expedition_date,
+                "military_cert_number": worker.military_cert_number,
+                "pis": worker.pis,
+                "pis_register_date": worker.pis_register_date,
+                "votant_session": worker.votant_session,
+                "votant_title": worker.votant_title,
+                "votant_zone": worker.votant_zone,
+                "ctps": worker.ctps,
+                "ctps_serie": worker.ctps_serie,
+                "ctps_state": (
+                    {"id": worker.ctps_state, "name": row.ctps_state_name}
+                    if worker.ctps_state
+                    else None
+                ),
+                "ctps_emission_date": worker.ctps_emission_date,
+                "cnh": worker.cnh,
+                "cnh_category": (
+                    {"id": worker.cnh_category, "name": row.cnh_category_name}
+                    if worker.cnh_category
+                    else None
+                ),
+                "cnh_emition_date": worker.cnh_emition_date,
+                "cnh_valid_date": worker.cnh_valid_date,
+                "first_job": worker.first_job,
+                "was_employee": worker.was_employee,
+                "union_contribute_current_year": worker.union_contribute_current_year,
+                "receiving_unemployment_insurance": worker.receiving_unemployment_insurance,
+                "previous_experience": worker.previous_experience,
+                "month_wage": worker.month_wage,
+                "hour_wage": worker.hour_wage,
+                "journey_wage": worker.journey_wage,
+                "transport_voucher": worker.transport_voucher,
+                "transport_voucher_quantity": worker.transport_voucher_quantity,
+                "diary_workjourney": worker.diary_workjourney,
+                "week_workjourney": worker.week_workjourney,
+                "month_workjourney": worker.month_workjourney,
+                "experience_time": worker.experience_time,
+                "nocturne_hours": worker.nocturne_hours,
+                "dangerousness": worker.dangerousness,
+                "unhealthy": worker.unhealthy,
+                "wage_payment_method": (
+                    {
+                        "id": worker.wage_payment_method,
+                        "name": row.wage_payment_method_name,
+                    }
+                    if worker.wage_payment_method
+                    else None
+                ),
+                "is_away": worker.is_away,
+                "away_reason": (
+                    {"id": worker.away_reason_id, "name": row.away_reason_name}
+                    if worker.away_reason_id
+                    else None
+                ),
+                "away_start_date": worker.away_start_date,
+                "away_end_date": worker.away_end_date,
+                "general_function_code": worker.general_function_code,
+                "wage": worker.wage,
+                "last_function_date": worker.last_function_date,
+                "current_function_time": worker.current_function_time,
+                "school_level": (
+                    {"id": worker.school_level, "name": row.school_level_name}
+                    if worker.school_level
+                    else None
+                ),
+                "emergency_number": worker.emergency_number,
+                "bank": (
+                    {"id": worker.bank, "name": row.bank_name} if worker.bank else None
+                ),
+                "bank_agency": worker.bank_agency,
+                "bank_account": worker.bank_account,
+                "nationality": (
+                    {"id": worker.nationality, "name": row.nationality_name}
+                    if worker.nationality
+                    else None
+                ),
+                "has_children": worker.has_children,
+                "hierarchy_structure": (
+                    {
+                        "id": worker.hierarchy_structure,
+                        "name": row.hierarchy_structure_name,
+                    }
+                    if worker.hierarchy_structure
+                    else None
+                ),
+                "enterprise_time": worker.enterprise_time,
+                "cbo": worker.cbo,
+                "early_payment": worker.early_payment,
+                "harmfull_exposition": worker.harmfull_exposition,
+                "has_experience_time": worker.has_experience_time,
+            }
+            result.append(worker_dict)
+
+        return result
 
 
 @app.get(

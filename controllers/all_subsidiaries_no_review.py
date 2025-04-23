@@ -47,7 +47,11 @@ async def handle_get_workers_without_first_review_in_range_all(data: SubsidiaryF
             .all()
         )
 
-        return workers_without_first_review
+        return {
+            "workers": workers_without_first_review,
+            "start_of_week": start_of_week,
+            "end_of_week": end_of_week,
+        }
 
 
 async def handle_get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
@@ -86,4 +90,8 @@ async def handle_get_workers_without_second_review_in_range_all(data: Subsidiary
             .all()
         )
 
-        return workers_without_second_review
+        return {
+            "workers": workers_without_second_review,
+            "start_of_week": start_of_week,
+            "end_of_week": end_of_week,
+        }

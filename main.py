@@ -1294,13 +1294,12 @@ def get_workers_without_first_review_in_range(subsidiarie_id: int):
     with Session(engine) as session:
         today = datetime.today()
 
-        # Obtém o início da semana (segunda-feira)
         start_of_week = today - relativedelta(days=today.weekday())
 
-        # Obtém o final da semana (domingo)
         end_of_week = start_of_week + relativedelta(days=6)
 
         start_of_week_str = start_of_week.strftime("%Y-%m-%d")
+
         end_of_week_str = end_of_week.strftime("%Y-%m-%d")
 
         workers_without_first_review = session.exec(
@@ -1317,7 +1316,11 @@ def get_workers_without_first_review_in_range(subsidiarie_id: int):
             )
         ).all()
 
-        return workers_without_first_review
+        return {
+            "workers": workers_without_first_review,
+            "start_of_week": start_of_week,
+            "end_of_week": end_of_week,
+        }
 
 
 @app.get("/subsidiaries/{subsidiarie_id}/workers/experience-time-no-second-review")
@@ -1347,7 +1350,11 @@ def get_workers_without_second_review_in_range(subsidiarie_id: int):
             )
         ).all()
 
-        return workers_without_second_review
+        return {
+            "workers": workers_without_second_review,
+            "start_of_week": start_of_week,
+            "end_of_week": end_of_week,
+        }
 
 
 @app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
@@ -1985,3 +1992,33 @@ async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
 @app.post("/subsidiaries/workers/experience-time-no-second-review")
 async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
     return await handle_get_workers_without_second_review_in_range_all(data)
+
+
+from sqlalchemy import and_
+
+
+@app.post("/subsidiaries/away-workers")
+def get_away_return_workers(data: SubsidiaryFilter):
+    today = date.today()
+
+    start_of_week = today - timedelta(days=today.weekday())
+
+    end_of_week = start_of_week + timedelta(days=6)
+
+    with Session(engine) as session:
+        workers_away_return = session.exec(
+            select(Workers).where(
+                and_(
+                    Workers.subsidiarie_id.in_(data.subsidiaries_ids),
+                    Workers.is_away.is_(True),
+                    Workers.away_end_date >= start_of_week,
+                    Workers.away_end_date <= end_of_week,
+                )
+            )
+        ).all()
+
+    return {
+        "workers": workers_away_return,
+        "start_of_week": start_of_week,
+        "end_of_week": end_of_week,
+    }

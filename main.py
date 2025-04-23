@@ -1978,10 +1978,10 @@ def post_cities(neighborhood: PostNeighborhoodsInput):
 
 
 @app.post("/subsidiaries/workers/experience-time-no-first-review")
-def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
-    return handle_get_workers_without_first_review_in_range_all(data)
+async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_first_review_in_range_all(data)
 
 
 @app.post("/subsidiaries/workers/experience-time-no-second-review")
-def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
-    return handle_get_workers_without_second_review_in_range_all(data)
+async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_second_review_in_range_all(data)

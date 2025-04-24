@@ -559,7 +559,7 @@ def get_active_workers_by_subsidiarie_and_function(
 
 
 @app.get("/workers/subsidiarie/{subsidiarie_id}")
-def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
+def get_workers_by_subsidiarie(subsidiarie_id: int):
     return handle_get_workers_by_subsidiarie(subsidiarie_id)
 
 

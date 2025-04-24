@@ -558,10 +558,94 @@ def get_active_workers_by_subsidiarie_and_function(
     )
 
 
-from models.resignable_reasons import ResignableReasons
+from functools import wraps
+from typing import Any, Callable
+
+from cachetools import TTLCache
+from sqlalchemy import event
+
 from models.hierarchy_structure import HierarchyStructure
+from models.resignable_reasons import ResignableReasons
+
+# Cache global
+cache = TTLCache(maxsize=100, ttl=600)
+
+# Dicionário para rastrear quais funções de cache devem ser invalidadas para cada modelo
+_cache_invalidation_map = {}
 
 
+def register_cache_invalidation(model: Any, cache_func: Callable):
+    """Registra uma função de cache para ser invalidada quando o modelo for alterado"""
+    if model not in _cache_invalidation_map:
+        _cache_invalidation_map[model] = []
+        # Configura listeners para o modelo
+        _setup_model_listeners(model)
+    _cache_invalidation_map[model].append(cache_func)
+
+
+def _setup_model_listeners(model: Any):
+    """Configura listeners SQLAlchemy para um modelo específico"""
+
+    @event.listens_for(model, "after_insert")
+    @event.listens_for(model, "after_update")
+    @event.listens_for(model, "after_delete")
+    def receive_after_change(mapper, connection, target):
+        """Invalida caches registrados quando o modelo é alterado"""
+        if model in _cache_invalidation_map:
+            for cache_func in _cache_invalidation_map[model]:
+                cache_func.invalidate_cache()
+
+
+def cached(cache_store: TTLCache):
+    """Decorador que adiciona suporte a cache com capacidade de invalidação"""
+
+    def decorator(func):
+        # Adiciona método para invalidar o cache desta função
+        def invalidate_cache():
+            cache_store.clear()
+
+        func.invalidate_cache = invalidate_cache
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = (func.__name__, args, frozenset(kwargs.items()))
+            if key in cache_store:
+                return cache_store[key]
+
+            result = func(*args, **kwargs)
+            cache_store[key] = result
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+# Registrar todos os modelos relevantes para a função nome()
+MODELS_TO_TRACK = [
+    Workers,
+    Function,
+    Turn,
+    CostCenter,
+    Department,
+    ResignableReasons,
+    Genders,
+    CivilStatus,
+    Neighborhoods,
+    Cities,
+    States,
+    Ethnicity,
+    CnhCategories,
+    WagePaymentMethod,
+    AwayReasons,
+    SchoolLevels,
+    Banks,
+    Nationalities,
+    HierarchyStructure,
+]
+
+
+@cached(cache)
 def nome(subsidiarie_id: int):
     with Session(engine) as session:
         # Carrega todos os workers de uma vez
@@ -905,6 +989,11 @@ def nome(subsidiarie_id: int):
             )
 
         return result
+
+
+# Registrar a função nome() para invalidação quando qualquer modelo relevante for alterado
+for model in MODELS_TO_TRACK:
+    register_cache_invalidation(model, nome)
 
 
 @app.get("/workers/subsidiarie/{subsidiarie_id}")

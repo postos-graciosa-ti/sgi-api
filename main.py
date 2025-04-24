@@ -2468,7 +2468,7 @@ from io import BytesIO
 from typing import List, Optional
 
 import PyPDF2
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 
@@ -2477,6 +2477,7 @@ class WorkersDocs(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     worker_id: int = Field(foreign_key="workers.id")
     doc: bytes = Field(sa_column=Column(LargeBinary))
+    doc_title: str = Field(max_length=100)
 
 
 @app.get("/worker-pdfs/{worker_id}")
@@ -2490,7 +2491,12 @@ def get_worker_pdfs(worker_id: int):
                 return []
 
             return [
-                {"doc_id": doc.id, "worker_id": doc.worker_id, "size": len(doc.doc)}
+                {
+                    "doc_id": doc.id,
+                    "worker_id": doc.worker_id,
+                    "size": len(doc.doc),
+                    "doc_title": doc.doc_title,
+                }
                 for doc in docs
             ]
 
@@ -2524,7 +2530,11 @@ def get_pdf(doc_id: int):
 
 
 @app.post("/upload-pdf/{worker_id}")
-async def upload_pdf(worker_id: int, file: UploadFile = File(...)):
+async def upload_pdf(
+    worker_id: int,
+    doc_title: str = Form(...),  # Novo parâmetro
+    file: UploadFile = File(...),
+):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
 
@@ -2532,18 +2542,21 @@ async def upload_pdf(worker_id: int, file: UploadFile = File(...)):
         pdf_bytes = await file.read()
 
         with Session(engine) as session:
-            db_doc = WorkersDocs(worker_id=worker_id, doc=pdf_bytes)
+            db_doc = WorkersDocs(
+                worker_id=worker_id,
+                doc=pdf_bytes,
+                doc_title=doc_title,  # Adicionando o título
+            )
 
             session.add(db_doc)
-
             session.commit()
-
             session.refresh(db_doc)
 
             return {
                 "message": "PDF salvo com sucesso",
                 "id": db_doc.id,
                 "worker_id": db_doc.worker_id,
+                "doc_title": db_doc.doc_title,  # Retornando o título
                 "filename": file.filename,
             }
 

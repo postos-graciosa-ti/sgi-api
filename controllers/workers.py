@@ -29,7 +29,7 @@ from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 
-cache = TTLCache(maxsize=100, ttl=600)
+# cache = TTLCache(maxsize=100, ttl=600)
 
 
 def handle_get_worker_by_id(id: int):
@@ -39,7 +39,7 @@ def handle_get_worker_by_id(id: int):
         return worker
 
 
-@cached(cache)
+# @cached(cache)
 def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
     with Session(engine) as session:
         workers_query = (

@@ -247,7 +247,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -2460,3 +2460,117 @@ def get_away_return_workers(data: SubsidiaryFilter):
         "start_of_week": start_of_week,
         "end_of_week": end_of_week,
     }
+
+
+# workers docs
+
+from io import BytesIO
+from typing import List, Optional
+
+import PyPDF2
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
+
+
+class WorkersDocs(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    worker_id: int = Field(foreign_key="workers.id")
+    doc: bytes = Field(sa_column=Column(LargeBinary))
+    doc_title: str = Field(max_length=100)
+
+
+@app.get("/worker-pdfs/{worker_id}")
+def get_worker_pdfs(worker_id: int):
+    try:
+        with Session(engine) as session:
+            statement = select(WorkersDocs).where(WorkersDocs.worker_id == worker_id)
+            docs = session.exec(statement).all()
+
+            if not docs:
+                return []
+
+            return [
+                {
+                    "doc_id": doc.id,
+                    "worker_id": doc.worker_id,
+                    "size": len(doc.doc),
+                    "doc_title": doc.doc_title,
+                }
+                for doc in docs
+            ]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao buscar documentos: {str(e)}"
+        )
+
+
+@app.get("/get-pdf/{doc_id}")
+def get_pdf(doc_id: int):
+    try:
+        with Session(engine) as session:
+            doc = session.get(WorkersDocs, doc_id)
+            if not doc:
+                raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+            from io import BytesIO
+
+            from fastapi.responses import StreamingResponse
+
+            return StreamingResponse(
+                BytesIO(doc.doc),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"inline; filename=document_{doc_id}.pdf"
+                },
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao recuperar PDF: {str(e)}")
+
+
+@app.post("/upload-pdf/{worker_id}")
+async def upload_pdf(
+    worker_id: int,
+    doc_title: str = Form(...),  # Novo parâmetro
+    file: UploadFile = File(...),
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
+
+    try:
+        pdf_bytes = await file.read()
+
+        with Session(engine) as session:
+            db_doc = WorkersDocs(
+                worker_id=worker_id,
+                doc=pdf_bytes,
+                doc_title=doc_title,  # Adicionando o título
+            )
+
+            session.add(db_doc)
+            session.commit()
+            session.refresh(db_doc)
+
+            return {
+                "message": "PDF salvo com sucesso",
+                "id": db_doc.id,
+                "worker_id": db_doc.worker_id,
+                "doc_title": db_doc.doc_title,  # Retornando o título
+                "filename": file.filename,
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar o PDF: {str(e)}")
+
+
+@app.delete("/workers-docs/{id}")
+def delete_workers_docs(id: int):
+    with Session(engine) as session:
+        doc = session.exec(select(WorkersDocs).where(WorkersDocs.id == id)).first()
+
+        session.delete(doc)
+
+        session.commit()
+
+        return {"success": True}

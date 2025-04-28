@@ -47,7 +47,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .order_by(Workers.name)
         )
-        
+
         workers = session.exec(workers_query).all()
 
         result = []
@@ -58,21 +58,21 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                 if worker.function_id
                 else None
             )
-            
+
             turn = session.get(Turn, worker.turn_id) if worker.turn_id else None
-            
+
             cost_center = (
                 session.get(CostCenter, worker.cost_center_id)
                 if worker.cost_center_id
                 else None
             )
-            
+
             department = (
                 session.get(Department, worker.department_id)
                 if worker.department_id
                 else None
             )
-            
+
             resignation_reason = (
                 session.get(ResignableReasons, worker.resignation_reason_id)
                 if worker.resignation_reason_id
@@ -357,24 +357,50 @@ def handle_put_worker(id: int, worker: Workers):
 
         for field in worker.__fields__.keys():
             value = getattr(worker, field)
+
             if value is not None:
                 setattr(db_worker, field, value)
 
-        # Atualiza datas de revisão se a data de admissão foi fornecida
+        if worker.has_nocturne_hours is None:
+            db_worker.has_nocturne_hours = None
+
+        if worker.propotional_payment is None:
+            db_worker.propotional_payment = None
+
+        if worker.total_nocturne_workjourney is None:
+            db_worker.total_nocturne_workjourney = None
+
+        if worker.twenty_five_workjourney is None:
+            db_worker.twenty_five_workjourney = None
+
+        if worker.twenty_two_to_five_week_workjourney is None:
+            db_worker.twenty_two_to_five_week_workjourney = None
+
+        if worker.twenty_two_to_five_month_workjourney is None:
+            db_worker.twenty_two_to_five_month_workjourney = None
+
+        if worker.twenty_two_to_five_effective_diary_workjourney is None:
+            db_worker.twenty_two_to_five_effective_diary_workjourney = None
+
         if worker.admission_date:
             try:
                 admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+
                 db_worker.first_review_date = (
                     admission_date + timedelta(days=30)
                 ).strftime("%Y-%m-%d")
+
                 db_worker.second_review_date = (
                     admission_date + timedelta(days=60)
                 ).strftime("%Y-%m-%d")
+
             except ValueError:
-                pass  # Ignora erro se o formato da data estiver incorreto
+                pass
 
         session.add(db_worker)
+
         session.commit()
+
         session.refresh(db_worker)
 
     return db_worker

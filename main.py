@@ -247,7 +247,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -985,6 +985,13 @@ def nome(subsidiarie_id: int):
                     "early_payment": worker.early_payment,
                     "harmfull_exposition": worker.harmfull_exposition,
                     "has_experience_time": worker.has_experience_time,
+                    "has_nocturne_hours": worker.has_nocturne_hours,
+                    "propotional_payment": worker.propotional_payment,
+                    "total_nocturne_workjourney": worker.total_nocturne_workjourney,
+                    "twenty_five_workjourney": worker.twenty_five_workjourney,
+                    "twenty_two_to_five_week_workjourney": worker.twenty_two_to_five_week_workjourney,
+                    "twenty_two_to_five_month_workjourney": worker.twenty_two_to_five_month_workjourney,
+                    "twenty_two_to_five_effective_diary_workjourney": worker.twenty_two_to_five_effective_diary_workjourney,
                 }
             )
 

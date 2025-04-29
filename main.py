@@ -2581,3 +2581,101 @@ def delete_workers_docs(id: int):
         session.commit()
 
         return {"success": True}
+
+
+from models.scale import Scale
+import json
+
+
+class ScalesListProps(BaseModel):
+    start_date: str
+    end_date: str
+    turn_id: int | None = None
+    function_id: int | None = None
+
+
+@app.post("/subsidiaries/{id}/scales/list")
+def get_scales(id: int, scales_list_props: ScalesListProps):
+    with Session(engine) as session:
+        start_date = datetime.strptime(scales_list_props.start_date, "%d-%m-%Y").date()
+
+        end_date = datetime.strptime(scales_list_props.end_date, "%d-%m-%Y").date()
+
+        query = select(Scale).where(Scale.subsidiarie_id == id)
+
+        if scales_list_props.turn_id is not None:
+            query = query.where(Scale.worker_turn_id == scales_list_props.turn_id)
+
+        if scales_list_props.function_id is not None:
+            query = query.where(
+                Scale.worker_function_id == scales_list_props.function_id
+            )
+
+        scales = session.exec(query).all()
+
+        in_range_scales = []
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+
+            scale_days_off = (
+                json.loads(scale.days_off)
+                if isinstance(scale.days_off, str)
+                else scale.days_off or []
+            )
+
+            scale_days_on = (
+                json.loads(scale.days_on)
+                if isinstance(scale.days_on, str)
+                else scale.days_on or []
+            )
+
+            scale_proportion = (
+                json.loads(scale.proportion)
+                if isinstance(scale.proportion, str)
+                else scale.proportion or []
+            )
+
+            valid_days_off = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_off
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_days_on = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_on
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_proportion = [
+                day
+                for day in scale_proportion
+                if isinstance(day, dict)
+                and start_date
+                <= datetime.strptime(day["data"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            in_range_scales.append(
+                {
+                    "worker": worker,
+                    "worker_turn": session.get(Turn, worker.turn_id),
+                    "worker_function": session.get(Function, worker.function_id),
+                    "days_on": valid_days_on,
+                    "days_off": valid_days_off,
+                    "proportion": valid_proportion,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                }
+            )
+
+        return in_range_scales

@@ -33,6 +33,7 @@ def handle_post_hollidays_scale(holliday_scale: HollidaysScale):
             .where(
                 HollidaysScale.worker_function_id == holliday_scale.worker_function_id
             )
+            .where(HollidaysScale.date == holliday_scale.date)
         ).all()
 
         if len(holliday_scale_penalty) > 0:

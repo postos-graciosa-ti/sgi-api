@@ -139,3 +139,10 @@ class Workers(SQLModel, table=True):
     twenty_two_to_five_effective_diary_workjourney: str = Field(
         default=None, nullable=True
     )
+    healthcare_plan: bool | None = Field(default=None, nullable=True)
+    healthcare_plan_discount: str = Field(default=None, nullable=True)
+    life_insurance: bool | None = Field(default=None, nullable=True)
+    life_insurance_discount: str = Field(default=None, nullable=True)
+    ag: str = Field(default=None, nullable=True)
+    cc: str = Field(default=None, nullable=True)
+    early_payment_discount: str = Field(default=None, nullable=True)

@@ -1,9 +1,13 @@
 import threading
 from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Callable
 
+from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from sqlalchemy import event
 from sqlmodel import Session, select
 
 from controllers.all_subsidiaries_no_review import (
@@ -194,11 +198,13 @@ from models.ethnicity import Ethnicity
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.genders import Genders
+from models.hierarchy_structure import HierarchyStructure
 from models.hollidays_scale import HollidaysScale
 from models.jobs import Jobs
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
 from models.parents_type import ParentsType
+from models.resignable_reasons import ResignableReasons
 from models.role import Role
 from models.scale_logs import ScaleLogs
 from models.school_levels import SchoolLevels
@@ -558,49 +564,32 @@ def get_active_workers_by_subsidiarie_and_function(
     )
 
 
-from functools import wraps
-from typing import Any, Callable
-
-from cachetools import TTLCache
-from sqlalchemy import event
-
-from models.hierarchy_structure import HierarchyStructure
-from models.resignable_reasons import ResignableReasons
-
-# Cache global
 cache = TTLCache(maxsize=100, ttl=600)
 
-# Dicionário para rastrear quais funções de cache devem ser invalidadas para cada modelo
 _cache_invalidation_map = {}
 
 
 def register_cache_invalidation(model: Any, cache_func: Callable):
-    """Registra uma função de cache para ser invalidada quando o modelo for alterado"""
     if model not in _cache_invalidation_map:
         _cache_invalidation_map[model] = []
-        # Configura listeners para o modelo
+
         _setup_model_listeners(model)
+
     _cache_invalidation_map[model].append(cache_func)
 
 
 def _setup_model_listeners(model: Any):
-    """Configura listeners SQLAlchemy para um modelo específico"""
-
     @event.listens_for(model, "after_insert")
     @event.listens_for(model, "after_update")
     @event.listens_for(model, "after_delete")
     def receive_after_change(mapper, connection, target):
-        """Invalida caches registrados quando o modelo é alterado"""
         if model in _cache_invalidation_map:
             for cache_func in _cache_invalidation_map[model]:
                 cache_func.invalidate_cache()
 
 
 def cached(cache_store: TTLCache):
-    """Decorador que adiciona suporte a cache com capacidade de invalidação"""
-
     def decorator(func):
-        # Adiciona método para invalidar o cache desta função
         def invalidate_cache():
             cache_store.clear()
 
@@ -609,11 +598,14 @@ def cached(cache_store: TTLCache):
         @wraps(func)
         def wrapper(*args, **kwargs):
             key = (func.__name__, args, frozenset(kwargs.items()))
+
             if key in cache_store:
                 return cache_store[key]
 
             result = func(*args, **kwargs)
+
             cache_store[key] = result
+
             return result
 
         return wrapper
@@ -621,7 +613,6 @@ def cached(cache_store: TTLCache):
     return decorator
 
 
-# Registrar todos os modelos relevantes para a função nome()
 MODELS_TO_TRACK = [
     Workers,
     Function,
@@ -648,54 +639,74 @@ MODELS_TO_TRACK = [
 @cached(cache)
 def nome(subsidiarie_id: int):
     with Session(engine) as session:
-        # Carrega todos os workers de uma vez
         workers = session.exec(
             select(Workers)
             .where(Workers.subsidiarie_id == subsidiarie_id)
             .order_by(Workers.name)
         ).all()
 
-        # Coleta todos os IDs relacionados para pré-carregamento
         function_ids = {w.function_id for w in workers if w.function_id}
+
         turn_ids = {w.turn_id for w in workers if w.turn_id}
+
         cost_center_ids = {w.cost_center_id for w in workers if w.cost_center_id}
+
         department_ids = {w.department_id for w in workers if w.department_id}
+
         resignation_reason_ids = {
             w.resignation_reason_id for w in workers if w.resignation_reason_id
         }
+
         gender_ids = {w.gender_id for w in workers if w.gender_id}
+
         civil_status_ids = {w.civil_status_id for w in workers if w.civil_status_id}
+
         neighborhood_ids = {w.neighborhood_id for w in workers if w.neighborhood_id}
+
         city_ids = {w.city for w in workers if w.city}
+
         state_ids = {w.state for w in workers if w.state}
+
         ethnicity_ids = {w.ethnicity_id for w in workers if w.ethnicity_id}
+
         birthcity_ids = {w.birthcity for w in workers if w.birthcity}
+
         birthstate_ids = {w.birthstate for w in workers if w.birthstate}
+
         rg_state_ids = {w.rg_state for w in workers if w.rg_state}
+
         ctps_state_ids = {w.ctps_state for w in workers if w.ctps_state}
+
         cnh_category_ids = {w.cnh_category for w in workers if w.cnh_category}
+
         wage_payment_method_ids = {
             w.wage_payment_method for w in workers if w.wage_payment_method
         }
+
         away_reason_ids = {w.away_reason_id for w in workers if w.away_reason_id}
+
         school_level_ids = {w.school_level for w in workers if w.school_level}
+
         bank_ids = {w.bank for w in workers if w.bank}
+
         nationality_ids = {w.nationality for w in workers if w.nationality}
+
         hierarchy_structure_ids = {
             w.hierarchy_structure for w in workers if w.hierarchy_structure
         }
 
-        # Pré-carrega todas as entidades relacionadas
         functions = (
             session.exec(select(Function).where(Function.id.in_(function_ids))).all()
             if function_ids
             else []
         )
+
         turns = (
             session.exec(select(Turn).where(Turn.id.in_(turn_ids))).all()
             if turn_ids
             else []
         )
+
         cost_centers = (
             session.exec(
                 select(CostCenter).where(CostCenter.id.in_(cost_center_ids))
@@ -703,6 +714,7 @@ def nome(subsidiarie_id: int):
             if cost_center_ids
             else []
         )
+
         departments = (
             session.exec(
                 select(Department).where(Department.id.in_(department_ids))
@@ -710,6 +722,7 @@ def nome(subsidiarie_id: int):
             if department_ids
             else []
         )
+
         resignation_reasons = (
             session.exec(
                 select(ResignableReasons).where(
@@ -719,11 +732,13 @@ def nome(subsidiarie_id: int):
             if resignation_reason_ids
             else []
         )
+
         genders = (
             session.exec(select(Genders).where(Genders.id.in_(gender_ids))).all()
             if gender_ids
             else []
         )
+
         civil_statuses = (
             session.exec(
                 select(CivilStatus).where(CivilStatus.id.in_(civil_status_ids))
@@ -731,6 +746,7 @@ def nome(subsidiarie_id: int):
             if civil_status_ids
             else []
         )
+
         neighborhoods = (
             session.exec(
                 select(Neighborhoods).where(Neighborhoods.id.in_(neighborhood_ids))
@@ -738,41 +754,49 @@ def nome(subsidiarie_id: int):
             if neighborhood_ids
             else []
         )
+
         cities = (
             session.exec(select(Cities).where(Cities.id.in_(city_ids))).all()
             if city_ids
             else []
         )
+
         states = (
             session.exec(select(States).where(States.id.in_(state_ids))).all()
             if state_ids
             else []
         )
+
         ethnicities = (
             session.exec(select(Ethnicity).where(Ethnicity.id.in_(ethnicity_ids))).all()
             if ethnicity_ids
             else []
         )
+
         birthcities = (
             session.exec(select(Cities).where(Cities.id.in_(birthcity_ids))).all()
             if birthcity_ids
             else []
         )
+
         birthstates = (
             session.exec(select(States).where(States.id.in_(birthstate_ids))).all()
             if birthstate_ids
             else []
         )
+
         rg_states = (
             session.exec(select(States).where(States.id.in_(rg_state_ids))).all()
             if rg_state_ids
             else []
         )
+
         ctps_states = (
             session.exec(select(States).where(States.id.in_(ctps_state_ids))).all()
             if ctps_state_ids
             else []
         )
+
         cnh_categories = (
             session.exec(
                 select(CnhCategories).where(CnhCategories.id.in_(cnh_category_ids))
@@ -780,6 +804,7 @@ def nome(subsidiarie_id: int):
             if cnh_category_ids
             else []
         )
+
         wage_payment_methods = (
             session.exec(
                 select(WagePaymentMethod).where(
@@ -789,6 +814,7 @@ def nome(subsidiarie_id: int):
             if wage_payment_method_ids
             else []
         )
+
         away_reasons = (
             session.exec(
                 select(AwayReasons).where(AwayReasons.id.in_(away_reason_ids))
@@ -796,6 +822,7 @@ def nome(subsidiarie_id: int):
             if away_reason_ids
             else []
         )
+
         school_levels = (
             session.exec(
                 select(SchoolLevels).where(SchoolLevels.id.in_(school_level_ids))
@@ -803,11 +830,13 @@ def nome(subsidiarie_id: int):
             if school_level_ids
             else []
         )
+
         banks = (
             session.exec(select(Banks).where(Banks.id.in_(bank_ids))).all()
             if bank_ids
             else []
         )
+
         nationalities = (
             session.exec(
                 select(Nationalities).where(Nationalities.id.in_(nationality_ids))
@@ -815,6 +844,7 @@ def nome(subsidiarie_id: int):
             if nationality_ids
             else []
         )
+
         hierarchy_structures = (
             session.exec(
                 select(HierarchyStructure).where(
@@ -825,58 +855,99 @@ def nome(subsidiarie_id: int):
             else []
         )
 
-        # Cria dicionários para acesso rápido
         functions_dict = {f.id: f for f in functions}
+
         turns_dict = {t.id: t for t in turns}
+
         cost_centers_dict = {cc.id: cc for cc in cost_centers}
+
         departments_dict = {d.id: d for d in departments}
+
         resignation_reasons_dict = {rr.id: rr for rr in resignation_reasons}
+
         genders_dict = {g.id: g for g in genders}
+
         civil_statuses_dict = {cs.id: cs for cs in civil_statuses}
+
         neighborhoods_dict = {n.id: n for n in neighborhoods}
+
         cities_dict = {c.id: c for c in cities}
+
         states_dict = {s.id: s for s in states}
+
         ethnicities_dict = {e.id: e for e in ethnicities}
+
         birthcities_dict = {c.id: c for c in birthcities}
+
         birthstates_dict = {s.id: s for s in birthstates}
+
         rg_states_dict = {s.id: s for s in rg_states}
+
         ctps_states_dict = {s.id: s for s in ctps_states}
+
         cnh_categories_dict = {c.id: c for c in cnh_categories}
+
         wage_payment_methods_dict = {w.id: w for w in wage_payment_methods}
+
         away_reasons_dict = {a.id: a for a in away_reasons}
+
         school_levels_dict = {s.id: s for s in school_levels}
+
         banks_dict = {b.id: b for b in banks}
+
         nationalities_dict = {n.id: n for n in nationalities}
+
         hierarchy_structures_dict = {h.id: h for h in hierarchy_structures}
 
-        # Constrói o resultado
         result = []
+
         for worker in workers:
             function = functions_dict.get(worker.function_id)
+
             turn = turns_dict.get(worker.turn_id)
+
             cost_center = cost_centers_dict.get(worker.cost_center_id)
+
             department = departments_dict.get(worker.department_id)
+
             resignation_reason = resignation_reasons_dict.get(
                 worker.resignation_reason_id
             )
+
             gender = genders_dict.get(worker.gender_id)
+
             civil_status = civil_statuses_dict.get(worker.civil_status_id)
+
             neighborhood = neighborhoods_dict.get(worker.neighborhood_id)
+
             city = cities_dict.get(worker.city)
+
             state = states_dict.get(worker.state)
+
             ethnicity = ethnicities_dict.get(worker.ethnicity_id)
+
             birthcity = birthcities_dict.get(worker.birthcity)
+
             birthstate = birthstates_dict.get(worker.birthstate)
+
             rg_state = rg_states_dict.get(worker.rg_state)
+
             ctps_state = ctps_states_dict.get(worker.ctps_state)
+
             cnh_category = cnh_categories_dict.get(worker.cnh_category)
+
             wage_payment_method = wage_payment_methods_dict.get(
                 worker.wage_payment_method
             )
+
             away_reason = away_reasons_dict.get(worker.away_reason_id)
+
             school_level = school_levels_dict.get(worker.school_level)
+
             bank = banks_dict.get(worker.bank)
+
             nationality = nationalities_dict.get(worker.nationality)
+
             hierarchy_structure = hierarchy_structures_dict.get(
                 worker.hierarchy_structure
             )
@@ -992,13 +1063,19 @@ def nome(subsidiarie_id: int):
                     "twenty_two_to_five_week_workjourney": worker.twenty_two_to_five_week_workjourney,
                     "twenty_two_to_five_month_workjourney": worker.twenty_two_to_five_month_workjourney,
                     "twenty_two_to_five_effective_diary_workjourney": worker.twenty_two_to_five_effective_diary_workjourney,
+                    "healthcare_plan": worker.healthcare_plan,
+                    "healthcare_plan_discount": worker.healthcare_plan_discount,
+                    "life_insurance": worker.life_insurance,
+                    "life_insurance_discount": worker.life_insurance_discount,
+                    "ag": worker.ag,
+                    "cc": worker.cc,
+                    "early_payment_discount": worker.early_payment_discount,
                 }
             )
 
         return result
 
 
-# Registrar a função nome() para invalidação quando qualquer modelo relevante for alterado
 for model in MODELS_TO_TRACK:
     register_cache_invalidation(model, nome)
 
@@ -2300,16 +2377,16 @@ def get_cnh_categories():
     return handle_get_cnh_categories()
 
 
-@app.delete("/workers/{id}")
-def delete_workers(id: int):
-    with Session(engine) as session:
-        worker = session.exec(select(Workers).where(Workers.id == id)).first()
+# @app.delete("/workers/{id}")
+# def delete_workers(id: int):
+#     with Session(engine) as session:
+#         worker = session.exec(select(Workers).where(Workers.id == id)).first()
 
-        session.delete(worker)
+#         session.delete(worker)
 
-        session.commit()
+#         session.commit()
 
-        return {"success": True}
+#         return {"success": True}
 
 
 @app.get("/functions/{id}")
@@ -2321,24 +2398,54 @@ def get_function_by_id(id: int):
 
 
 import httpx
+from fastapi import HTTPException
 
 
 async def get_state_by_city_name(city_name: str) -> str:
-    url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
+    # Tenta encontrar no Brasil (via IBGE)
+    ibge_url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        ibge_response = await client.get(ibge_url)
 
-    if response.status_code != 200:
+    if ibge_response.status_code != 200:
         raise HTTPException(status_code=500, detail="Erro ao acessar a API do IBGE")
 
-    cities_data = response.json()
+    cities_data = ibge_response.json()
 
     for city in cities_data:
         if city["nome"].lower() == city_name.lower():
             return city["microrregiao"]["mesorregiao"]["UF"]["sigla"]
 
-    raise HTTPException(status_code=404, detail="Cidade não encontrada na API do IBGE")
+    # Se não encontrar no IBGE, tenta via Nominatim (OpenStreetMap)
+    nominatim_url = (
+        f"https://nominatim.openstreetmap.org/search"
+        f"?q={city_name},Venezuela&format=json&addressdetails=1&limit=1"
+    )
+
+    headers = {"User-Agent": "MyApp/1.0 (meuemail@example.com)"}
+
+    async with httpx.AsyncClient() as client:
+        osm_response = await client.get(nominatim_url, headers=headers)
+
+    if osm_response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Erro ao acessar a API Nominatim")
+
+    data = osm_response.json()
+    if not data:
+        raise HTTPException(
+            status_code=404, detail="Cidade não encontrada no Brasil nem na Venezuela"
+        )
+
+    address = data[0].get("address", {})
+    state = address.get("state") or address.get("region")
+
+    if not state:
+        raise HTTPException(
+            status_code=500, detail="Estado não encontrado na resposta da API"
+        )
+
+    return state
 
 
 class PostCitiesInput(BaseModel):
@@ -2583,8 +2690,9 @@ def delete_workers_docs(id: int):
         return {"success": True}
 
 
-from models.scale import Scale
 import json
+
+from models.scale import Scale
 
 
 class ScalesListProps(BaseModel):
@@ -2679,3 +2787,11 @@ def get_scales(id: int, scales_list_props: ScalesListProps):
             )
 
         return in_range_scales
+
+
+@app.get("/test-worker")
+def test_worker():
+    with Session(engine) as session:
+        workers = session.exec(select(Workers)).all()
+
+        return workers

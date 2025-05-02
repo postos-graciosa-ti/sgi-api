@@ -229,6 +229,10 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                     "early_payment": worker.early_payment,
                     "harmfull_exposition": worker.harmfull_exposition,
                     "has_experience_time": worker.has_experience_time,
+                    "healthcare_plan": worker.healthcare_plan,
+                    "healthcare_plan_discount": worker.healthcare_plan_discount,
+                    "life_insurance": worker.life_insurance,
+                    "life_insurance_discount": worker.life_insurance_discount,
                 }
             )
 

@@ -215,6 +215,7 @@ from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_parents import WorkersParents
 from models.workers_second_review import WorkersSecondReview
+from models.workschedule import Workschedule
 from pyhints.no_reviews import SubsidiaryFilter
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
@@ -2583,8 +2584,9 @@ def delete_workers_docs(id: int):
         return {"success": True}
 
 
-from models.scale import Scale
 import json
+
+from models.scale import Scale
 
 
 class ScalesListProps(BaseModel):
@@ -2679,3 +2681,77 @@ def get_scales(id: int, scales_list_props: ScalesListProps):
             )
 
         return in_range_scales
+
+
+# workschedule
+
+
+@app.get("/workschedule/subsidiaries/{subsidiarie_id}/{month}/{year}")
+def get_workschedule(subsidiarie_id: int, month: str, year: str):
+    with Session(engine) as session:
+        workschedules = (
+            session.exec(
+                select(Workschedule, Workers, Turn)
+                .join(Workers, Workschedule.worker_id == Workers.id)
+                .join(Turn, Workschedule.turn_id == Turn.id)
+                .where(Workschedule.subsidiarie_id == subsidiarie_id)
+                .where(Workschedule.month == month)
+                .where(Workschedule.year == year)
+            )
+            .mappings()
+            .all()
+        )
+
+        return workschedules
+
+@app.get("/workschedule/workers")
+
+@app.post("/workschedule")
+def post_workschedule(workschedule: Workschedule):
+    with Session(engine) as session:
+        existing = session.exec(
+            select(Workschedule).where(
+                (Workschedule.subsidiarie_id == workschedule.subsidiarie_id)
+                & (Workschedule.worker_id == workschedule.worker_id)
+                & (Workschedule.turn_id == workschedule.turn_id)
+                & (Workschedule.month == workschedule.month)
+                & (Workschedule.year == workschedule.year)
+            )
+        ).first()
+
+        # Transforma as listas em conjuntos para facilitar manipulação
+        new_days_on = set(workschedule.days_on)
+        new_days_off = set(workschedule.days_off)
+
+        # Remove conflitos automaticamente: prioridade para days_off
+        new_days_on = new_days_on - new_days_off
+
+        if existing:
+            existing_days_on = set(existing.days_on)
+            existing_days_off = set(existing.days_off)
+
+            # Remove conflitos entre os existentes e os novos
+            combined_days_on = (existing_days_on | new_days_on) - (
+                existing_days_off | new_days_off
+            )
+            combined_days_off = existing_days_off | new_days_off
+
+            existing.days_on = sorted(combined_days_on)
+            existing.days_off = sorted(combined_days_off)
+
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+            return existing
+        else:
+            # Remove conflitos do payload inicial (prioridade para days_off)
+            cleaned_days_on = sorted(new_days_on)
+            cleaned_days_off = sorted(new_days_off)
+
+            workschedule.days_on = cleaned_days_on
+            workschedule.days_off = cleaned_days_off
+
+            session.add(workschedule)
+            session.commit()
+            session.refresh(workschedule)
+            return workschedule

@@ -572,6 +572,8 @@ def handle_delete_scale(scale_id: int, subsidiarie_id: int):
     return all_scales_by_subsidiarie
 
 
+from fastapi import HTTPException
+
 def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
     start_date = datetime.strptime(scales_print_input.start_date, "%d-%m-%Y").date()
     end_date = datetime.strptime(scales_print_input.end_date, "%d-%m-%Y").date()
@@ -580,26 +582,74 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
     scales_print = []
 
     with Session(engine) as session:
+        # Get all scales with workers in the specified turn (using join)
         scales = session.exec(
             select(Scale)
+            .join(Workers, Scale.worker_id == Workers.id)
             .where(Scale.subsidiarie_id == id)
-            .where(Scale.worker_turn_id == scales_print_input.turn_id)
+            .where(Workers.turn_id == scales_print_input.turn_id)
         ).all()
+
+        # Dictionary to track day off conflicts
+        day_off_conflicts = {}
 
         for scale in scales:
             if workers_ids_filter and scale.worker_id not in workers_ids_filter:
-                continue  # Pula os workers que não estão na lista
+                continue
 
             worker = session.get(Workers, scale.worker_id)
             if not worker:
                 continue
 
-            # Converte JSON armazenado, se necessário
+            scale_days_off = json.loads(scale.days_off) if isinstance(scale.days_off, str) else scale.days_off or []
+            
+            # Check for day off conflicts
+            for day in scale_days_off:
+                if isinstance(day, dict) and "date" in day:
+                    try:
+                        date_obj = datetime.strptime(day["date"], "%d-%m-%Y").date()
+                        if start_date <= date_obj <= end_date:
+                            conflict_key = (day["date"], worker.function_id)
+                            
+                            if conflict_key not in day_off_conflicts:
+                                day_off_conflicts[conflict_key] = []
+                            
+                            day_off_conflicts[conflict_key].append({
+                                "worker_id": worker.id,
+                                "worker_name": worker.name  # Assuming Workers has a 'name' field
+                            })
+                    except:
+                        continue
+
+        # Check for conflicts and prepare error message if found
+        conflict_messages = []
+        for (date_str, function_id), workers in day_off_conflicts.items():
+            if len(workers) > 1:
+                worker_list = ", ".join([f"{w['worker_name']} (ID: {w['worker_id']})" for w in workers])
+                conflict_messages.append(
+                    f"Conflito no dia {date_str} (função ID: {function_id}): {worker_list}"
+                )
+
+        if conflict_messages:
+            error_msg = "Conflito de dias off encontrados:\n" + "\n".join(conflict_messages)
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
+            )
+
+        # Process scales if no conflicts found
+        for scale in scales:
+            if workers_ids_filter and scale.worker_id not in workers_ids_filter:
+                continue
+
+            worker = session.get(Workers, scale.worker_id)
+            if not worker:
+                continue
+
             scale_days_off = json.loads(scale.days_off) if isinstance(scale.days_off, str) else scale.days_off or []
             scale_days_on = json.loads(scale.days_on) if isinstance(scale.days_on, str) else scale.days_on or []
             scale_proportion = json.loads(scale.proportion) if isinstance(scale.proportion, str) else scale.proportion or []
 
-            # Filtra os dias dentro do intervalo especificado
             valid_days_off = [
                 datetime.strptime(day["date"], "%d-%m-%Y").date()
                 for day in scale_days_off if isinstance(day, dict) and "date" in day
@@ -613,7 +663,7 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
             ]
 
             valid_proportion = [
-                day  # Retorna o objeto completo de "proportion" (não apenas a data)
+                day
                 for day in scale_proportion if isinstance(day, dict)
                 and start_date <= datetime.strptime(day["data"], "%d-%m-%Y").date() <= end_date
             ]
@@ -622,7 +672,7 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
                 "worker": worker,
                 "days_on": valid_days_on,
                 "days_off": valid_days_off,
-                "proportion": valid_proportion,  # Propriedade completa agora
+                "proportion": valid_proportion,
                 "start_date": start_date,
                 "end_date": end_date,
             })

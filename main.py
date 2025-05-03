@@ -253,7 +253,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1496,7 +1496,6 @@ async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesRepor
 
 
 @app.post("/subsidiaries/{id}/scales/print", dependencies=[Depends(verify_token)])
-@error_handler
 def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
     return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
 

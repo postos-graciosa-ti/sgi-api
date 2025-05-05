@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import text
+from sqlalchemy import and_, text
 from sqlmodel import Session, select
 
 from database.sqlite import engine
@@ -95,3 +95,29 @@ async def handle_get_workers_without_second_review_in_range_all(data: Subsidiary
             "start_of_week": start_of_week,
             "end_of_week": end_of_week,
         }
+
+
+def handle_get_away_return_workers(data: SubsidiaryFilter):
+    today = date.today()
+
+    start_of_week = today - timedelta(days=today.weekday())
+
+    end_of_week = start_of_week + timedelta(days=6)
+
+    with Session(engine) as session:
+        workers_away_return = session.exec(
+            select(Workers).where(
+                and_(
+                    Workers.subsidiarie_id.in_(data.subsidiaries_ids),
+                    Workers.is_away.is_(True),
+                    Workers.away_end_date >= start_of_week,
+                    Workers.away_end_date <= end_of_week,
+                )
+            )
+        ).all()
+
+    return {
+        "workers": workers_away_return,
+        "start_of_week": start_of_week,
+        "end_of_week": end_of_week,
+    }

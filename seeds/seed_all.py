@@ -15,6 +15,7 @@ from seeds.seed_neighborhoods import seed_neighborhoods
 from seeds.seed_parents_type import seed_parents_type
 from seeds.seed_roles import seed_roles
 from seeds.seed_school_levels import seed_school_levels
+from seeds.seed_services import seed_services
 from seeds.seed_states import seed_brasil_states, seed_venezuela_states
 from seeds.seed_subsidiaries import seed_subsidiaries
 from seeds.seed_users import seed_users
@@ -44,3 +45,4 @@ def seed_database():
     seed_hierarchy_structure()
     seed_wage_payment_methods()
     seed_cnh_categories()
+    seed_services()

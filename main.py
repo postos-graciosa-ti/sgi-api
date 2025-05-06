@@ -3061,3 +3061,31 @@ def get_tickets_responsible(id: int):
             )
 
         return tickets_data
+
+
+@app.get("/tickets/responsible/{id}/notifications")
+def get_tickets_responsible_notifications(id: int):
+    with Session(engine) as session:
+        today = date.today()
+
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
+
+        end_of_week = (
+            datetime.fromisoformat(start_of_week) + timedelta(days=6)
+        ).isoformat()
+
+        tickets = (
+            session.exec(
+                select(Tickets, User, Service)
+                .join(User, Tickets.requesting_id == User.id)
+                .join(Service, Tickets.service == Service.id)
+                .where(Tickets.opened_at >= start_of_week)
+                .where(Tickets.opened_at <= end_of_week)
+                .where(Tickets.responsibles_ids.contains(id))
+                .order_by(Tickets.id.desc())
+            )
+            .mappings()
+            .all()
+        )
+
+        return tickets

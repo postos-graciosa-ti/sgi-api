@@ -1,16 +1,23 @@
+import json
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable
+from io import BytesIO
+from typing import Any, Callable, List, Optional
 
+import httpx
+import PyPDF2
+import requests
 from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
-from sqlalchemy import event
-from sqlmodel import Session, select
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlalchemy import and_, event
+from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 
 from controllers.all_subsidiaries_no_review import (
+    handle_get_away_return_workers,
     handle_get_workers_without_first_review_in_range_all,
     handle_get_workers_without_second_review_in_range_all,
 )
@@ -206,6 +213,7 @@ from models.neighborhoods import Neighborhoods
 from models.parents_type import ParentsType
 from models.resignable_reasons import ResignableReasons
 from models.role import Role
+from models.scale import Scale
 from models.scale_logs import ScaleLogs
 from models.school_levels import SchoolLevels
 from models.states import States
@@ -253,7 +261,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1500,35 +1508,6 @@ def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInpu
     return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
 
 
-# cities
-
-
-@app.get("/cities", dependencies=[Depends(verify_token)])
-@error_handler
-def get_cities():
-    with Session(engine) as session:
-        cities = session.exec(select(Cities)).all()
-
-        return cities
-
-
-@app.get("/states/{id}/cities")
-def get_cities_by_state(id: int):
-    with Session(engine) as session:
-        cities = session.exec(select(Cities).where(Cities.state_id == id)).all()
-
-        return cities
-
-
-@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_city_by_id(id: int):
-    with Session(engine) as session:
-        cities = session.exec(select(Cities).where(Cities.id == id)).first()
-
-        return cities
-
-
 # cost center
 
 
@@ -1641,68 +1620,6 @@ def get_resignable_reasons():
 @error_handler
 def get_resignable_reasons_report(input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(input)
-
-
-# neighborhoods
-
-
-@app.get("/neighborhoods")
-def get_neighborhoods():
-    with Session(engine) as session:
-        neighborhoods = session.exec(select(Neighborhoods)).all()
-
-        return neighborhoods
-
-
-@app.get("/neighborhoods/{id}")
-def get_neighborhood_by_id(id: int):
-    with Session(engine) as session:
-        neighborhood = session.get(Neighborhoods, id)
-
-        return neighborhood
-
-
-@app.post("/neighborhoods")
-def post_neighborhood(neighborhood: Neighborhoods):
-    with Session(engine) as session:
-        session.add(neighborhood)
-
-        session.commit()
-
-        session.refresh(neighborhood)
-
-        return neighborhood
-
-
-@app.put("/neighborhoods/{id}")
-def put_neighborhood(id: int, neighborhood: Neighborhoods):
-    with Session(engine) as session:
-        db_neighborhood = session.exec(
-            select(Neighborhoods).where(Neighborhoods.id == id)
-        ).one()
-
-        if neighborhood is not None and neighborhood.name != db_neighborhood.name:
-            db_neighborhood.name = neighborhood.name
-
-        session.add(db_neighborhood)
-
-        session.commit()
-
-        session.refresh(db_neighborhood)
-
-        return db_neighborhood
-
-
-@app.delete("/neighborhoods/{neighborhood_id}")
-def delete_neighborhood(neighborhood_id: int):
-    with Session(engine) as session:
-        neighborhood = session.get(Neighborhoods, neighborhood_id)
-
-        session.delete(neighborhood)
-
-        session.commit()
-
-        return {"message": "Neighborhood deleted successfully"}
 
 
 # applicants
@@ -2096,16 +2013,6 @@ def get_civil_status():
         return civil_status
 
 
-@app.get("/cities/{id}/neighborhoods")
-def get_neighborhoods_by_city(id: int):
-    with Session(engine) as session:
-        neighborhoods = session.exec(
-            select(Neighborhoods).where(Neighborhoods.city_id == id)
-        ).all()
-
-        return neighborhoods
-
-
 @app.get("/ethnicities")
 def get_ethnicities():
     with Session(engine) as session:
@@ -2252,62 +2159,6 @@ def get_workers_by_turn_and_function(
         return result
 
 
-# nationalities
-
-
-@app.get("/nationalities", dependencies=[Depends(verify_token)])
-def get_nationalities():
-    return handle_get_nationalities()
-
-
-@app.post("/nationalities", dependencies=[Depends(verify_token)])
-def post_nationalities(nationalitie: Nationalities):
-    return handle_post_nationalities(nationalitie)
-
-
-@app.put("/nationalities/{id}", dependencies=[Depends(verify_token)])
-def put_nationalities(id: int, nationalitie: Nationalities):
-    return handle_put_nationalities(id, nationalitie)
-
-
-@app.delete("/nationalities/{id}", dependencies=[Depends(verify_token)])
-def delete_nationalities(id: int):
-    return handle_delete_nationalities(id)
-
-
-# states
-
-
-@app.get("/states", dependencies=[Depends(verify_token)])
-def get_states():
-    return handle_get_states()
-
-
-@app.get("/states/{id}", dependencies=[Depends(verify_token)])
-def get_states_by_id(id: int):
-    return handle_get_states_by_id(id)
-
-
-@app.get("/nationalities/{id}/states", dependencies=[Depends(verify_token)])
-def get_states_by_nationalitie(id: int):
-    return handle_get_states_by_nationalitie(id)
-
-
-@app.post("/states", dependencies=[Depends(verify_token)])
-def post_states(state: States):
-    return handle_post_states(state)
-
-
-@app.put("/states/{id}", dependencies=[Depends(verify_token)])
-def put_states(id: int, state: States):
-    return handle_put_states(id, state)
-
-
-@app.delete("/states/{id}")
-def delete_states(id: int):
-    return handle_delete_states(id)
-
-
 # parents type
 
 
@@ -2396,8 +2247,223 @@ def get_function_by_id(id: int):
         return function
 
 
-import httpx
-from fastapi import HTTPException
+# all subsidiaries no first review and second review
+
+
+@app.post("/subsidiaries/workers/experience-time-no-first-review")
+async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_first_review_in_range_all(data)
+
+
+@app.post("/subsidiaries/workers/experience-time-no-second-review")
+async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_second_review_in_range_all(data)
+
+
+@app.post("/subsidiaries/away-workers")
+def get_away_return_workers(data: SubsidiaryFilter):
+    return handle_get_away_return_workers(data)
+
+
+class ScalesListProps(BaseModel):
+    start_date: str
+    end_date: str
+    turn_id: int | None = None
+    function_id: int | None = None
+
+
+@app.post("/subsidiaries/{id}/scales/list")
+def get_scales(id: int, scales_list_props: ScalesListProps):
+    with Session(engine) as session:
+        start_date = datetime.strptime(scales_list_props.start_date, "%d-%m-%Y").date()
+
+        end_date = datetime.strptime(scales_list_props.end_date, "%d-%m-%Y").date()
+
+        query = select(Scale).where(Scale.subsidiarie_id == id)
+
+        if scales_list_props.turn_id is not None:
+            query = query.where(Scale.worker_turn_id == scales_list_props.turn_id)
+
+        if scales_list_props.function_id is not None:
+            query = query.where(
+                Scale.worker_function_id == scales_list_props.function_id
+            )
+
+        scales = session.exec(query).all()
+
+        in_range_scales = []
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
+
+            scale_days_off = (
+                json.loads(scale.days_off)
+                if isinstance(scale.days_off, str)
+                else scale.days_off or []
+            )
+
+            scale_days_on = (
+                json.loads(scale.days_on)
+                if isinstance(scale.days_on, str)
+                else scale.days_on or []
+            )
+
+            scale_proportion = (
+                json.loads(scale.proportion)
+                if isinstance(scale.proportion, str)
+                else scale.proportion or []
+            )
+
+            valid_days_off = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_off
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_days_on = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_on
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_proportion = [
+                day
+                for day in scale_proportion
+                if isinstance(day, dict)
+                and start_date
+                <= datetime.strptime(day["data"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            in_range_scales.append(
+                {
+                    "worker": worker,
+                    "worker_turn": session.get(Turn, worker.turn_id),
+                    "worker_function": session.get(Function, worker.function_id),
+                    "days_on": valid_days_on,
+                    "days_off": valid_days_off,
+                    "proportion": valid_proportion,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                }
+            )
+
+        return in_range_scales
+
+
+@app.get("/test-worker")
+def test_worker():
+    with Session(engine) as session:
+        workers = session.exec(select(Workers)).all()
+
+        return workers
+
+
+# nationalities
+
+
+@app.get("/nationalities", dependencies=[Depends(verify_token)])
+def get_nationalities():
+    return handle_get_nationalities()
+
+
+@app.post("/nationalities", dependencies=[Depends(verify_token)])
+def post_nationalities(nationalitie: Nationalities):
+    return handle_post_nationalities(nationalitie)
+
+
+@app.put("/nationalities/{id}", dependencies=[Depends(verify_token)])
+def put_nationalities(id: int, nationalitie: Nationalities):
+    return handle_put_nationalities(id, nationalitie)
+
+
+@app.delete("/nationalities/{id}", dependencies=[Depends(verify_token)])
+def delete_nationalities(id: int):
+    return handle_delete_nationalities(id)
+
+
+# states
+
+
+@app.get("/states", dependencies=[Depends(verify_token)])
+def get_states():
+    return handle_get_states()
+
+
+@app.get("/states/{id}", dependencies=[Depends(verify_token)])
+def get_states_by_id(id: int):
+    return handle_get_states_by_id(id)
+
+
+@app.get("/nationalities/{id}/states", dependencies=[Depends(verify_token)])
+def get_states_by_nationalitie(id: int):
+    return handle_get_states_by_nationalitie(id)
+
+
+@app.post("/states", dependencies=[Depends(verify_token)])
+def post_states(state: States):
+    return handle_post_states(state)
+
+
+@app.put("/states/{id}", dependencies=[Depends(verify_token)])
+def put_states(id: int, state: States):
+    return handle_put_states(id, state)
+
+
+@app.delete("/states/{id}")
+def delete_states(id: int):
+    return handle_delete_states(id)
+
+
+# cities
+
+
+@app.get("/cities")
+def get_cities():
+    with Session(engine) as session:
+        cities = (
+            session.exec(
+                select(Cities, States).join(States, Cities.state_id == States.id)
+            )
+            .mappings()
+            .all()
+        )
+
+        return cities
+
+
+# @app.get("/cities", dependencies=[Depends(verify_token)])
+# @error_handler
+# def get_cities():
+#     with Session(engine) as session:
+#         cities = session.exec(select(Cities)).all()
+
+#         return cities
+
+
+@app.get("/states/{id}/cities")
+def get_cities_by_state(id: int):
+    with Session(engine) as session:
+        cities = session.exec(select(Cities).where(Cities.state_id == id)).all()
+
+        return cities
+
+
+@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
+@error_handler
+def get_city_by_id(id: int):
+    with Session(engine) as session:
+        cities = session.exec(select(Cities).where(Cities.id == id)).first()
+
+        return cities
 
 
 async def get_state_by_city_name(city_name: str) -> str:
@@ -2473,7 +2539,87 @@ async def post_cities(city: PostCitiesInput):
         return cities_list
 
 
-import requests
+@app.post("/new-city")
+def post_new_city(city: Cities):
+    with Session(engine) as session:
+        session.add(city)
+
+        session.commit()
+
+        session.refresh(city)
+
+        return city
+
+
+@app.put("/cities/{id}")
+def put_cities(id: int, city: Cities):
+    with Session(engine) as session:
+        db_city = session.exec(select(Cities).where(Cities.id == id)).first()
+
+        db_city.name = city.name if city.name else db_city.name
+
+        db_city.state_id = city.state_id if city.state_id else db_city.state_id
+
+        session.add(db_city)
+
+        session.commit()
+
+        session.refresh(db_city)
+
+        return db_city
+
+
+@app.delete("/cities/{id}")
+def delete_cities(id: int):
+    with Session(engine) as session:
+        db_city = session.exec(select(Cities).where(Cities.id == id)).first()
+
+        session.delete(db_city)
+
+        session.commit()
+
+        return {"success": True}
+
+
+# neighborhoods
+
+
+@app.get("/neighborhoods")
+def get_neighborhoods():
+    with Session(engine) as session:
+        neighborhoods = session.exec(select(Neighborhoods)).all()
+
+        return neighborhoods
+
+
+@app.get("/neighborhoods/{id}")
+def get_neighborhood_by_id(id: int):
+    with Session(engine) as session:
+        neighborhood = session.get(Neighborhoods, id)
+
+        return neighborhood
+
+
+@app.get("/cities/{id}/neighborhoods")
+def get_neighborhoods_by_city(id: int):
+    with Session(engine) as session:
+        neighborhoods = session.exec(
+            select(Neighborhoods).where(Neighborhoods.city_id == id)
+        ).all()
+
+        return neighborhoods
+
+
+@app.post("/neighborhoods")
+def post_neighborhood(neighborhood: Neighborhoods):
+    with Session(engine) as session:
+        session.add(neighborhood)
+
+        session.commit()
+
+        session.refresh(neighborhood)
+
+        return neighborhood
 
 
 def get_city_by_neighborhood(bairro: str) -> str:
@@ -2532,58 +2678,38 @@ def post_cities(neighborhood: PostNeighborhoodsInput):
         return all_neighborhoods
 
 
-# all subsidiaries no first review and second review
-
-
-@app.post("/subsidiaries/workers/experience-time-no-first-review")
-async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
-    return await handle_get_workers_without_first_review_in_range_all(data)
-
-
-@app.post("/subsidiaries/workers/experience-time-no-second-review")
-async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
-    return await handle_get_workers_without_second_review_in_range_all(data)
-
-
-from sqlalchemy import and_
-
-
-@app.post("/subsidiaries/away-workers")
-def get_away_return_workers(data: SubsidiaryFilter):
-    today = date.today()
-
-    start_of_week = today - timedelta(days=today.weekday())
-
-    end_of_week = start_of_week + timedelta(days=6)
-
+@app.put("/neighborhoods/{id}")
+def put_neighborhood(id: int, neighborhood: Neighborhoods):
     with Session(engine) as session:
-        workers_away_return = session.exec(
-            select(Workers).where(
-                and_(
-                    Workers.subsidiarie_id.in_(data.subsidiaries_ids),
-                    Workers.is_away.is_(True),
-                    Workers.away_end_date >= start_of_week,
-                    Workers.away_end_date <= end_of_week,
-                )
-            )
-        ).all()
+        db_neighborhood = session.exec(
+            select(Neighborhoods).where(Neighborhoods.id == id)
+        ).one()
 
-    return {
-        "workers": workers_away_return,
-        "start_of_week": start_of_week,
-        "end_of_week": end_of_week,
-    }
+        if neighborhood is not None and neighborhood.name != db_neighborhood.name:
+            db_neighborhood.name = neighborhood.name
+
+        session.add(db_neighborhood)
+
+        session.commit()
+
+        session.refresh(db_neighborhood)
+
+        return db_neighborhood
+
+
+@app.delete("/neighborhoods/{neighborhood_id}")
+def delete_neighborhood(neighborhood_id: int):
+    with Session(engine) as session:
+        neighborhood = session.get(Neighborhoods, neighborhood_id)
+
+        session.delete(neighborhood)
+
+        session.commit()
+
+        return {"message": "Neighborhood deleted successfully"}
 
 
 # workers docs
-
-from io import BytesIO
-from typing import List, Optional
-
-import PyPDF2
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
-from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 
 
 class WorkersDocs(SQLModel, table=True):
@@ -2689,108 +2815,249 @@ def delete_workers_docs(id: int):
         return {"success": True}
 
 
-import json
-
-from models.scale import Scale
-
-
-class ScalesListProps(BaseModel):
-    start_date: str
-    end_date: str
-    turn_id: int | None = None
-    function_id: int | None = None
+from models.service import Service
+from models.tickets import Tickets
+from models.tickets_comments import TicketsComments
 
 
-@app.post("/subsidiaries/{id}/scales/list")
-def get_scales(id: int, scales_list_props: ScalesListProps):
+@app.get("/services")
+def get_services():
     with Session(engine) as session:
-        start_date = datetime.strptime(scales_list_props.start_date, "%d-%m-%Y").date()
+        services = session.exec(select(Service)).all()
 
-        end_date = datetime.strptime(scales_list_props.end_date, "%d-%m-%Y").date()
+        return services
 
-        query = select(Scale).where(Scale.subsidiarie_id == id)
 
-        if scales_list_props.turn_id is not None:
-            query = query.where(Scale.worker_turn_id == scales_list_props.turn_id)
+from fastapi import HTTPException
 
-        if scales_list_props.function_id is not None:
-            query = query.where(
-                Scale.worker_function_id == scales_list_props.function_id
-            )
 
-        scales = session.exec(query).all()
+@app.get("/tickets/requesting/{id}", response_model=list[dict])
+def get_tickets_requesting(id: int):
+    """
+    Get all tickets requested by a specific user along with related information.
 
-        in_range_scales = []
+    Args:
+        id: The ID of the requesting user
 
-        for scale in scales:
-            worker = session.get(Workers, scale.worker_id)
+    Returns:
+        List of ticket dictionaries with complete information including:
+        - ticket_id
+        - requesting user
+        - responsible users
+        - service
+        - description
+        - is_open status
 
-            scale_days_off = (
-                json.loads(scale.days_off)
-                if isinstance(scale.days_off, str)
-                else scale.days_off or []
-            )
+    Raises:
+        HTTPException: 404 if requesting user doesn't exist
+    """
+    with Session(engine) as session:
+        # Verify requesting user exists first
+        if not session.get(User, id):
+            raise HTTPException(status_code=404, detail="Requesting user not found")
 
-            scale_days_on = (
-                json.loads(scale.days_on)
-                if isinstance(scale.days_on, str)
-                else scale.days_on or []
-            )
+        # Get all tickets in a single query
+        tickets = session.exec(
+            select(Tickets)
+            .where(Tickets.requesting_id == id)
+            .order_by(Tickets.id.desc())  # ajuste aqui se o nome do campo for diferente
+        ).all()
 
-            scale_proportion = (
-                json.loads(scale.proportion)
-                if isinstance(scale.proportion, str)
-                else scale.proportion or []
-            )
+        if not tickets:
+            return []
 
-            valid_days_off = [
-                datetime.strptime(day["date"], "%d-%m-%Y").date()
-                for day in scale_days_off
-                if isinstance(day, dict)
-                and "date" in day
-                and start_date
-                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
-                <= end_date
+        # Preload all related data in optimized queries
+        all_responsible_ids = set()
+        service_ids = set()
+
+        for ticket in tickets:
+            all_responsible_ids.update(ticket.responsibles_ids)
+            if ticket.service:
+                service_ids.add(ticket.service)
+
+        # Bulk load all related data
+        responsibles_map = {
+            user.id: user
+            for user in session.exec(
+                select(User).where(User.id.in_(all_responsible_ids))
+            ).all()
+        }
+
+        services_map = {
+            service.id: service
+            for service in session.exec(
+                select(Service).where(Service.id.in_(service_ids))
+            ).all()
+        }
+
+        # Build response
+        tickets_data = []
+        for ticket in tickets:
+            responsibles = [
+                responsible.dict()
+                for responsible_id in ticket.responsibles_ids
+                if (responsible := responsibles_map.get(responsible_id))
             ]
 
-            valid_days_on = [
-                datetime.strptime(day["date"], "%d-%m-%Y").date()
-                for day in scale_days_on
-                if isinstance(day, dict)
-                and "date" in day
-                and start_date
-                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
-                <= end_date
-            ]
-
-            valid_proportion = [
-                day
-                for day in scale_proportion
-                if isinstance(day, dict)
-                and start_date
-                <= datetime.strptime(day["data"], "%d-%m-%Y").date()
-                <= end_date
-            ]
-
-            in_range_scales.append(
+            tickets_data.append(
                 {
-                    "worker": worker,
-                    "worker_turn": session.get(Turn, worker.turn_id),
-                    "worker_function": session.get(Function, worker.function_id),
-                    "days_on": valid_days_on,
-                    "days_off": valid_days_off,
-                    "proportion": valid_proportion,
-                    "start_date": start_date,
-                    "end_date": end_date,
+                    "ticket_id": ticket.id,
+                    "requesting": session.get(
+                        User, id
+                    ),  # We already verified this exists
+                    "responsibles": responsibles,
+                    "service": services_map.get(ticket.service),
+                    "description": ticket.description,
+                    "is_open": ticket.is_open,
+                    "opened_at": ticket.opened_at,
+                    "closed_at": ticket.closed_at,
                 }
             )
 
-        return in_range_scales
+        return tickets_data
 
 
-@app.get("/test-worker")
-def test_worker():
+@app.post("/tickets")
+def post_tickets(ticket: Tickets):
     with Session(engine) as session:
-        workers = session.exec(select(Workers)).all()
+        session.add(ticket)
 
-        return workers
+        session.commit()
+
+        session.refresh(ticket)
+
+        return ticket
+
+
+from datetime import date
+
+
+@app.patch("/tickets/{ticket_id}/close")
+def close_ticket(ticket_id: int):
+    with Session(engine) as session:
+        ticket = session.get(Tickets, ticket_id)
+
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        ticket.is_open = False
+
+        ticket.closed_at = date.today()
+
+        session.add(ticket)
+
+        session.commit()
+
+        return {
+            "message": "Ticket fechado com sucesso",
+            "closed_at": ticket.closed_at,
+        }
+
+
+@app.get("/tickets-comments/{id}")
+def get_tickets_comments(id: int):
+    with Session(engine) as session:
+        ticket_comments = (
+            session.exec(
+                select(TicketsComments, User)
+                .join(User, TicketsComments.comentator_id == User.id)
+                .where(TicketsComments.ticket_id == id)
+            )
+            .mappings()
+            .all()
+        )
+
+        return ticket_comments
+
+
+@app.post("/tickets-comments")
+def post_tickets_comments(ticket_comment: TicketsComments):
+    with Session(engine) as session:
+        session.add(ticket_comment)
+
+        session.commit()
+
+        session.refresh(ticket_comment)
+
+        return ticket_comment
+
+
+@app.get("/tickets/responsible/{id}", response_model=list[dict])
+def get_tickets_responsible(id: int):
+    """
+    Get all tickets where a specific user is responsible along with related information.
+
+    Args:
+        id: The ID of the responsible user
+
+    Returns:
+        List of ticket dictionaries with complete information including:
+        - ticket_id
+        - requesting user
+        - responsible users
+        - service
+        - description
+        - is_open status
+
+    Raises:
+        HTTPException: 404 if responsible user doesn't exist
+    """
+    with Session(engine) as session:
+        # Verify responsible user exists first
+        if not session.get(User, id):
+            raise HTTPException(status_code=404, detail="Responsible user not found")
+
+        # Get all tickets and filter in Python by responsible_id
+        tickets = session.exec(select(Tickets).order_by(Tickets.id.desc())).all()
+        filtered_tickets = [t for t in tickets if id in t.responsibles_ids]
+
+        if not filtered_tickets:
+            return []
+
+        # Preload related data
+        requesting_ids = {t.requesting_id for t in filtered_tickets}
+        all_responsible_ids = set()
+        service_ids = set()
+
+        for ticket in filtered_tickets:
+            all_responsible_ids.update(ticket.responsibles_ids)
+            if ticket.service:
+                service_ids.add(ticket.service)
+
+        users_map = {
+            user.id: user
+            for user in session.exec(
+                select(User).where(User.id.in_(requesting_ids | all_responsible_ids))
+            ).all()
+        }
+
+        services_map = {
+            service.id: service
+            for service in session.exec(
+                select(Service).where(Service.id.in_(service_ids))
+            ).all()
+        }
+
+        # Build response
+        tickets_data = []
+        for ticket in filtered_tickets:
+            responsibles = [
+                responsible.dict()
+                for responsible_id in ticket.responsibles_ids
+                if (responsible := users_map.get(responsible_id))
+            ]
+
+            tickets_data.append(
+                {
+                    "ticket_id": ticket.id,
+                    "requesting": users_map.get(ticket.requesting_id),
+                    "responsibles": responsibles,
+                    "service": services_map.get(ticket.service),
+                    "description": ticket.description,
+                    "is_open": ticket.is_open,
+                    "opened_at": ticket.opened_at,
+                    "closed_at": ticket.closed_at,
+                }
+            )
+
+        return tickets_data

@@ -236,6 +236,15 @@ def handle_get_users():
         result = []
 
         for user, role in users:
+            subsidiary_ids = []
+
+            if user.subsidiaries_id:
+                try:
+                    subsidiary_ids = json.loads(user.subsidiaries_id)
+
+                except json.JSONDecodeError:
+                    subsidiary_ids = []
+
             result.append(
                 {
                     "user_id": user.id,
@@ -243,7 +252,7 @@ def handle_get_users():
                     "user_name": user.name,
                     "user_subsidiaries": [
                         session.get(Subsidiarie, id)
-                        for id in user.subsidiaries_id
+                        for id in subsidiary_ids
                         if id is not None and session.get(Subsidiarie, id) is not None
                     ],
                     "role_id": role.id,

@@ -9,7 +9,8 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 class Tickets(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     requesting_id: int = Field(default=None, foreign_key="user.id")
-    responsibles_ids: List[int] = Field(default_factory=list, sa_column=Column(JSON))
+    # responsibles_ids: List[int] = Field(default_factory=list, sa_column=Column(JSON))
+    responsibles_ids: str = Field(default="[]")
     service: int = Field(default=None, foreign_key="service.id")
     description: str = Field(default=None, nullable=True)
     is_open: bool | None = Field(default=None, nullable=True)

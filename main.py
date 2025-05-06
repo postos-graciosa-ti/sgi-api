@@ -2885,49 +2885,37 @@ from fastapi import HTTPException
 
 @app.get("/tickets/requesting/{id}", response_model=list[dict])
 def get_tickets_requesting(id: int):
-    """
-    Get all tickets requested by a specific user along with related information.
-
-    Args:
-        id: The ID of the requesting user
-
-    Returns:
-        List of ticket dictionaries with complete information including:
-        - ticket_id
-        - requesting user
-        - responsible users
-        - service
-        - description
-        - is_open status
-
-    Raises:
-        HTTPException: 404 if requesting user doesn't exist
-    """
     with Session(engine) as session:
-        # Verify requesting user exists first
-        if not session.get(User, id):
+        requesting_user = session.get(User, id)
+
+        if not requesting_user:
             raise HTTPException(status_code=404, detail="Requesting user not found")
 
-        # Get all tickets in a single query
         tickets = session.exec(
             select(Tickets)
             .where(Tickets.requesting_id == id)
-            .order_by(Tickets.id.desc())  # ajuste aqui se o nome do campo for diferente
+            .order_by(Tickets.id.desc())
         ).all()
 
         if not tickets:
             return []
 
-        # Preload all related data in optimized queries
         all_responsible_ids = set()
+
         service_ids = set()
 
         for ticket in tickets:
-            all_responsible_ids.update(ticket.responsibles_ids)
+            try:
+                responsible_ids = json.loads(ticket.responsibles_ids)
+
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
+
+            all_responsible_ids.update(responsible_ids)
+
             if ticket.service:
                 service_ids.add(ticket.service)
 
-        # Bulk load all related data
         responsibles_map = {
             user.id: user
             for user in session.exec(
@@ -2942,21 +2930,25 @@ def get_tickets_requesting(id: int):
             ).all()
         }
 
-        # Build response
         tickets_data = []
+
         for ticket in tickets:
+            try:
+                responsible_ids = json.loads(ticket.responsibles_ids)
+
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
+
             responsibles = [
                 responsible.dict()
-                for responsible_id in ticket.responsibles_ids
+                for responsible_id in responsible_ids
                 if (responsible := responsibles_map.get(responsible_id))
             ]
 
             tickets_data.append(
                 {
                     "ticket_id": ticket.id,
-                    "requesting": session.get(
-                        User, id
-                    ),  # We already verified this exists
+                    "requesting": requesting_user.dict(),
                     "responsibles": responsibles,
                     "service": services_map.get(ticket.service),
                     "description": ticket.description,
@@ -3036,45 +3028,40 @@ def post_tickets_comments(ticket_comment: TicketsComments):
 
 @app.get("/tickets/responsible/{id}", response_model=list[dict])
 def get_tickets_responsible(id: int):
-    """
-    Get all tickets where a specific user is responsible along with related information.
-
-    Args:
-        id: The ID of the responsible user
-
-    Returns:
-        List of ticket dictionaries with complete information including:
-        - ticket_id
-        - requesting user
-        - responsible users
-        - service
-        - description
-        - is_open status
-
-    Raises:
-        HTTPException: 404 if responsible user doesn't exist
-    """
     with Session(engine) as session:
-        # Verify responsible user exists first
-        if not session.get(User, id):
+        responsible_user = session.get(User, id)
+
+        if not responsible_user:
             raise HTTPException(status_code=404, detail="Responsible user not found")
 
-        # Get all tickets and filter in Python by responsible_id
         tickets = session.exec(select(Tickets).order_by(Tickets.id.desc())).all()
-        filtered_tickets = [t for t in tickets if id in t.responsibles_ids]
+
+        filtered_tickets = []
+
+        for t in tickets:
+            try:
+                responsible_ids = json.loads(t.responsibles_ids)
+
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
+
+            if id in responsible_ids:
+                filtered_tickets.append((t, responsible_ids))
 
         if not filtered_tickets:
             return []
 
-        # Preload related data
-        requesting_ids = {t.requesting_id for t in filtered_tickets}
+        requesting_ids = {t.requesting_id for t, _ in filtered_tickets}
+
         all_responsible_ids = set()
+
         service_ids = set()
 
-        for ticket in filtered_tickets:
-            all_responsible_ids.update(ticket.responsibles_ids)
-            if ticket.service:
-                service_ids.add(ticket.service)
+        for t, responsible_ids in filtered_tickets:
+            all_responsible_ids.update(responsible_ids)
+
+            if t.service:
+                service_ids.add(t.service)
 
         users_map = {
             user.id: user
@@ -3090,25 +3077,25 @@ def get_tickets_responsible(id: int):
             ).all()
         }
 
-        # Build response
         tickets_data = []
-        for ticket in filtered_tickets:
+
+        for t, responsible_ids in filtered_tickets:
             responsibles = [
                 responsible.dict()
-                for responsible_id in ticket.responsibles_ids
+                for responsible_id in responsible_ids
                 if (responsible := users_map.get(responsible_id))
             ]
 
             tickets_data.append(
                 {
-                    "ticket_id": ticket.id,
-                    "requesting": users_map.get(ticket.requesting_id),
+                    "ticket_id": t.id,
+                    "requesting": users_map.get(t.requesting_id),
                     "responsibles": responsibles,
-                    "service": services_map.get(ticket.service),
-                    "description": ticket.description,
-                    "is_open": ticket.is_open,
-                    "opened_at": ticket.opened_at,
-                    "closed_at": ticket.closed_at,
+                    "service": services_map.get(t.service),
+                    "description": t.description,
+                    "is_open": t.is_open,
+                    "opened_at": t.opened_at,
+                    "closed_at": t.closed_at,
                 }
             )
 

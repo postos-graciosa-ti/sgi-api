@@ -2961,7 +2961,7 @@ def get_tickets_comments(id: int):
             session.exec(
                 select(TicketsComments, User)
                 .join(User, TicketsComments.comentator_id == User.id)
-                .where(TicketsComments.comentator_id == id)
+                .where(TicketsComments.ticket_id == id)
             )
             .mappings()
             .all()

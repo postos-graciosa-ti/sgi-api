@@ -6,6 +6,7 @@ from io import BytesIO
 from typing import Any, Callable, List, Optional
 
 import httpx
+import pandas as pd
 import PyPDF2
 import requests
 from cachetools import TTLCache
@@ -297,6 +298,86 @@ def create_user_password(userData: CreateUserPasswordInput):
 @app.post("/subsidiaries/{id}/scripts/excel-scraping")
 async def excel_scraping(id: int, file: UploadFile = File(...)):
     return await handle_excel_scraping(id, file)
+
+
+@app.post("/scripts/rhsheets")
+async def post_scripts_rhsheets(file: UploadFile = File(...)):
+    with Session(engine) as session:
+        workers = session.exec(select(Workers)).all()
+
+        worker_esocial_map = {worker.name: worker.esocial for worker in workers}
+
+    contents = await file.read()
+
+    excel_io = BytesIO(contents)
+
+    df = pd.read_excel(excel_io)
+
+    colunas_desejadas = [
+        "Departamento",
+        "Nome",
+        "Cargo",
+        "HE 60%",
+        "HE 80%",
+        "HE 100%",
+        "Folga - DSR",
+        "Atestado Médico",
+        "FALTA",
+        "Folga Gestor",
+        "ATRASO",
+    ]
+
+    df_filtrado = df[colunas_desejadas]
+
+    df_filtrado["eSocial"] = df_filtrado["Nome"].map(worker_esocial_map)
+
+    mensagem_atualizacao = "Dados não encontrados - atualize no sistema SGI"
+
+    df_filtrado["eSocial"] = df_filtrado["eSocial"].fillna(mensagem_atualizacao)
+
+    colunas_ordenadas = [
+        "Departamento",
+        "Nome",
+        "eSocial",
+        "Cargo",
+        "HE 60%",
+        "HE 80%",
+        "HE 100%",
+        "Folga - DSR",
+        "Atestado Médico",
+        "FALTA",
+        "Folga Gestor",
+        "ATRASO",
+    ]
+
+    df_filtrado = df_filtrado[colunas_ordenadas]
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        for departamento, grupo in df_filtrado.groupby("Departamento"):
+            nome_aba = str(departamento)[:31]
+
+            grupo_ordenado = grupo.sort_values(by="Nome")
+
+            nomes_sem_esocial = grupo_ordenado[
+                grupo_ordenado["eSocial"] == mensagem_atualizacao
+            ]["Nome"].tolist()
+
+            if nomes_sem_esocial:
+                print(
+                    f"Aviso: Os seguintes funcionários não possuem eSocial cadastrado: {', '.join(nomes_sem_esocial)}"
+                )
+
+            grupo_ordenado.to_excel(writer, sheet_name=nome_aba, index=False)
+
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=departamentos.xlsx"},
+    )
 
 
 # users
@@ -3006,6 +3087,7 @@ def get_tickets_comments(id: int):
                 select(TicketsComments, User)
                 .join(User, TicketsComments.comentator_id == User.id)
                 .where(TicketsComments.ticket_id == id)
+                .order_by(TicketsComments.ticket_id.asc())
             )
             .mappings()
             .all()

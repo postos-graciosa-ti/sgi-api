@@ -1662,6 +1662,32 @@ def post_worker_first_review(id: int, worker_first_review: WorkersFirstReview):
         return worker_first_review
 
 
+@app.get("/workers/first-review/notification")
+def get_workers_first_review():
+    with Session(engine) as session:
+        today = date.today()
+
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
+
+        end_of_week = (
+            datetime.fromisoformat(start_of_week) + timedelta(days=6)
+        ).isoformat()
+
+        first_review_notifications = (
+            session.exec(
+                select(WorkersFirstReview, User, Workers)
+                .join(User, WorkersFirstReview.realized_by == User.id)
+                .join(Workers, WorkersFirstReview.worker_id == Workers.id)
+                .where(WorkersFirstReview.realized_in >= start_of_week)
+                .where(WorkersFirstReview.realized_in <= end_of_week)
+            )
+            .mappings()
+            .all()
+        )
+
+        return first_review_notifications
+
+
 # worker second review
 
 
@@ -1687,6 +1713,32 @@ def post_worker_first_review(id: int, worker_second_review: WorkersSecondReview)
         session.refresh(worker_second_review)
 
         return worker_second_review
+
+
+@app.get("/workers/second-review/notification")
+def get_workers_second_review():
+    with Session(engine) as session:
+        today = date.today()
+
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
+
+        end_of_week = (
+            datetime.fromisoformat(start_of_week) + timedelta(days=6)
+        ).isoformat()
+
+        second_review_notifications = (
+            session.exec(
+                select(WorkersSecondReview, User, Workers)
+                .join(User, WorkersSecondReview.realized_by == User.id)
+                .join(Workers, WorkersSecondReview.worker_id == Workers.id)
+                .where(WorkersSecondReview.realized_in >= start_of_week)
+                .where(WorkersSecondReview.realized_in <= end_of_week)
+            )
+            .mappings()
+            .all()
+        )
+
+        return second_review_notifications
 
 
 @app.get(
@@ -3061,3 +3113,31 @@ def get_tickets_responsible(id: int):
             )
 
         return tickets_data
+
+
+@app.get("/tickets/responsible/{id}/notifications")
+def get_tickets_responsible_notifications(id: int):
+    with Session(engine) as session:
+        today = date.today()
+
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
+
+        end_of_week = (
+            datetime.fromisoformat(start_of_week) + timedelta(days=6)
+        ).isoformat()
+
+        tickets = (
+            session.exec(
+                select(Tickets, User, Service)
+                .join(User, Tickets.requesting_id == User.id)
+                .join(Service, Tickets.service == Service.id)
+                .where(Tickets.opened_at >= start_of_week)
+                .where(Tickets.opened_at <= end_of_week)
+                .where(Tickets.responsibles_ids.contains(id))
+                .order_by(Tickets.id.desc())
+            )
+            .mappings()
+            .all()
+        )
+
+        return tickets

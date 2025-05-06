@@ -17,3 +17,5 @@ class WorkersFirstReview(SQLModel, table=True):
     punctuality: str = Field(default=None, nullable=True)
     attendance: str = Field(default=None, nullable=True)
     approved: str = Field(default=None, nullable=True)
+    realized_by: int = Field(default=None, index=True, foreign_key="user.id")
+    realized_in: str = Field(default=None, nullable=True)

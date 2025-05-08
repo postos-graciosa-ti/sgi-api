@@ -1716,6 +1716,60 @@ def post_applicant(applicant: Applicants):
     return handle_post_applicant(applicant)
 
 
+@app.patch("/applicants/{id}")
+def patch_applicants(id: int, applicant: Applicants):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(Applicants).where(Applicants.id == id)
+        ).first()
+
+        db_applicant.nature = (
+            applicant.nature if applicant.nature else db_applicant.nature
+        )
+
+        db_applicant.how_long = (
+            applicant.how_long if applicant.how_long else db_applicant.how_long
+        )
+
+        db_applicant.experience_function = (
+            applicant.experience_function
+            if applicant.experience_function
+            else db_applicant.experience_function
+        )
+
+        db_applicant.redirect_to = (
+            applicant.redirect_to if applicant.redirect_to else db_applicant.redirect_to
+        )
+
+        db_applicant.coordinator_observation = (
+            applicant.coordinator_observation
+            if applicant.coordinator_observation
+            else db_applicant.coordinator_observation
+        )
+
+        session.add(db_applicant)
+
+        session.commit()
+
+        session.refresh(db_applicant)
+
+        return db_applicant
+
+
+@app.delete("/applicants/{id}")
+def delete_applicants(id: int):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(Applicants).where(Applicants.id == id)
+        ).first()
+
+        session.delete(db_applicant)
+
+        session.commit()
+
+        return {"success": True}
+
+
 # worker first review
 
 

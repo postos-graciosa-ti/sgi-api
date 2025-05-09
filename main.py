@@ -1168,10 +1168,191 @@ def nome(subsidiarie_id: int):
 for model in MODELS_TO_TRACK:
     register_cache_invalidation(model, nome)
 
+from typing import Any, Dict, List
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session
+
 
 @app.get("/workers/subsidiarie/{subsidiarie_id}")
-def get_workers_by_subsidiarie(subsidiarie_id: int):
-    return nome(subsidiarie_id)
+def get_workers_by_subsidiarie(subsidiarie_id: int) -> List[Dict[str, Any]]:
+    with Session(engine) as session:
+        query = text(
+            """
+            SELECT 
+                w.*,
+                f.name AS function_name,
+                t.name AS turn_name, t.start_time AS turn_start_time, t.end_time AS turn_end_time,
+                cc.name AS cost_center_name,
+                d.name AS department_name,
+                rr.name AS resignation_reason_name,
+                g.name AS gender_name,
+                cs.name AS civil_status_name,
+                n.name AS neighborhood_name,
+                city.name AS city_name,
+                state.name AS state_name,
+                e.name AS ethnicity_name,
+                birthcity.name AS birthcity_name,
+                birthstate.name AS birthstate_name,
+                rg_state.name AS rg_state_name,
+                ctps_state.name AS ctps_state_name,
+                cnh.name AS cnh_category_name,
+                wpm.name AS wage_payment_method_name,
+                ar.name AS away_reason_name,
+                sl.name AS school_level_name,
+                b.name AS bank_name,
+                nat.name AS nationality_name,
+                hs.name AS hierarchy_structure_name
+            FROM workers w
+            LEFT JOIN function f ON w.function_id = f.id
+            LEFT JOIN turn t ON w.turn_id = t.id
+            LEFT JOIN costcenter cc ON w.cost_center_id = cc.id
+            LEFT JOIN department d ON w.department_id = d.id
+            LEFT JOIN resignablereasons rr ON w.resignation_reason_id = rr.id
+            LEFT JOIN genders g ON w.gender_id = g.id
+            LEFT JOIN civilstatus cs ON w.civil_status_id = cs.id
+            LEFT JOIN neighborhoods n ON w.neighborhood_id = n.id
+            LEFT JOIN cities city ON w.city = city.id
+            LEFT JOIN states state ON w.state = state.id
+            LEFT JOIN ethnicity e ON w.ethnicity_id = e.id
+            LEFT JOIN cities birthcity ON w.birthcity = birthcity.id
+            LEFT JOIN states birthstate ON w.birthstate = birthstate.id
+            LEFT JOIN states rg_state ON w.rg_state = rg_state.id
+            LEFT JOIN states ctps_state ON w.ctps_state = ctps_state.id
+            LEFT JOIN cnhcategories cnh ON w.cnh_category = cnh.id
+            LEFT JOIN wagepaymentmethod wpm ON w.wage_payment_method = wpm.id
+            LEFT JOIN awayreasons ar ON w.away_reason_id = ar.id
+            LEFT JOIN schoollevels sl ON w.school_level = sl.id
+            LEFT JOIN banks b ON w.bank = b.id
+            LEFT JOIN nationalities nat ON w.nationality = nat.id
+            LEFT JOIN hierarchystructure hs ON w.hierarchy_structure = hs.id
+            WHERE w.subsidiarie_id = :subsidiarie_id
+            ORDER BY w.name
+        """
+        )
+
+        workers = session.execute(query, {"subsidiarie_id": subsidiarie_id}).fetchall()
+
+        # Construção direta da lista de resultados sem loop explícito
+        return [
+            {
+                "worker_id": w.id,
+                "worker_name": w.name,
+                "worker_is_active": w.is_active,
+                "admission_date": w.admission_date,
+                "resignation_date": w.resignation_date,
+                "resignation_reason_id": w.resignation_reason_id,
+                "resignation_reason_name": w.resignation_reason_name,
+                "worker_enrolment": w.enrolment,
+                "worker_sales_code": w.sales_code,
+                "picture": w.picture,
+                "timecode": w.timecode,
+                "first_review_date": w.first_review_date,
+                "second_review_date": w.second_review_date,
+                "esocial": w.esocial,
+                "function_id": w.function_id,
+                "function_name": w.function_name,
+                "turn_id": w.turn_id,
+                "turn_name": w.turn_name,
+                "turn_start_time": w.turn_start_time,
+                "turn_end_time": w.turn_end_time,
+                "cost_center_id": w.cost_center_id,
+                "cost_center": w.cost_center_name,
+                "department_id": w.department_id,
+                "department": w.department_name,
+                "gender": w.gender_name,
+                "civil_status": w.civil_status_name,
+                "street": w.street,
+                "street_number": w.street_number,
+                "street_complement": w.street_complement,
+                "neighborhood": w.neighborhood_name,
+                "cep": w.cep,
+                "city": w.city_name,
+                "state": w.state_name,
+                "phone": w.phone,
+                "mobile": w.mobile,
+                "email": w.email,
+                "ethnicity": w.ethnicity_name,
+                "birthdate": w.birthdate,
+                "birthcity": w.birthcity_name,
+                "birthstate": w.birthstate_name,
+                "fathername": w.fathername,
+                "mothername": w.mothername,
+                "cpf": w.cpf,
+                "rg": w.rg,
+                "rg_issuing_agency": w.rg_issuing_agency,
+                "rg_state": w.rg_state_name,
+                "rg_expedition_date": w.rg_expedition_date,
+                "military_cert_number": w.military_cert_number,
+                "pis": w.pis,
+                "pis_register_date": w.pis_register_date,
+                "votant_title": w.votant_title,
+                "votant_zone": w.votant_zone,
+                "votant_session": w.votant_session,
+                "ctps": w.ctps,
+                "ctps_serie": w.ctps_serie,
+                "ctps_state": w.ctps_state_name,
+                "ctps_emission_date": w.ctps_emission_date,
+                "cnh": w.cnh,
+                "cnh_category": w.cnh_category_name,
+                "cnh_emition_date": w.cnh_emition_date,
+                "cnh_valid_date": w.cnh_valid_date,
+                "first_job": w.first_job,
+                "was_employee": w.was_employee,
+                "union_contribute_current_year": w.union_contribute_current_year,
+                "receiving_unemployment_insurance": w.receiving_unemployment_insurance,
+                "previous_experience": w.previous_experience,
+                "month_wage": w.month_wage,
+                "hour_wage": w.hour_wage,
+                "journey_wage": w.journey_wage,
+                "transport_voucher": w.transport_voucher,
+                "transport_voucher_quantity": w.transport_voucher_quantity,
+                "diary_workjourney": w.diary_workjourney,
+                "week_workjourney": w.week_workjourney,
+                "month_workjourney": w.month_workjourney,
+                "experience_time": w.experience_time,
+                "nocturne_hours": w.nocturne_hours,
+                "dangerousness": w.dangerousness,
+                "unhealthy": w.unhealthy,
+                "wage_payment_method": w.wage_payment_method_name,
+                "is_away": w.is_away,
+                "away_reason": w.away_reason_name,
+                "away_start_date": w.away_start_date,
+                "away_end_date": w.away_end_date,
+                "general_function_code": w.general_function_code,
+                "wage": w.wage,
+                "last_function_date": w.last_function_date,
+                "current_function_time": w.current_function_time,
+                "school_level": w.school_level_name,
+                "emergency_number": w.emergency_number,
+                "bank": w.bank_name,
+                "bank_agency": w.bank_agency,
+                "bank_account": w.bank_account,
+                "nationality": w.nationality_name,
+                "has_children": w.has_children,
+                "hierarchy_structure": w.hierarchy_structure_name,
+                "enterprise_time": w.enterprise_time,
+                "cbo": w.cbo,
+                "early_payment": w.early_payment,
+                "harmfull_exposition": w.harmfull_exposition,
+                "has_experience_time": w.has_experience_time,
+                "has_nocturne_hours": w.has_nocturne_hours,
+                "propotional_payment": w.propotional_payment,
+                "total_nocturne_workjourney": w.total_nocturne_workjourney,
+                "twenty_five_workjourney": w.twenty_five_workjourney,
+                "twenty_two_to_five_week_workjourney": w.twenty_two_to_five_week_workjourney,
+                "twenty_two_to_five_month_workjourney": w.twenty_two_to_five_month_workjourney,
+                "twenty_two_to_five_effective_diary_workjourney": w.twenty_two_to_five_effective_diary_workjourney,
+                "healthcare_plan": w.healthcare_plan,
+                "healthcare_plan_discount": w.healthcare_plan_discount,
+                "life_insurance": w.life_insurance,
+                "life_insurance_discount": w.life_insurance_discount,
+                "ag": w.ag,
+                "cc": w.cc,
+                "early_payment_discount": w.early_payment_discount,
+            }
+            for w in workers
+        ]
 
 
 @app.get(
@@ -1807,6 +1988,7 @@ def post_admission(recruit: RecruitProps):
         session.commit()
 
         return worker
+
 
 # worker first review
 

@@ -1770,6 +1770,44 @@ def delete_applicants(id: int):
         return {"success": True}
 
 
+from pydantic import BaseModel
+
+
+class RecruitProps(BaseModel):
+    applicant_id: int
+    worker_data: dict
+
+
+@app.post("/recruit")
+def post_admission(recruit: RecruitProps):
+    with Session(engine) as session:
+        worker = Workers(**recruit.worker_data)
+
+        admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+        worker.first_review_date = (admission_date + relativedelta(months=1)).strftime(
+            "%Y-%m-%d"
+        )
+        worker.second_review_date = (admission_date + relativedelta(months=2)).strftime(
+            "%Y-%m-%d"
+        )
+
+        session.add(worker)
+
+        session.commit()
+
+        session.refresh(worker)
+
+        applicant = session.exec(
+            select(Applicants).where(Applicants.id == recruit.applicant_id)
+        ).first()
+
+        session.delete(applicant)
+
+        session.commit()
+
+        return worker
+
 # worker first review
 
 

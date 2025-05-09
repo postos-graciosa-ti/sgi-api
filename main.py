@@ -3,7 +3,7 @@ import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from io import BytesIO
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 import pandas as pd
@@ -14,7 +14,8 @@ from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import and_, event
+from sqlalchemy import and_, create_engine, event, text
+from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 
 from controllers.all_subsidiaries_no_review import (
@@ -653,525 +654,520 @@ def get_active_workers_by_subsidiarie_and_function(
     )
 
 
-cache = TTLCache(maxsize=100, ttl=600)
+# cache = TTLCache(maxsize=100, ttl=600)
 
-_cache_invalidation_map = {}
+# _cache_invalidation_map = {}
 
 
-def register_cache_invalidation(model: Any, cache_func: Callable):
-    if model not in _cache_invalidation_map:
-        _cache_invalidation_map[model] = []
+# def register_cache_invalidation(model: Any, cache_func: Callable):
+#     if model not in _cache_invalidation_map:
+#         _cache_invalidation_map[model] = []
 
-        _setup_model_listeners(model)
+#         _setup_model_listeners(model)
 
-    _cache_invalidation_map[model].append(cache_func)
+#     _cache_invalidation_map[model].append(cache_func)
 
 
-def _setup_model_listeners(model: Any):
-    @event.listens_for(model, "after_insert")
-    @event.listens_for(model, "after_update")
-    @event.listens_for(model, "after_delete")
-    def receive_after_change(mapper, connection, target):
-        if model in _cache_invalidation_map:
-            for cache_func in _cache_invalidation_map[model]:
-                cache_func.invalidate_cache()
+# def _setup_model_listeners(model: Any):
+#     @event.listens_for(model, "after_insert")
+#     @event.listens_for(model, "after_update")
+#     @event.listens_for(model, "after_delete")
+#     def receive_after_change(mapper, connection, target):
+#         if model in _cache_invalidation_map:
+#             for cache_func in _cache_invalidation_map[model]:
+#                 cache_func.invalidate_cache()
 
 
-def cached(cache_store: TTLCache):
-    def decorator(func):
-        def invalidate_cache():
-            cache_store.clear()
+# def cached(cache_store: TTLCache):
+#     def decorator(func):
+#         def invalidate_cache():
+#             cache_store.clear()
 
-        func.invalidate_cache = invalidate_cache
+#         func.invalidate_cache = invalidate_cache
 
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = (func.__name__, args, frozenset(kwargs.items()))
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             key = (func.__name__, args, frozenset(kwargs.items()))
 
-            if key in cache_store:
-                return cache_store[key]
+#             if key in cache_store:
+#                 return cache_store[key]
 
-            result = func(*args, **kwargs)
+#             result = func(*args, **kwargs)
 
-            cache_store[key] = result
+#             cache_store[key] = result
 
-            return result
+#             return result
 
-        return wrapper
+#         return wrapper
 
-    return decorator
+#     return decorator
 
 
-MODELS_TO_TRACK = [
-    Workers,
-    Function,
-    Turn,
-    CostCenter,
-    Department,
-    ResignableReasons,
-    Genders,
-    CivilStatus,
-    Neighborhoods,
-    Cities,
-    States,
-    Ethnicity,
-    CnhCategories,
-    WagePaymentMethod,
-    AwayReasons,
-    SchoolLevels,
-    Banks,
-    Nationalities,
-    HierarchyStructure,
-]
+# MODELS_TO_TRACK = [
+#     Workers,
+#     Function,
+#     Turn,
+#     CostCenter,
+#     Department,
+#     ResignableReasons,
+#     Genders,
+#     CivilStatus,
+#     Neighborhoods,
+#     Cities,
+#     States,
+#     Ethnicity,
+#     CnhCategories,
+#     WagePaymentMethod,
+#     AwayReasons,
+#     SchoolLevels,
+#     Banks,
+#     Nationalities,
+#     HierarchyStructure,
+# ]
 
 
-@cached(cache)
-def nome(subsidiarie_id: int):
-    with Session(engine) as session:
-        workers = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-            .order_by(Workers.name)
-        ).all()
+# @cached(cache)
+# def nome(subsidiarie_id: int):
+#     with Session(engine) as session:
+#         workers = session.exec(
+#             select(Workers)
+#             .where(Workers.subsidiarie_id == subsidiarie_id)
+#             .order_by(Workers.name)
+#         ).all()
 
-        function_ids = {w.function_id for w in workers if w.function_id}
+#         function_ids = {w.function_id for w in workers if w.function_id}
 
-        turn_ids = {w.turn_id for w in workers if w.turn_id}
+#         turn_ids = {w.turn_id for w in workers if w.turn_id}
 
-        cost_center_ids = {w.cost_center_id for w in workers if w.cost_center_id}
+#         cost_center_ids = {w.cost_center_id for w in workers if w.cost_center_id}
 
-        department_ids = {w.department_id for w in workers if w.department_id}
+#         department_ids = {w.department_id for w in workers if w.department_id}
 
-        resignation_reason_ids = {
-            w.resignation_reason_id for w in workers if w.resignation_reason_id
-        }
+#         resignation_reason_ids = {
+#             w.resignation_reason_id for w in workers if w.resignation_reason_id
+#         }
 
-        gender_ids = {w.gender_id for w in workers if w.gender_id}
+#         gender_ids = {w.gender_id for w in workers if w.gender_id}
 
-        civil_status_ids = {w.civil_status_id for w in workers if w.civil_status_id}
+#         civil_status_ids = {w.civil_status_id for w in workers if w.civil_status_id}
 
-        neighborhood_ids = {w.neighborhood_id for w in workers if w.neighborhood_id}
+#         neighborhood_ids = {w.neighborhood_id for w in workers if w.neighborhood_id}
 
-        city_ids = {w.city for w in workers if w.city}
+#         city_ids = {w.city for w in workers if w.city}
 
-        state_ids = {w.state for w in workers if w.state}
-
-        ethnicity_ids = {w.ethnicity_id for w in workers if w.ethnicity_id}
-
-        birthcity_ids = {w.birthcity for w in workers if w.birthcity}
-
-        birthstate_ids = {w.birthstate for w in workers if w.birthstate}
-
-        rg_state_ids = {w.rg_state for w in workers if w.rg_state}
-
-        ctps_state_ids = {w.ctps_state for w in workers if w.ctps_state}
-
-        cnh_category_ids = {w.cnh_category for w in workers if w.cnh_category}
-
-        wage_payment_method_ids = {
-            w.wage_payment_method for w in workers if w.wage_payment_method
-        }
-
-        away_reason_ids = {w.away_reason_id for w in workers if w.away_reason_id}
-
-        school_level_ids = {w.school_level for w in workers if w.school_level}
-
-        bank_ids = {w.bank for w in workers if w.bank}
-
-        nationality_ids = {w.nationality for w in workers if w.nationality}
-
-        hierarchy_structure_ids = {
-            w.hierarchy_structure for w in workers if w.hierarchy_structure
-        }
-
-        functions = (
-            session.exec(select(Function).where(Function.id.in_(function_ids))).all()
-            if function_ids
-            else []
-        )
-
-        turns = (
-            session.exec(select(Turn).where(Turn.id.in_(turn_ids))).all()
-            if turn_ids
-            else []
-        )
-
-        cost_centers = (
-            session.exec(
-                select(CostCenter).where(CostCenter.id.in_(cost_center_ids))
-            ).all()
-            if cost_center_ids
-            else []
-        )
-
-        departments = (
-            session.exec(
-                select(Department).where(Department.id.in_(department_ids))
-            ).all()
-            if department_ids
-            else []
-        )
-
-        resignation_reasons = (
-            session.exec(
-                select(ResignableReasons).where(
-                    ResignableReasons.id.in_(resignation_reason_ids)
-                )
-            ).all()
-            if resignation_reason_ids
-            else []
-        )
-
-        genders = (
-            session.exec(select(Genders).where(Genders.id.in_(gender_ids))).all()
-            if gender_ids
-            else []
-        )
-
-        civil_statuses = (
-            session.exec(
-                select(CivilStatus).where(CivilStatus.id.in_(civil_status_ids))
-            ).all()
-            if civil_status_ids
-            else []
-        )
-
-        neighborhoods = (
-            session.exec(
-                select(Neighborhoods).where(Neighborhoods.id.in_(neighborhood_ids))
-            ).all()
-            if neighborhood_ids
-            else []
-        )
-
-        cities = (
-            session.exec(select(Cities).where(Cities.id.in_(city_ids))).all()
-            if city_ids
-            else []
-        )
-
-        states = (
-            session.exec(select(States).where(States.id.in_(state_ids))).all()
-            if state_ids
-            else []
-        )
-
-        ethnicities = (
-            session.exec(select(Ethnicity).where(Ethnicity.id.in_(ethnicity_ids))).all()
-            if ethnicity_ids
-            else []
-        )
-
-        birthcities = (
-            session.exec(select(Cities).where(Cities.id.in_(birthcity_ids))).all()
-            if birthcity_ids
-            else []
-        )
-
-        birthstates = (
-            session.exec(select(States).where(States.id.in_(birthstate_ids))).all()
-            if birthstate_ids
-            else []
-        )
-
-        rg_states = (
-            session.exec(select(States).where(States.id.in_(rg_state_ids))).all()
-            if rg_state_ids
-            else []
-        )
-
-        ctps_states = (
-            session.exec(select(States).where(States.id.in_(ctps_state_ids))).all()
-            if ctps_state_ids
-            else []
-        )
-
-        cnh_categories = (
-            session.exec(
-                select(CnhCategories).where(CnhCategories.id.in_(cnh_category_ids))
-            ).all()
-            if cnh_category_ids
-            else []
-        )
+#         state_ids = {w.state for w in workers if w.state}
+
+#         ethnicity_ids = {w.ethnicity_id for w in workers if w.ethnicity_id}
+
+#         birthcity_ids = {w.birthcity for w in workers if w.birthcity}
+
+#         birthstate_ids = {w.birthstate for w in workers if w.birthstate}
+
+#         rg_state_ids = {w.rg_state for w in workers if w.rg_state}
+
+#         ctps_state_ids = {w.ctps_state for w in workers if w.ctps_state}
+
+#         cnh_category_ids = {w.cnh_category for w in workers if w.cnh_category}
+
+#         wage_payment_method_ids = {
+#             w.wage_payment_method for w in workers if w.wage_payment_method
+#         }
+
+#         away_reason_ids = {w.away_reason_id for w in workers if w.away_reason_id}
+
+#         school_level_ids = {w.school_level for w in workers if w.school_level}
+
+#         bank_ids = {w.bank for w in workers if w.bank}
+
+#         nationality_ids = {w.nationality for w in workers if w.nationality}
+
+#         hierarchy_structure_ids = {
+#             w.hierarchy_structure for w in workers if w.hierarchy_structure
+#         }
+
+#         functions = (
+#             session.exec(select(Function).where(Function.id.in_(function_ids))).all()
+#             if function_ids
+#             else []
+#         )
+
+#         turns = (
+#             session.exec(select(Turn).where(Turn.id.in_(turn_ids))).all()
+#             if turn_ids
+#             else []
+#         )
+
+#         cost_centers = (
+#             session.exec(
+#                 select(CostCenter).where(CostCenter.id.in_(cost_center_ids))
+#             ).all()
+#             if cost_center_ids
+#             else []
+#         )
+
+#         departments = (
+#             session.exec(
+#                 select(Department).where(Department.id.in_(department_ids))
+#             ).all()
+#             if department_ids
+#             else []
+#         )
+
+#         resignation_reasons = (
+#             session.exec(
+#                 select(ResignableReasons).where(
+#                     ResignableReasons.id.in_(resignation_reason_ids)
+#                 )
+#             ).all()
+#             if resignation_reason_ids
+#             else []
+#         )
+
+#         genders = (
+#             session.exec(select(Genders).where(Genders.id.in_(gender_ids))).all()
+#             if gender_ids
+#             else []
+#         )
+
+#         civil_statuses = (
+#             session.exec(
+#                 select(CivilStatus).where(CivilStatus.id.in_(civil_status_ids))
+#             ).all()
+#             if civil_status_ids
+#             else []
+#         )
+
+#         neighborhoods = (
+#             session.exec(
+#                 select(Neighborhoods).where(Neighborhoods.id.in_(neighborhood_ids))
+#             ).all()
+#             if neighborhood_ids
+#             else []
+#         )
+
+#         cities = (
+#             session.exec(select(Cities).where(Cities.id.in_(city_ids))).all()
+#             if city_ids
+#             else []
+#         )
+
+#         states = (
+#             session.exec(select(States).where(States.id.in_(state_ids))).all()
+#             if state_ids
+#             else []
+#         )
+
+#         ethnicities = (
+#             session.exec(select(Ethnicity).where(Ethnicity.id.in_(ethnicity_ids))).all()
+#             if ethnicity_ids
+#             else []
+#         )
+
+#         birthcities = (
+#             session.exec(select(Cities).where(Cities.id.in_(birthcity_ids))).all()
+#             if birthcity_ids
+#             else []
+#         )
+
+#         birthstates = (
+#             session.exec(select(States).where(States.id.in_(birthstate_ids))).all()
+#             if birthstate_ids
+#             else []
+#         )
+
+#         rg_states = (
+#             session.exec(select(States).where(States.id.in_(rg_state_ids))).all()
+#             if rg_state_ids
+#             else []
+#         )
+
+#         ctps_states = (
+#             session.exec(select(States).where(States.id.in_(ctps_state_ids))).all()
+#             if ctps_state_ids
+#             else []
+#         )
+
+#         cnh_categories = (
+#             session.exec(
+#                 select(CnhCategories).where(CnhCategories.id.in_(cnh_category_ids))
+#             ).all()
+#             if cnh_category_ids
+#             else []
+#         )
 
-        wage_payment_methods = (
-            session.exec(
-                select(WagePaymentMethod).where(
-                    WagePaymentMethod.id.in_(wage_payment_method_ids)
-                )
-            ).all()
-            if wage_payment_method_ids
-            else []
-        )
+#         wage_payment_methods = (
+#             session.exec(
+#                 select(WagePaymentMethod).where(
+#                     WagePaymentMethod.id.in_(wage_payment_method_ids)
+#                 )
+#             ).all()
+#             if wage_payment_method_ids
+#             else []
+#         )
 
-        away_reasons = (
-            session.exec(
-                select(AwayReasons).where(AwayReasons.id.in_(away_reason_ids))
-            ).all()
-            if away_reason_ids
-            else []
-        )
+#         away_reasons = (
+#             session.exec(
+#                 select(AwayReasons).where(AwayReasons.id.in_(away_reason_ids))
+#             ).all()
+#             if away_reason_ids
+#             else []
+#         )
 
-        school_levels = (
-            session.exec(
-                select(SchoolLevels).where(SchoolLevels.id.in_(school_level_ids))
-            ).all()
-            if school_level_ids
-            else []
-        )
+#         school_levels = (
+#             session.exec(
+#                 select(SchoolLevels).where(SchoolLevels.id.in_(school_level_ids))
+#             ).all()
+#             if school_level_ids
+#             else []
+#         )
 
-        banks = (
-            session.exec(select(Banks).where(Banks.id.in_(bank_ids))).all()
-            if bank_ids
-            else []
-        )
+#         banks = (
+#             session.exec(select(Banks).where(Banks.id.in_(bank_ids))).all()
+#             if bank_ids
+#             else []
+#         )
 
-        nationalities = (
-            session.exec(
-                select(Nationalities).where(Nationalities.id.in_(nationality_ids))
-            ).all()
-            if nationality_ids
-            else []
-        )
+#         nationalities = (
+#             session.exec(
+#                 select(Nationalities).where(Nationalities.id.in_(nationality_ids))
+#             ).all()
+#             if nationality_ids
+#             else []
+#         )
 
-        hierarchy_structures = (
-            session.exec(
-                select(HierarchyStructure).where(
-                    HierarchyStructure.id.in_(hierarchy_structure_ids)
-                )
-            ).all()
-            if hierarchy_structure_ids
-            else []
-        )
+#         hierarchy_structures = (
+#             session.exec(
+#                 select(HierarchyStructure).where(
+#                     HierarchyStructure.id.in_(hierarchy_structure_ids)
+#                 )
+#             ).all()
+#             if hierarchy_structure_ids
+#             else []
+#         )
 
-        functions_dict = {f.id: f for f in functions}
+#         functions_dict = {f.id: f for f in functions}
 
-        turns_dict = {t.id: t for t in turns}
+#         turns_dict = {t.id: t for t in turns}
 
-        cost_centers_dict = {cc.id: cc for cc in cost_centers}
+#         cost_centers_dict = {cc.id: cc for cc in cost_centers}
 
-        departments_dict = {d.id: d for d in departments}
+#         departments_dict = {d.id: d for d in departments}
 
-        resignation_reasons_dict = {rr.id: rr for rr in resignation_reasons}
+#         resignation_reasons_dict = {rr.id: rr for rr in resignation_reasons}
 
-        genders_dict = {g.id: g for g in genders}
+#         genders_dict = {g.id: g for g in genders}
 
-        civil_statuses_dict = {cs.id: cs for cs in civil_statuses}
+#         civil_statuses_dict = {cs.id: cs for cs in civil_statuses}
 
-        neighborhoods_dict = {n.id: n for n in neighborhoods}
+#         neighborhoods_dict = {n.id: n for n in neighborhoods}
 
-        cities_dict = {c.id: c for c in cities}
+#         cities_dict = {c.id: c for c in cities}
 
-        states_dict = {s.id: s for s in states}
+#         states_dict = {s.id: s for s in states}
 
-        ethnicities_dict = {e.id: e for e in ethnicities}
+#         ethnicities_dict = {e.id: e for e in ethnicities}
 
-        birthcities_dict = {c.id: c for c in birthcities}
+#         birthcities_dict = {c.id: c for c in birthcities}
 
-        birthstates_dict = {s.id: s for s in birthstates}
+#         birthstates_dict = {s.id: s for s in birthstates}
 
-        rg_states_dict = {s.id: s for s in rg_states}
+#         rg_states_dict = {s.id: s for s in rg_states}
 
-        ctps_states_dict = {s.id: s for s in ctps_states}
+#         ctps_states_dict = {s.id: s for s in ctps_states}
 
-        cnh_categories_dict = {c.id: c for c in cnh_categories}
+#         cnh_categories_dict = {c.id: c for c in cnh_categories}
 
-        wage_payment_methods_dict = {w.id: w for w in wage_payment_methods}
+#         wage_payment_methods_dict = {w.id: w for w in wage_payment_methods}
 
-        away_reasons_dict = {a.id: a for a in away_reasons}
-
-        school_levels_dict = {s.id: s for s in school_levels}
-
-        banks_dict = {b.id: b for b in banks}
-
-        nationalities_dict = {n.id: n for n in nationalities}
-
-        hierarchy_structures_dict = {h.id: h for h in hierarchy_structures}
-
-        result = []
-
-        for worker in workers:
-            function = functions_dict.get(worker.function_id)
-
-            turn = turns_dict.get(worker.turn_id)
-
-            cost_center = cost_centers_dict.get(worker.cost_center_id)
-
-            department = departments_dict.get(worker.department_id)
-
-            resignation_reason = resignation_reasons_dict.get(
-                worker.resignation_reason_id
-            )
-
-            gender = genders_dict.get(worker.gender_id)
-
-            civil_status = civil_statuses_dict.get(worker.civil_status_id)
-
-            neighborhood = neighborhoods_dict.get(worker.neighborhood_id)
-
-            city = cities_dict.get(worker.city)
-
-            state = states_dict.get(worker.state)
-
-            ethnicity = ethnicities_dict.get(worker.ethnicity_id)
-
-            birthcity = birthcities_dict.get(worker.birthcity)
-
-            birthstate = birthstates_dict.get(worker.birthstate)
-
-            rg_state = rg_states_dict.get(worker.rg_state)
-
-            ctps_state = ctps_states_dict.get(worker.ctps_state)
-
-            cnh_category = cnh_categories_dict.get(worker.cnh_category)
-
-            wage_payment_method = wage_payment_methods_dict.get(
-                worker.wage_payment_method
-            )
-
-            away_reason = away_reasons_dict.get(worker.away_reason_id)
-
-            school_level = school_levels_dict.get(worker.school_level)
-
-            bank = banks_dict.get(worker.bank)
-
-            nationality = nationalities_dict.get(worker.nationality)
-
-            hierarchy_structure = hierarchy_structures_dict.get(
-                worker.hierarchy_structure
-            )
-
-            result.append(
-                {
-                    "worker_id": worker.id,
-                    "worker_name": worker.name,
-                    "worker_is_active": worker.is_active,
-                    "admission_date": worker.admission_date,
-                    "resignation_date": worker.resignation_date,
-                    "resignation_reason_id": worker.resignation_reason_id,
-                    "resignation_reason_name": (
-                        resignation_reason.name if resignation_reason else None
-                    ),
-                    "worker_enrolment": worker.enrolment,
-                    "worker_sales_code": worker.sales_code,
-                    "picture": worker.picture,
-                    "timecode": worker.timecode,
-                    "first_review_date": worker.first_review_date,
-                    "second_review_date": worker.second_review_date,
-                    "esocial": worker.esocial,
-                    "function_id": worker.function_id,
-                    "function_name": function.name if function else None,
-                    "turn_id": worker.turn_id,
-                    "turn_name": turn.name if turn else None,
-                    "turn_start_time": turn.start_time if turn else None,
-                    "turn_end_time": turn.end_time if turn else None,
-                    "cost_center_id": worker.cost_center_id,
-                    "cost_center": cost_center.name if cost_center else None,
-                    "department_id": worker.department_id,
-                    "department": department.name if department else None,
-                    "gender": gender,
-                    "civil_status": civil_status,
-                    "street": worker.street,
-                    "street_number": worker.street_number,
-                    "street_complement": worker.street_complement,
-                    "neighborhood": neighborhood,
-                    "cep": worker.cep,
-                    "city": city,
-                    "state": state,
-                    "phone": worker.phone,
-                    "mobile": worker.mobile,
-                    "email": worker.email,
-                    "ethnicity": ethnicity,
-                    "birthdate": worker.birthdate,
-                    "birthcity": birthcity,
-                    "birthstate": birthstate,
-                    "fathername": worker.fathername,
-                    "mothername": worker.mothername,
-                    "cpf": worker.cpf,
-                    "rg": worker.rg,
-                    "rg_issuing_agency": worker.rg_issuing_agency,
-                    "rg_state": rg_state,
-                    "rg_expedition_date": worker.rg_expedition_date,
-                    "military_cert_number": worker.military_cert_number,
-                    "pis": worker.pis,
-                    "pis_register_date": worker.pis_register_date,
-                    "votant_title": worker.votant_title,
-                    "votant_zone": worker.votant_zone,
-                    "votant_session": worker.votant_session,
-                    "ctps": worker.ctps,
-                    "ctps_serie": worker.ctps_serie,
-                    "ctps_state": ctps_state,
-                    "ctps_emission_date": worker.ctps_emission_date,
-                    "cnh": worker.cnh,
-                    "cnh_category": cnh_category,
-                    "cnh_emition_date": worker.cnh_emition_date,
-                    "cnh_valid_date": worker.cnh_valid_date,
-                    "first_job": worker.first_job,
-                    "was_employee": worker.was_employee,
-                    "union_contribute_current_year": worker.union_contribute_current_year,
-                    "receiving_unemployment_insurance": worker.receiving_unemployment_insurance,
-                    "previous_experience": worker.previous_experience,
-                    "month_wage": worker.month_wage,
-                    "hour_wage": worker.hour_wage,
-                    "journey_wage": worker.journey_wage,
-                    "transport_voucher": worker.transport_voucher,
-                    "transport_voucher_quantity": worker.transport_voucher_quantity,
-                    "diary_workjourney": worker.diary_workjourney,
-                    "week_workjourney": worker.week_workjourney,
-                    "month_workjourney": worker.month_workjourney,
-                    "experience_time": worker.experience_time,
-                    "nocturne_hours": worker.nocturne_hours,
-                    "dangerousness": worker.dangerousness,
-                    "unhealthy": worker.unhealthy,
-                    "wage_payment_method": wage_payment_method,
-                    "is_away": worker.is_away,
-                    "away_reason": away_reason,
-                    "away_start_date": worker.away_start_date,
-                    "away_end_date": worker.away_end_date,
-                    "general_function_code": worker.general_function_code,
-                    "wage": worker.wage,
-                    "last_function_date": worker.last_function_date,
-                    "current_function_time": worker.current_function_time,
-                    "school_level": school_level,
-                    "emergency_number": worker.emergency_number,
-                    "bank": bank,
-                    "bank_agency": worker.bank_agency,
-                    "bank_account": worker.bank_account,
-                    "nationality": nationality,
-                    "has_children": worker.has_children,
-                    "hierarchy_structure": hierarchy_structure,
-                    "enterprise_time": worker.enterprise_time,
-                    "cbo": worker.cbo,
-                    "early_payment": worker.early_payment,
-                    "harmfull_exposition": worker.harmfull_exposition,
-                    "has_experience_time": worker.has_experience_time,
-                    "has_nocturne_hours": worker.has_nocturne_hours,
-                    "propotional_payment": worker.propotional_payment,
-                    "total_nocturne_workjourney": worker.total_nocturne_workjourney,
-                    "twenty_five_workjourney": worker.twenty_five_workjourney,
-                    "twenty_two_to_five_week_workjourney": worker.twenty_two_to_five_week_workjourney,
-                    "twenty_two_to_five_month_workjourney": worker.twenty_two_to_five_month_workjourney,
-                    "twenty_two_to_five_effective_diary_workjourney": worker.twenty_two_to_five_effective_diary_workjourney,
-                    "healthcare_plan": worker.healthcare_plan,
-                    "healthcare_plan_discount": worker.healthcare_plan_discount,
-                    "life_insurance": worker.life_insurance,
-                    "life_insurance_discount": worker.life_insurance_discount,
-                    "ag": worker.ag,
-                    "cc": worker.cc,
-                    "early_payment_discount": worker.early_payment_discount,
-                }
-            )
-
-        return result
-
-
-for model in MODELS_TO_TRACK:
-    register_cache_invalidation(model, nome)
-
-from typing import Any, Dict, List
-
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
+#         away_reasons_dict = {a.id: a for a in away_reasons}
+
+#         school_levels_dict = {s.id: s for s in school_levels}
+
+#         banks_dict = {b.id: b for b in banks}
+
+#         nationalities_dict = {n.id: n for n in nationalities}
+
+#         hierarchy_structures_dict = {h.id: h for h in hierarchy_structures}
+
+#         result = []
+
+#         for worker in workers:
+#             function = functions_dict.get(worker.function_id)
+
+#             turn = turns_dict.get(worker.turn_id)
+
+#             cost_center = cost_centers_dict.get(worker.cost_center_id)
+
+#             department = departments_dict.get(worker.department_id)
+
+#             resignation_reason = resignation_reasons_dict.get(
+#                 worker.resignation_reason_id
+#             )
+
+#             gender = genders_dict.get(worker.gender_id)
+
+#             civil_status = civil_statuses_dict.get(worker.civil_status_id)
+
+#             neighborhood = neighborhoods_dict.get(worker.neighborhood_id)
+
+#             city = cities_dict.get(worker.city)
+
+#             state = states_dict.get(worker.state)
+
+#             ethnicity = ethnicities_dict.get(worker.ethnicity_id)
+
+#             birthcity = birthcities_dict.get(worker.birthcity)
+
+#             birthstate = birthstates_dict.get(worker.birthstate)
+
+#             rg_state = rg_states_dict.get(worker.rg_state)
+
+#             ctps_state = ctps_states_dict.get(worker.ctps_state)
+
+#             cnh_category = cnh_categories_dict.get(worker.cnh_category)
+
+#             wage_payment_method = wage_payment_methods_dict.get(
+#                 worker.wage_payment_method
+#             )
+
+#             away_reason = away_reasons_dict.get(worker.away_reason_id)
+
+#             school_level = school_levels_dict.get(worker.school_level)
+
+#             bank = banks_dict.get(worker.bank)
+
+#             nationality = nationalities_dict.get(worker.nationality)
+
+#             hierarchy_structure = hierarchy_structures_dict.get(
+#                 worker.hierarchy_structure
+#             )
+
+#             result.append(
+#                 {
+#                     "worker_id": worker.id,
+#                     "worker_name": worker.name,
+#                     "worker_is_active": worker.is_active,
+#                     "admission_date": worker.admission_date,
+#                     "resignation_date": worker.resignation_date,
+#                     "resignation_reason_id": worker.resignation_reason_id,
+#                     "resignation_reason_name": (
+#                         resignation_reason.name if resignation_reason else None
+#                     ),
+#                     "worker_enrolment": worker.enrolment,
+#                     "worker_sales_code": worker.sales_code,
+#                     "picture": worker.picture,
+#                     "timecode": worker.timecode,
+#                     "first_review_date": worker.first_review_date,
+#                     "second_review_date": worker.second_review_date,
+#                     "esocial": worker.esocial,
+#                     "function_id": worker.function_id,
+#                     "function_name": function.name if function else None,
+#                     "turn_id": worker.turn_id,
+#                     "turn_name": turn.name if turn else None,
+#                     "turn_start_time": turn.start_time if turn else None,
+#                     "turn_end_time": turn.end_time if turn else None,
+#                     "cost_center_id": worker.cost_center_id,
+#                     "cost_center": cost_center.name if cost_center else None,
+#                     "department_id": worker.department_id,
+#                     "department": department.name if department else None,
+#                     "gender": gender,
+#                     "civil_status": civil_status,
+#                     "street": worker.street,
+#                     "street_number": worker.street_number,
+#                     "street_complement": worker.street_complement,
+#                     "neighborhood": neighborhood,
+#                     "cep": worker.cep,
+#                     "city": city,
+#                     "state": state,
+#                     "phone": worker.phone,
+#                     "mobile": worker.mobile,
+#                     "email": worker.email,
+#                     "ethnicity": ethnicity,
+#                     "birthdate": worker.birthdate,
+#                     "birthcity": birthcity,
+#                     "birthstate": birthstate,
+#                     "fathername": worker.fathername,
+#                     "mothername": worker.mothername,
+#                     "cpf": worker.cpf,
+#                     "rg": worker.rg,
+#                     "rg_issuing_agency": worker.rg_issuing_agency,
+#                     "rg_state": rg_state,
+#                     "rg_expedition_date": worker.rg_expedition_date,
+#                     "military_cert_number": worker.military_cert_number,
+#                     "pis": worker.pis,
+#                     "pis_register_date": worker.pis_register_date,
+#                     "votant_title": worker.votant_title,
+#                     "votant_zone": worker.votant_zone,
+#                     "votant_session": worker.votant_session,
+#                     "ctps": worker.ctps,
+#                     "ctps_serie": worker.ctps_serie,
+#                     "ctps_state": ctps_state,
+#                     "ctps_emission_date": worker.ctps_emission_date,
+#                     "cnh": worker.cnh,
+#                     "cnh_category": cnh_category,
+#                     "cnh_emition_date": worker.cnh_emition_date,
+#                     "cnh_valid_date": worker.cnh_valid_date,
+#                     "first_job": worker.first_job,
+#                     "was_employee": worker.was_employee,
+#                     "union_contribute_current_year": worker.union_contribute_current_year,
+#                     "receiving_unemployment_insurance": worker.receiving_unemployment_insurance,
+#                     "previous_experience": worker.previous_experience,
+#                     "month_wage": worker.month_wage,
+#                     "hour_wage": worker.hour_wage,
+#                     "journey_wage": worker.journey_wage,
+#                     "transport_voucher": worker.transport_voucher,
+#                     "transport_voucher_quantity": worker.transport_voucher_quantity,
+#                     "diary_workjourney": worker.diary_workjourney,
+#                     "week_workjourney": worker.week_workjourney,
+#                     "month_workjourney": worker.month_workjourney,
+#                     "experience_time": worker.experience_time,
+#                     "nocturne_hours": worker.nocturne_hours,
+#                     "dangerousness": worker.dangerousness,
+#                     "unhealthy": worker.unhealthy,
+#                     "wage_payment_method": wage_payment_method,
+#                     "is_away": worker.is_away,
+#                     "away_reason": away_reason,
+#                     "away_start_date": worker.away_start_date,
+#                     "away_end_date": worker.away_end_date,
+#                     "general_function_code": worker.general_function_code,
+#                     "wage": worker.wage,
+#                     "last_function_date": worker.last_function_date,
+#                     "current_function_time": worker.current_function_time,
+#                     "school_level": school_level,
+#                     "emergency_number": worker.emergency_number,
+#                     "bank": bank,
+#                     "bank_agency": worker.bank_agency,
+#                     "bank_account": worker.bank_account,
+#                     "nationality": nationality,
+#                     "has_children": worker.has_children,
+#                     "hierarchy_structure": hierarchy_structure,
+#                     "enterprise_time": worker.enterprise_time,
+#                     "cbo": worker.cbo,
+#                     "early_payment": worker.early_payment,
+#                     "harmfull_exposition": worker.harmfull_exposition,
+#                     "has_experience_time": worker.has_experience_time,
+#                     "has_nocturne_hours": worker.has_nocturne_hours,
+#                     "propotional_payment": worker.propotional_payment,
+#                     "total_nocturne_workjourney": worker.total_nocturne_workjourney,
+#                     "twenty_five_workjourney": worker.twenty_five_workjourney,
+#                     "twenty_two_to_five_week_workjourney": worker.twenty_two_to_five_week_workjourney,
+#                     "twenty_two_to_five_month_workjourney": worker.twenty_two_to_five_month_workjourney,
+#                     "twenty_two_to_five_effective_diary_workjourney": worker.twenty_two_to_five_effective_diary_workjourney,
+#                     "healthcare_plan": worker.healthcare_plan,
+#                     "healthcare_plan_discount": worker.healthcare_plan_discount,
+#                     "life_insurance": worker.life_insurance,
+#                     "life_insurance_discount": worker.life_insurance_discount,
+#                     "ag": worker.ag,
+#                     "cc": worker.cc,
+#                     "early_payment_discount": worker.early_payment_discount,
+#                 }
+#             )
+
+#         return result
+
+
+# for model in MODELS_TO_TRACK:
+#     register_cache_invalidation(model, nome)
 
 
 @app.get("/workers/subsidiarie/{subsidiarie_id}")

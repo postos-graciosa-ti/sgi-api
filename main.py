@@ -3,7 +3,7 @@ import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from io import BytesIO
-from typing import Any, Callable, Dict, List, Optional
+from typing import Annotated, Any, Callable, Dict, List, Optional
 
 import httpx
 import pandas as pd
@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import and_, create_engine, event, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
@@ -301,8 +302,24 @@ async def excel_scraping(id: int, file: UploadFile = File(...)):
     return await handle_excel_scraping(id, file)
 
 
+class DiscountItem(BaseModel):
+    worker: str
+    discountNote: str
+
+
 @app.post("/scripts/rhsheets")
-async def post_scripts_rhsheets(file: UploadFile = File(...)):
+async def post_scripts_rhsheets(
+    discountList: Annotated[str, Form()],
+    file: UploadFile = File(...),
+):
+    try:
+        discounts = json.loads(discountList)
+
+        discount_items = [DiscountItem(**item) for item in discounts]
+
+    except (json.JSONDecodeError, ValueError) as e:
+        return {"error": f"Formato inválido para discountList: {str(e)}"}
+
     with Session(engine) as session:
         workers = session.exec(select(Workers)).all()
 
@@ -313,6 +330,17 @@ async def post_scripts_rhsheets(file: UploadFile = File(...)):
     excel_io = BytesIO(contents)
 
     df = pd.read_excel(excel_io)
+
+    df["descontos"] = ""
+
+    for discount in discount_items:
+        mask = df["Nome"].str.lower() == discount.worker.lower()
+
+        if mask.any():
+            df.loc[mask, "descontos"] = discount.discountNote
+
+        else:
+            print(f"Aviso: Funcionário '{discount.worker}' não encontrado na planilha")
 
     colunas_desejadas = [
         "Departamento",
@@ -326,6 +354,7 @@ async def post_scripts_rhsheets(file: UploadFile = File(...)):
         "FALTA",
         "Folga Gestor",
         "ATRASO",
+        "descontos",
     ]
 
     df_filtrado = df[colunas_desejadas]
@@ -349,6 +378,7 @@ async def post_scripts_rhsheets(file: UploadFile = File(...)):
         "FALTA",
         "Folga Gestor",
         "ATRASO",
+        "descontos",
     ]
 
     df_filtrado = df_filtrado[colunas_ordenadas]

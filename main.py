@@ -1801,6 +1801,26 @@ def delete_applicants(id: int):
         return {"success": True}
 
 
+# applicants notifications
+
+
+@app.get("/users/{id}/applicants/notifications")
+def get_applicants_notifications(id: int):
+    with Session(engine) as session:
+        query = text(
+            """
+            SELECT *
+            FROM applicants
+            WHERE redirect_to = :user_id
+              AND (coordinator_observation IS NULL OR coordinator_observation = '')
+        """
+        )
+
+        result = session.exec(query.params(user_id=id)).mappings().all()
+
+        return result
+
+
 from pydantic import BaseModel
 
 

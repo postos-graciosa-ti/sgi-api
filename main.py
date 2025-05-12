@@ -24,7 +24,14 @@ from controllers.all_subsidiaries_no_review import (
     handle_get_workers_without_first_review_in_range_all,
     handle_get_workers_without_second_review_in_range_all,
 )
-from controllers.applicants import handle_get_applicants, handle_post_applicant
+from controllers.applicants import (
+    handle_delete_applicants,
+    handle_get_applicants,
+    handle_get_applicants_notifications,
+    handle_patch_applicants,
+    handle_post_applicant,
+    handle_post_hire_applicants,
+)
 from controllers.banks import handle_get_banks
 from controllers.candidates import (
     handle_get_candidates,
@@ -232,6 +239,7 @@ from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_parents import WorkersParents
 from models.workers_second_review import WorkersSecondReview
+from pyhints.applicants import RecruitProps
 from pyhints.no_reviews import SubsidiaryFilter
 from pyhints.resignable_reasons import StatusResignableReasonsInput
 from pyhints.scales import (
@@ -1737,127 +1745,40 @@ def get_resignable_reasons_report(input: StatusResignableReasonsInput):
 # applicants
 
 
-@app.get("/applicants")
+@app.get("/applicants", dependencies=[Depends(verify_token)])
 def get_applicants():
     return handle_get_applicants()
 
 
-@app.post("/applicants")
+@app.post("/applicants", dependencies=[Depends(verify_token)])
 def post_applicant(applicant: Applicants):
     return handle_post_applicant(applicant)
 
 
-@app.patch("/applicants/{id}")
+@app.patch("/applicants/{id}", dependencies=[Depends(verify_token)])
 def patch_applicants(id: int, applicant: Applicants):
-    with Session(engine) as session:
-        db_applicant = session.exec(
-            select(Applicants).where(Applicants.id == id)
-        ).first()
-
-        db_applicant.nature = (
-            applicant.nature if applicant.nature else db_applicant.nature
-        )
-
-        db_applicant.how_long = (
-            applicant.how_long if applicant.how_long else db_applicant.how_long
-        )
-
-        db_applicant.experience_function = (
-            applicant.experience_function
-            if applicant.experience_function
-            else db_applicant.experience_function
-        )
-
-        db_applicant.redirect_to = (
-            applicant.redirect_to if applicant.redirect_to else db_applicant.redirect_to
-        )
-
-        db_applicant.coordinator_observation = (
-            applicant.coordinator_observation
-            if applicant.coordinator_observation
-            else db_applicant.coordinator_observation
-        )
-
-        session.add(db_applicant)
-
-        session.commit()
-
-        session.refresh(db_applicant)
-
-        return db_applicant
+    return handle_patch_applicants(id, applicant)
 
 
-@app.delete("/applicants/{id}")
+@app.delete("/applicants/{id}", dependencies=[Depends(verify_token)])
 def delete_applicants(id: int):
-    with Session(engine) as session:
-        db_applicant = session.exec(
-            select(Applicants).where(Applicants.id == id)
-        ).first()
+    return handle_delete_applicants(id)
 
-        session.delete(db_applicant)
 
-        session.commit()
+# hire applicants
 
-        return {"success": True}
+
+@app.post("/applicants/hire", dependencies=[Depends(verify_token)])
+def post_hire_applicants(recruit: RecruitProps):
+    return handle_post_hire_applicants(recruit)
 
 
 # applicants notifications
 
 
-@app.get("/users/{id}/applicants/notifications")
+@app.get("/users/{id}/applicants/notifications", dependencies=[Depends(verify_token)])
 def get_applicants_notifications(id: int):
-    with Session(engine) as session:
-        query = text(
-            """
-            SELECT *
-            FROM applicants
-            WHERE redirect_to = :user_id
-              AND (coordinator_observation IS NULL OR coordinator_observation = '')
-        """
-        )
-
-        result = session.exec(query.params(user_id=id)).mappings().all()
-
-        return result
-
-
-from pydantic import BaseModel
-
-
-class RecruitProps(BaseModel):
-    applicant_id: int
-    worker_data: dict
-
-
-@app.post("/recruit")
-def post_admission(recruit: RecruitProps):
-    with Session(engine) as session:
-        worker = Workers(**recruit.worker_data)
-
-        admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
-
-        worker.first_review_date = (admission_date + relativedelta(months=1)).strftime(
-            "%Y-%m-%d"
-        )
-        worker.second_review_date = (admission_date + relativedelta(months=2)).strftime(
-            "%Y-%m-%d"
-        )
-
-        session.add(worker)
-
-        session.commit()
-
-        session.refresh(worker)
-
-        applicant = session.exec(
-            select(Applicants).where(Applicants.id == recruit.applicant_id)
-        ).first()
-
-        session.delete(applicant)
-
-        session.commit()
-
-        return worker
+    return handle_get_applicants_notifications(id)
 
 
 # worker first review

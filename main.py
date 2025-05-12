@@ -3480,3 +3480,5 @@ def get_tickets_responsible_notifications(id: int):
         )
 
         return tickets
+
+#others

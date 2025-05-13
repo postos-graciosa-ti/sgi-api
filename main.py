@@ -1,6 +1,10 @@
+import io
 import json
+import os
+import smtplib
 import threading
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from functools import wraps
 from io import BytesIO
 from typing import Annotated, Any, Callable, Dict, List, Optional
@@ -14,7 +18,8 @@ from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from PyPDF2 import PdfReader, PdfWriter
 from sqlalchemy import and_, create_engine, event, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
@@ -2901,6 +2906,76 @@ async def upload_pdf(
         raise HTTPException(status_code=500, detail=f"Erro ao salvar o PDF: {str(e)}")
 
 
+class EmailRequest(BaseModel):
+    worker_id: int
+    to: EmailStr
+    subject: str
+    body: str
+
+
+@app.post("/send-email")
+def send_email(request: EmailRequest):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    BCC = os.environ.get("BCC")
+
+    with Session(engine) as session:
+        work_contract = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == request.worker_id)
+            .where(WorkersDocs.doc_title == "Contrato de trabalho")
+        ).first()
+
+        if not work_contract or not work_contract.doc:
+            raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+        try:
+            original_pdf = PdfReader(io.BytesIO(work_contract.doc))
+
+            new_pdf_stream = io.BytesIO()
+
+            writer = PdfWriter()
+
+            for page_num in [0, 5]:
+                if page_num < len(original_pdf.pages):
+                    writer.add_page(original_pdf.pages[page_num])
+
+            writer.write(new_pdf_stream)
+
+            new_pdf_stream.seek(0)
+
+            msg = EmailMessage()
+
+            msg["Subject"] = request.subject
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = request.to
+
+            msg["Bcc"] = BCC
+
+            msg.set_content(request.body)
+
+            msg.add_attachment(
+                new_pdf_stream.read(),
+                maintype="application",
+                subtype="pdf",
+                filename="Contrato_paginas_1_e_6.pdf",
+            )
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
+
+                smtp.send_message(msg)
+
+            return {"message": "E-mail enviado com sucesso com as páginas 1 e 6"}
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/workers-docs/{id}")
 def delete_workers_docs(id: int):
     with Session(engine) as session:
@@ -3175,6 +3250,3 @@ def get_tickets_responsible_notifications(id: int):
         )
 
         return tickets
-
-
-# others

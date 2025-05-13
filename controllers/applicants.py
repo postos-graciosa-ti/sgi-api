@@ -15,15 +15,7 @@ from pyhints.applicants import RecruitProps
 
 def handle_get_applicants():
     with Session(engine) as session:
-        applicants = (
-            session.exec(
-                select(Applicants, Function).join(
-                    Function, Applicants.desired_function == Function.id
-                )
-            )
-            .mappings()
-            .all()
-        )
+        applicants = session.exec(select(Applicants)).all()
 
         return applicants
 
@@ -45,29 +37,32 @@ def handle_patch_applicants(id: int, applicant: Applicants):
             select(Applicants).where(Applicants.id == id)
         ).first()
 
-        db_applicant.nature = (
-            applicant.nature if applicant.nature else db_applicant.nature
-        )
+        # db_applicant.nature = (
+        #     applicant.nature if applicant.nature else db_applicant.nature
+        # )
 
-        db_applicant.how_long = (
-            applicant.how_long if applicant.how_long else db_applicant.how_long
-        )
+        # db_applicant.how_long = (
+        #     applicant.how_long if applicant.how_long else db_applicant.how_long
+        # )
 
-        db_applicant.experience_function = (
-            applicant.experience_function
-            if applicant.experience_function
-            else db_applicant.experience_function
-        )
+        # db_applicant.experience_function = (
+        #     applicant.experience_function
+        #     if applicant.experience_function
+        #     else db_applicant.experience_function
+        # )
 
         db_applicant.redirect_to = (
             applicant.redirect_to if applicant.redirect_to else db_applicant.redirect_to
         )
 
-        db_applicant.coordinator_observation = (
-            applicant.coordinator_observation
-            if applicant.coordinator_observation
-            else db_applicant.coordinator_observation
-        )
+        if applicant.is_aproved is not None:
+            db_applicant.is_aproved = applicant.is_aproved
+
+        # db_applicant.coordinator_observation = (
+        #     applicant.coordinator_observation
+        #     if applicant.coordinator_observation
+        #     else db_applicant.coordinator_observation
+        # )
 
         session.add(db_applicant)
 

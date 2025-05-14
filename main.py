@@ -3177,4 +3177,65 @@ def get_tickets_responsible_notifications(id: int):
         return tickets
 
 
-# others
+# retornar a quantidade de funcionários por função e se o quadro está ou não completo
+@app.get("/subsidiaries/{id}/metrics")
+def get_subsidiarie_metrics(id: int):
+    with Session(engine) as session:
+        caixas_function = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == id)
+            .where(Function.name == "Operador(a) de Caixa I")
+        ).first()
+
+        caixas_at_subsidiarie = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == caixas_function.id)
+        ).all()
+
+        return {
+            "caixas_quantity": len(caixas_at_subsidiarie),
+            "has_caixas_ideal_quantity": len(caixas_at_subsidiarie)
+            >= caixas_function.ideal_quantity,
+        }
+
+        # frentistas_function = session.exec(
+        #     select(Function)
+        #     .where(Function.subsidiarie_id == id)
+        #     .where(Function.name == "Frentista I")
+        # ).first()
+
+        # if not caixas_function or not frentistas_function:
+        #     raise HTTPException(
+        #         status_code=404, detail="Função não encontrada para a subsidiária."
+        #     )
+
+        # if (
+        #     caixas_function.ideal_quantity is None
+        #     or frentistas_function.ideal_quantity is None
+        # ):
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail="Ideal quantity não definida para uma ou mais funções.",
+        #     )
+
+        # caixas_at_subsidiarie = session.exec(
+        #     select(Workers)
+        #     .where(Workers.subsidiarie_id == id)
+        #     .where(Workers.function_id == caixas_function.id)
+        # ).all()
+
+        # frentistas_at_subsidiarie = session.exec(
+        #     select(Workers)
+        #     .where(Workers.subsidiarie_id == id)
+        #     .where(Workers.function_id == frentistas_function.id)
+        # ).all()
+
+        # return {
+        #     "caixas_quantity": len(caixas_at_subsidiarie),
+        #     "has_caixas_ideal_quantity": len(caixas_at_subsidiarie)
+        #     >= caixas_function.ideal_quantity,
+        #     "frentistas_quantity": len(frentistas_at_subsidiarie),
+        #     "has_frentistas_ideal_quantity": len(frentistas_at_subsidiarie)
+        #     >= frentistas_function.ideal_quantity,
+        # }

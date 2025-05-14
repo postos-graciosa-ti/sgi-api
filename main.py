@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
 from io import BytesIO
-from typing import Annotated, Any, Callable, Dict, List, Optional
+from typing import Annotated, Any, Callable, Dict, List, Optional, Set
 
 import httpx
 import pandas as pd
@@ -20,7 +20,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
-from sqlalchemy import and_, create_engine, event, text
+from sqlalchemy import and_, create_engine, event, inspect, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 
@@ -108,6 +108,7 @@ from controllers.root import (
     handle_get_docs_info,
     handle_health_check,
     handle_on_startup,
+    handle_verify_schema_diff,
 )
 from controllers.scale import (
     handle_delete_scale,
@@ -288,7 +289,7 @@ def on_startup():
     return handle_on_startup()
 
 
-# public routes
+# utils public routes
 
 
 @app.get("/")
@@ -301,6 +302,14 @@ def health_check():
     return handle_health_check()
 
 
+@app.get("/verify-schema-diff")
+def verify_schema_diff():
+    return handle_verify_schema_diff()
+
+
+# users public routes
+
+
 @app.post("/users/login")
 def user_login(user: User):
     return handle_user_login(user)
@@ -309,6 +318,9 @@ def user_login(user: User):
 @app.post("/users/create-password")
 def create_user_password(userData: CreateUserPasswordInput):
     return handle_create_user_password(userData)
+
+
+# scripts public routes
 
 
 @app.post("/subsidiaries/{id}/scripts/excel-scraping")

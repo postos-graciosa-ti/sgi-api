@@ -55,6 +55,8 @@ def handle_get_events_by_date(subsidiarie_id: int, date: str):
 def handle_post_dates_events(id: int, date_event: DatesEvents):
     date_event.subsidiarie_id = id
 
+    date_event.date = datetime.strptime(date_event.date, "%Y-%m-%d")
+
     with Session(engine) as session:
         session.add(date_event)
 

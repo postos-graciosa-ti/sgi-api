@@ -1215,8 +1215,8 @@ def post_worker_first_review(id: int, worker_first_review: WorkersFirstReview):
         return worker_first_review
 
 
-@app.get("/workers/first-review/notification")
-def get_workers_first_review():
+@app.get("/subsidiaries/{subsidiarie_id}/workers/first-review/notification")
+def get_workers_first_review(subsidiarie_id: int):
     with Session(engine) as session:
         today = date.today()
 
@@ -1231,6 +1231,7 @@ def get_workers_first_review():
                 select(WorkersFirstReview, User, Workers)
                 .join(User, WorkersFirstReview.realized_by == User.id)
                 .join(Workers, WorkersFirstReview.worker_id == Workers.id)
+                .where(Workers.subsidiarie_id == subsidiarie_id)
                 .where(WorkersFirstReview.realized_in >= start_of_week)
                 .where(WorkersFirstReview.realized_in <= end_of_week)
             )
@@ -1268,8 +1269,8 @@ def post_worker_first_review(id: int, worker_second_review: WorkersSecondReview)
         return worker_second_review
 
 
-@app.get("/workers/second-review/notification")
-def get_workers_second_review():
+@app.get("/subsidiaries/{subsidiarie_id}/workers/second-review/notification")
+def get_workers_second_review(subsidiarie_id: int):
     with Session(engine) as session:
         today = date.today()
 
@@ -1284,6 +1285,7 @@ def get_workers_second_review():
                 select(WorkersSecondReview, User, Workers)
                 .join(User, WorkersSecondReview.realized_by == User.id)
                 .join(Workers, WorkersSecondReview.worker_id == Workers.id)
+                .where(Workers.subsidiarie_id == subsidiarie_id)
                 .where(WorkersSecondReview.realized_in >= start_of_week)
                 .where(WorkersSecondReview.realized_in <= end_of_week)
             )

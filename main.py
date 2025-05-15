@@ -55,6 +55,12 @@ from controllers.cost_center_log import (
     handle_get_cost_center_logs,
     handle_post_cost_center_logs,
 )
+from controllers.dates_events import (
+    handle_delete_dates_events,
+    handle_get_dates_events,
+    handle_get_events_by_date,
+    handle_post_dates_events,
+)
 from controllers.departments import (
     handle_delete_department,
     handle_get_department_by_id,
@@ -2044,66 +2050,32 @@ def get_nr_list_by_subsidiarie(id: int):
 # dates events
 
 
-@app.get("/subsidiaries/{id}/dates-events")
-def get_date_event(id: int):
-    with Session(engine) as session:
-        today = date.today()
-
-        first_day = today.replace(day=1)
-
-        last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(
-            days=1
-        )
-
-        date_event = session.exec(
-            select(DatesEvents)
-            .where(DatesEvents.subsidiarie_id == id)
-            .where(DatesEvents.date.between(first_day, last_day))
-        ).all()
-
-        return date_event
+@app.get(
+    "/subsidiaries/{subsidiarie_id}/dates-events", dependencies=[Depends(verify_token)]
+)
+def get_dates_events(subsidiarie_id: int):
+    return handle_get_dates_events(subsidiarie_id)
 
 
-@app.get("/subsidiaries/{id}/dates/{date}/dates-events")
-def get_events_by_date(id: int, date: str):
-    with Session(engine) as session:
-        dates_events = session.exec(
-            select(DatesEvents)
-            .where(DatesEvents.subsidiarie_id == id)
-            .where(DatesEvents.date == date)
-        ).all()
-
-        return dates_events
+@app.get(
+    "/subsidiaries/{subsidiarie_id}/dates/{date}/dates-events",
+    dependencies=[Depends(verify_token)],
+)
+def get_events_by_date(subsidiarie_id: int, date: str):
+    return handle_get_events_by_date(subsidiarie_id, date)
 
 
-@app.post("/subsidiaries/{id}/dates-events")
+@app.post("/subsidiaries/{id}/dates-events", dependencies=[Depends(verify_token)])
 def post_date_event(id: int, date_event: DatesEvents):
-    date_event.subsidiarie_id = id
-
-    with Session(engine) as session:
-        session.add(date_event)
-
-        session.commit()
-
-        session.refresh(date_event)
-
-        return date_event
+    return handle_post_dates_events(id, date_event)
 
 
-@app.delete("/subsidiaries/{subsidiarie_id}/dates-events/{event_id}")
+@app.delete(
+    "/subsidiaries/{subsidiarie_id}/dates-events/{event_id}",
+    dependencies=[Depends(verify_token)],
+)
 def delete_date_event(subsidiarie_id: int, event_id: int):
-    with Session(engine) as session:
-        date_event = session.exec(
-            select(DatesEvents)
-            .where(DatesEvents.id == event_id)
-            .where(DatesEvents.subsidiarie_id == subsidiarie_id)
-        ).first()
-
-        session.delete(date_event)
-
-        session.commit()
-
-        return {"success": True}
+    return handle_delete_dates_events(subsidiarie_id, event_id)
 
 
 # genders

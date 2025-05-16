@@ -1,16 +1,18 @@
+import json
 import logging
 import os
 import time
+from typing import Set
 
 import psutil
 from alembic import command
 from alembic.config import Config
 from alembic.util.exc import CommandError
-from fastapi import HTTPException
-from sqlalchemy import inspect
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy_utils import database_exists
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 
 from database.sqlite import create_db_and_tables, engine
 from models.user import User
@@ -188,4 +190,58 @@ def collect_performance_data(start_time, db_latency=None):
         "cpu_percent": round(cpu_percent, 2),
         "memory_usage_mb": mem_usage_mb,
         "database_latency_seconds": db_latency,
+    }
+
+
+def get_model_table_names() -> Set[str]:
+    return set(SQLModel.metadata.tables.keys())
+
+
+def get_db_table_names(engine) -> Set[str]:
+    inspector = inspect(engine)
+
+    return set(inspector.get_table_names())
+
+
+def handle_verify_schema_diff():
+    database_url = os.environ.get("SQLITE_URL")
+
+    engine = create_engine(database_url)
+
+    inspector = inspect(engine)
+
+    model_tables = get_model_table_names()
+
+    db_tables = get_db_table_names(engine)
+
+    only_in_models = sorted(model_tables - db_tables)
+
+    only_in_db = sorted(db_tables - model_tables)
+
+    in_both = model_tables & db_tables
+
+    column_diffs = []
+
+    for table in sorted(in_both):
+        model_columns = set(c.name for c in SQLModel.metadata.tables[table].columns)
+
+        db_columns = set(col["name"] for col in inspector.get_columns(table))
+
+        extra_in_model = sorted(model_columns - db_columns)
+
+        extra_in_db = sorted(db_columns - model_columns)
+
+        if extra_in_model or extra_in_db:
+            column_diffs.append(
+                {
+                    "table": table,
+                    "only_in_models": extra_in_model,
+                    "only_in_db": extra_in_db,
+                }
+            )
+
+    return {
+        "tables_only_in_models": only_in_models,
+        "tables_only_in_db": only_in_db,
+        "column_differences": column_diffs,
     }

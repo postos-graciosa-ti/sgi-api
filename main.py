@@ -2762,3 +2762,5 @@ def get_subsidiarie_metrics(id: int):
             "has_frentistas_ideal_quantity": len(frentistas_at_subsidiarie)
             >= frentistas_ideal,
         }
+
+#

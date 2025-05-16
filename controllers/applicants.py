@@ -15,15 +15,7 @@ from pyhints.applicants import RecruitProps
 
 def handle_get_applicants():
     with Session(engine) as session:
-        applicants = (
-            session.exec(
-                select(Applicants, Function).join(
-                    Function, Applicants.desired_function == Function.id
-                )
-            )
-            .mappings()
-            .all()
-        )
+        applicants = session.exec(select(Applicants)).all()
 
         return applicants
 
@@ -45,29 +37,110 @@ def handle_patch_applicants(id: int, applicant: Applicants):
             select(Applicants).where(Applicants.id == id)
         ).first()
 
-        db_applicant.nature = (
-            applicant.nature if applicant.nature else db_applicant.nature
-        )
+        if applicant.redirect_to is not None:
+            db_applicant.redirect_to = applicant.redirect_to
 
-        db_applicant.how_long = (
-            applicant.how_long if applicant.how_long else db_applicant.how_long
-        )
+        if applicant.natural is not None:
+            db_applicant.natural = applicant.natural
 
-        db_applicant.experience_function = (
-            applicant.experience_function
-            if applicant.experience_function
-            else db_applicant.experience_function
-        )
+        if applicant.tempo is not None:
+            db_applicant.tempo = applicant.tempo
 
-        db_applicant.redirect_to = (
-            applicant.redirect_to if applicant.redirect_to else db_applicant.redirect_to
-        )
+        if applicant.vaga_interesse is not None:
+            db_applicant.vaga_interesse = applicant.vaga_interesse
 
-        db_applicant.coordinator_observation = (
-            applicant.coordinator_observation
-            if applicant.coordinator_observation
-            else db_applicant.coordinator_observation
-        )
+        if applicant.experiencia_funcao is not None:
+            db_applicant.experiencia_funcao = applicant.experiencia_funcao
+
+        if applicant.data_nascimento is not None:
+            db_applicant.data_nascimento = applicant.data_nascimento
+
+        if applicant.nome_pai is not None:
+            db_applicant.nome_pai = applicant.nome_pai
+
+        if applicant.nome_mae is not None:
+            db_applicant.nome_mae = applicant.nome_mae
+
+        if applicant.rg is not None:
+            db_applicant.rg = applicant.rg
+
+        if applicant.cpf is not None:
+            db_applicant.cpf = applicant.cpf
+
+        if applicant.estado_civil is not None:
+            db_applicant.estado_civil = applicant.estado_civil
+
+        if applicant.filhos is not None:
+            db_applicant.filhos = applicant.filhos
+
+        if applicant.fumante is not None:
+            db_applicant.fumante = applicant.fumante
+
+        if applicant.bairro is not None:
+            db_applicant.bairro = applicant.bairro
+
+        if applicant.onde_viu_vaga is not None:
+            db_applicant.onde_viu_vaga = applicant.onde_viu_vaga
+
+        if applicant.indicacao is not None:
+            db_applicant.indicacao = applicant.indicacao
+
+        if applicant.disponibilidade_horario is not None:
+            db_applicant.disponibilidade_horario = applicant.disponibilidade_horario
+
+        if applicant.moradia is not None:
+            db_applicant.moradia = applicant.moradia
+
+        if applicant.transporte is not None:
+            db_applicant.transporte = applicant.transporte
+
+        if applicant.ultimo_salario is not None:
+            db_applicant.ultimo_salario = applicant.ultimo_salario
+
+        if applicant.apresentacao_pessoal is not None:
+            db_applicant.apresentacao_pessoal = applicant.apresentacao_pessoal
+
+        if applicant.comunicativo is not None:
+            db_applicant.comunicativo = applicant.comunicativo
+
+        if applicant.postura is not None:
+            db_applicant.postura = applicant.postura
+
+        if applicant.simpatia is not None:
+            db_applicant.simpatia = applicant.simpatia
+
+        if applicant.observacoes is not None:
+            db_applicant.observacoes = applicant.observacoes
+
+        if applicant.sim_nao_talvez is not None:
+            db_applicant.sim_nao_talvez = applicant.sim_nao_talvez
+
+        if applicant.contato is not None:
+            db_applicant.contato = applicant.contato
+
+        if applicant.retorno_whatsapp is not None:
+            db_applicant.retorno_whatsapp = applicant.retorno_whatsapp
+
+        if applicant.primeira_entrevista is not None:
+            db_applicant.primeira_entrevista = applicant.primeira_entrevista
+
+        if applicant.segunda_entrevista is not None:
+            db_applicant.segunda_entrevista = applicant.segunda_entrevista
+
+        if applicant.encaminhado_admissional is not None:
+            db_applicant.encaminhado_admissional = applicant.encaminhado_admissional
+
+        if applicant.data_prevista_admissao is not None:
+            db_applicant.data_prevista_admissao = applicant.data_prevista_admissao
+
+        if applicant.filial is not None:
+            db_applicant.filial = applicant.filial
+
+        if applicant.horario is not None:
+            db_applicant.horario = applicant.horario
+
+        if applicant.is_aproved is not None:
+            db_applicant.is_aproved = applicant.is_aproved
 
         session.add(db_applicant)
 

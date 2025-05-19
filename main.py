@@ -212,6 +212,7 @@ from functions.error_handling import error_handler
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicants import Applicants
+from models.applicants_exams import ApplicantsExams
 from models.away_reasons import AwayReasons
 from models.banks import Banks
 from models.candidate import Candidate
@@ -285,7 +286,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1186,6 +1187,33 @@ def post_hire_applicants(recruit: RecruitProps):
 @app.get("/users/{id}/applicants/notifications", dependencies=[Depends(verify_token)])
 def get_applicants_notifications(id: int):
     return handle_get_applicants_notifications(id)
+
+
+# applicants exam
+
+
+@app.get("/applicants/{id}/exams")
+def handle_get_applicants_exams(id: int):
+    with Session(engine) as session:
+        applicants_exams = session.exec(
+            select(ApplicantsExams).where(ApplicantsExams.applicant_id == id)
+        ).all()
+
+        return applicants_exams
+
+
+@app.post("/applicants/{id}/exams")
+def handle_post_applicants_exams(id: int, applicant_exam: ApplicantsExams):
+    applicant_exam.applicant_id = id
+
+    with Session(engine) as session:
+        session.add(applicant_exam)
+
+        session.commit()
+
+        session.refresh(applicant_exam)
+
+        return {"success": True}
 
 
 # worker first review
@@ -2762,5 +2790,6 @@ def get_subsidiarie_metrics(id: int):
             "has_frentistas_ideal_quantity": len(frentistas_at_subsidiarie)
             >= frentistas_ideal,
         }
+
 
 #

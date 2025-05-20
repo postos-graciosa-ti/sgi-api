@@ -1144,10 +1144,10 @@ def get_resignable_reasons():
 # resignable reasons reports
 
 
-@app.post("/resignable-reasons/report", dependencies=[Depends(verify_token)])
+@app.post("/subsidiaries/{id}/resignable-reasons/report", dependencies=[Depends(verify_token)])
 @error_handler
-def get_resignable_reasons_report(input: StatusResignableReasonsInput):
-    return handle_resignable_reasons_report(input)
+def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
+    return handle_resignable_reasons_report(id, input)
 
 
 # applicants

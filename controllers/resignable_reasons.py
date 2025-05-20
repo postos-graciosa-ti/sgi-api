@@ -16,7 +16,7 @@ def handle_get_resignable_reasons():
     return resignable_reasons
 
 
-def handle_resignable_reasons_report(input: StatusResignableReasonsInput):
+def handle_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     with Session(engine) as session:
         first_day = datetime.strptime(input.first_day, "%d-%m-%Y")
 
@@ -45,6 +45,7 @@ def handle_resignable_reasons_report(input: StatusResignableReasonsInput):
                 and_(
                     Workers.resignation_reason_id.in_(resignable_reasons_ids),
                     Workers.resignation_date != None,
+                    Workers.subsidiarie_id == id,
                 )
             )
         )

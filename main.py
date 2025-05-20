@@ -1144,7 +1144,9 @@ def get_resignable_reasons():
 # resignable reasons reports
 
 
-@app.post("/subsidiaries/{id}/resignable-reasons/report", dependencies=[Depends(verify_token)])
+@app.post(
+    "/subsidiaries/{id}/resignable-reasons/report", dependencies=[Depends(verify_token)]
+)
 @error_handler
 def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(id, input)
@@ -2793,3 +2795,30 @@ def get_subsidiarie_metrics(id: int):
 
 
 #
+
+
+class AdmissionsReportInput(BaseModel):
+    first_day: str
+    last_day: str
+
+
+@app.post("/subsidiaries/{id}/workers/admissions-report")
+def get_admissions_report(id: int, input: AdmissionsReportInput):
+    with Session(engine) as session:
+        first_day = datetime.strptime(input.first_day, "%Y-%m-%d")
+
+        last_day = datetime.strptime(input.last_day, "%Y-%m-%d")
+
+        subsidiarie_workers = session.exec(
+            select(Workers).where(Workers.subsidiarie_id == id)
+        ).all()
+
+        result = []
+
+        for worker in subsidiarie_workers:
+            worker_admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+
+            if worker_admission_date >= first_day and worker_admission_date <= last_day:
+                result.append({"id": worker.id, "name": worker.name})
+
+        return result

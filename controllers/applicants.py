@@ -142,6 +142,15 @@ def handle_patch_applicants(id: int, applicant: Applicants):
         if applicant.is_aproved is not None:
             db_applicant.is_aproved = applicant.is_aproved
 
+        if applicant.ultima_experiencia is not None:
+            db_applicant.ultima_experiencia = applicant.ultima_experiencia
+
+        if applicant.penultima_experiencia is not None:
+            db_applicant.penultima_experiencia = applicant.penultima_experiencia
+
+        if applicant.antepenultima_experiencia is not None:
+            db_applicant.antepenultima_experiencia = applicant.antepenultima_experiencia
+
         session.add(db_applicant)
 
         session.commit()

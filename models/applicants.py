@@ -47,3 +47,7 @@ class Applicants(SQLModel, table=True):
         default=None, nullable=True, foreign_key="user.id", index=True
     )
     is_aproved: Optional[bool] = Field(default=False)
+
+    ultima_experiencia: Optional[str] = Field(default=None, nullable=True)
+    penultima_experiencia: Optional[str] = Field(default=None, nullable=True)
+    antepenultima_experiencia: Optional[str] = Field(default=None, nullable=True)

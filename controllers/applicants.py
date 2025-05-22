@@ -151,6 +151,18 @@ def handle_patch_applicants(id: int, applicant: Applicants):
         if applicant.antepenultima_experiencia is not None:
             db_applicant.antepenultima_experiencia = applicant.antepenultima_experiencia
 
+        if applicant.escolaridade is not None:
+            db_applicant.escolaridade = applicant.escolaridade
+
+        if applicant.rh_opinion is not None:
+            db_applicant.rh_opinion = applicant.rh_opinion
+
+        if applicant.coordinator_opinion is not None:
+            db_applicant.coordinator_opinion = applicant.coordinator_opinion
+
+        if applicant.special_notation is not None:
+            db_applicant.special_notation = applicant.special_notation
+
         session.add(db_applicant)
 
         session.commit()

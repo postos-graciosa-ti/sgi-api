@@ -163,6 +163,9 @@ def handle_patch_applicants(id: int, applicant: Applicants):
         if applicant.special_notation is not None:
             db_applicant.special_notation = applicant.special_notation
 
+        if applicant.coordinator_observations is not None:
+            db_applicant.coordinator_observations = applicant.coordinator_observations
+
         session.add(db_applicant)
 
         session.commit()

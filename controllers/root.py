@@ -15,39 +15,13 @@ from sqlalchemy_utils import database_exists
 from sqlmodel import Session, SQLModel, select
 
 from database.sqlite import create_db_and_tables, engine
+from migrations.apply_migrations import apply_migrations
 from models.user import User
 from seeds.seed_all import seed_database
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
-
-def safe_apply_migrations():
-    try:
-        alembic_cfg = Config("alembic.ini")
-
-        logging.getLogger("alembic").setLevel(logging.WARNING)
-
-        command.upgrade(alembic_cfg, "head")
-
-        print("Migrações verificadas e aplicadas com sucesso.")
-
-        return True
-
-    except CommandError as e:
-        print(f"Erro ao aplicar migrações: {str(e)}")
-
-        print("Continuando sem aplicar migrações...")
-
-        return False
-
-    except Exception as e:
-        print(f"Erro inesperado no Alembic: {str(e)}")
-
-        print("Continuando a execução...")
-
-        return False
 
 
 def handle_on_startup():
@@ -58,6 +32,8 @@ def handle_on_startup():
             print("Banco de dados não encontrado. Criando...")
 
             create_db_and_tables()
+
+            apply_migrations()
 
             seed_database()
 
@@ -71,28 +47,105 @@ def handle_on_startup():
 
                 create_db_and_tables()
 
+                apply_migrations()
+
                 seed_database()
 
             else:
-                print("Banco de dados existente detectado. Verificando migrações...")
-
-                migration_success = safe_apply_migrations()
-
-                if not migration_success:
-                    print(
-                        "Atenção: Não foi possível verificar/atualizar completamente as migrações."
-                    )
-
-                    print(
-                        "O aplicativo continuará, mas o banco de dados pode não estar atualizado."
-                    )
+                print("Banco de dados existente detectado.")
 
                 print("Verificação de banco de dados concluída.")
+
+                apply_migrations()
 
     except OperationalError as e:
         print(f"Erro crítico ao conectar ao banco de dados: {e}")
 
         raise
+
+
+# def safe_apply_migrations():
+#     try:
+#         alembic_cfg = Config("alembic.ini")
+
+#         logging.getLogger("alembic").setLevel(logging.WARNING)
+
+#         command.upgrade(alembic_cfg, "head")
+
+#         print("Migrações verificadas e aplicadas com sucesso.")
+
+#         return True
+
+#     except CommandError as e:
+#         print(f"Erro ao aplicar migrações: {str(e)}")
+
+#         print("Continuando sem aplicar migrações...")
+
+#         return False
+
+#     except Exception as e:
+#         print(f"Erro inesperado no Alembic: {str(e)}")
+
+#         print("Continuando a execução...")
+
+#         return False
+
+
+# def handle_on_startup():
+#     try:
+#         database_url = os.environ.get("SQLITE_URL")
+
+#         if not database_exists(engine.url):
+#             print("Banco de dados não encontrado. Criando...")
+
+#             create_db_and_tables()
+
+#             add_school_levels_to_applicants()
+
+#             add_rh_opinion_to_applicants()
+
+#             seed_database()
+
+#         else:
+#             inspector = inspect(engine)
+
+#             tables = inspector.get_table_names()
+
+#             if not tables:
+#                 print("Nenhuma tabela encontrada. Criando estrutura inicial...")
+
+#                 create_db_and_tables()
+
+#                 add_school_levels_to_applicants()
+
+#                 add_rh_opinion_to_applicants()
+
+#                 seed_database()
+
+#             else:
+#                 print("Banco de dados existente detectado. Verificando migrações...")
+
+#                 migration_success = safe_apply_migrations()
+
+#                 if not migration_success:
+#                     print(
+#                         "Atenção: Não foi possível verificar/atualizar completamente as migrações."
+#                     )
+
+#                     print(
+#                         "O aplicativo continuará, mas o banco de dados pode não estar atualizado."
+#                     )
+
+#                 print("Verificação de banco de dados concluída.")
+
+#                 add_school_levels_to_applicants()
+
+#                 add_rh_opinion_to_applicants()
+
+#     except OperationalError as e:
+#         print(f"Erro crítico ao conectar ao banco de dados: {e}")
+
+#         raise
 
 
 def handle_get_docs_info():

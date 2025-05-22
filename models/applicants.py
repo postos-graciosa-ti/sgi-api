@@ -51,3 +51,7 @@ class Applicants(SQLModel, table=True):
     ultima_experiencia: Optional[str] = Field(default=None, nullable=True)
     penultima_experiencia: Optional[str] = Field(default=None, nullable=True)
     antepenultima_experiencia: Optional[str] = Field(default=None, nullable=True)
+    escolaridade: Optional[str] = Field(default=None, nullable=True)
+    rh_opinion: Optional[str] = Field(default=None, nullable=True)
+    coordinator_opinion: Optional[str] = Field(default=None, nullable=True)
+    special_notation: Optional[str] = Field(default=None, nullable=True)

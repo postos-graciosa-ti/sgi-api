@@ -55,3 +55,4 @@ class Applicants(SQLModel, table=True):
     rh_opinion: Optional[str] = Field(default=None, nullable=True)
     coordinator_opinion: Optional[str] = Field(default=None, nullable=True)
     special_notation: Optional[str] = Field(default=None, nullable=True)
+    coordinator_observations: Optional[str] = Field(default=None, nullable=True)

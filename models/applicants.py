@@ -56,3 +56,6 @@ class Applicants(SQLModel, table=True):
     coordinator_opinion: Optional[str] = Field(default=None, nullable=True)
     special_notation: Optional[str] = Field(default=None, nullable=True)
     coordinator_observations: Optional[str] = Field(default=None, nullable=True)
+    attendance_date: Optional[str] = Field(default=None, nullable=True)
+    is_active: Optional[bool] = Field(default=True)
+    email: Optional[str] = Field(default=None, nullable=True)

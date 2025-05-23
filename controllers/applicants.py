@@ -16,7 +16,9 @@ from pyhints.applicants import RecruitProps
 def handle_get_applicants():
     with Session(engine) as session:
         applicants = session.exec(
-            select(Applicants).where(Applicants.is_active == True)
+            select(Applicants)
+            .where(Applicants.is_active == True)
+            .order_by(Applicants.id.desc())
         ).all()
 
         return applicants

@@ -12,16 +12,22 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy_utils import database_exists
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Field, Session, SQLModel, select
 
 from database.sqlite import create_db_and_tables, engine
 from migrations.apply_migrations import apply_migrations
+from migrations.lib.watchmen.watch import watch
+from models.applicants_exams import ApplicantsExams
 from models.user import User
 from seeds.seed_all import seed_database
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+
+def handle_watch_models():
+    watch(ApplicantsExams)
 
 
 def handle_on_startup():
@@ -32,6 +38,10 @@ def handle_on_startup():
             print("Banco de dados não encontrado. Criando...")
 
             create_db_and_tables()
+
+            # migrate_table(Example)
+
+            handle_watch_models()
 
             apply_migrations()
 
@@ -47,6 +57,10 @@ def handle_on_startup():
 
                 create_db_and_tables()
 
+                # migrate_table(Example)
+
+                handle_watch_models()
+
                 apply_migrations()
 
                 seed_database()
@@ -55,6 +69,10 @@ def handle_on_startup():
                 print("Banco de dados existente detectado.")
 
                 print("Verificação de banco de dados concluída.")
+
+                # migrate_table(Example)
+
+                handle_watch_models()
 
                 apply_migrations()
 

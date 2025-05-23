@@ -15,7 +15,9 @@ from pyhints.applicants import RecruitProps
 
 def handle_get_applicants():
     with Session(engine) as session:
-        applicants = session.exec(select(Applicants)).all()
+        applicants = session.exec(
+            select(Applicants).where(Applicants.is_active == True)
+        ).all()
 
         return applicants
 
@@ -165,6 +167,15 @@ def handle_patch_applicants(id: int, applicant: Applicants):
 
         if applicant.coordinator_observations is not None:
             db_applicant.coordinator_observations = applicant.coordinator_observations
+
+        if applicant.attendance_date is not None:
+            db_applicant.attendance_date = applicant.attendance_date
+
+        if applicant.is_active is not None:
+            db_applicant.is_active = applicant.is_active
+
+        if applicant.email is not None:
+            db_applicant.email = applicant.email
 
         session.add(db_applicant)
 

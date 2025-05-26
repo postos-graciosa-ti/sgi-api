@@ -20,6 +20,7 @@ from migrations.lib.watchmen.watch import watch
 from models.applicants_exams import ApplicantsExams
 from models.user import User
 from seeds.seed_all import seed_database
+from models.open_positions import OpenPositions
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 def handle_watch_models():
     watch(ApplicantsExams)
+
+    watch(OpenPositions)
 
 
 def handle_on_startup():

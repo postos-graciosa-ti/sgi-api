@@ -289,7 +289,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1158,6 +1158,73 @@ def get_resignable_reasons():
 @error_handler
 def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(id, input)
+
+
+# open positions
+
+from models.open_positions import OpenPositions
+
+
+@app.get("/open-positions")
+def get_open_positions():
+    with Session(engine) as session:
+        open_positions = session.exec(select(OpenPositions)).all()
+
+        result = [
+            {
+                "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
+                "function": session.get(Function, open_position.function_id),
+                "turn": session.get(Turn, open_position.turn_id),
+            }
+            for open_position in open_positions
+        ]
+
+        return result
+
+
+@app.get("/subsidiaries/{id}/open-positions")
+def get_open_positions_by_subsidiarie(id: int):
+    with Session(engine) as session:
+        open_positions = session.exec(
+            select(OpenPositions).where(OpenPositions.subsidiarie_id == id)
+        ).all()
+
+        result = [
+            {
+                "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
+                "function": session.get(Function, open_position.function_id),
+                "turn": session.get(Turn, open_position.turn_id),
+            }
+            for open_position in open_positions
+        ]
+
+        return result
+
+
+@app.post("/open-positions")
+def post_open_positions(open_position: OpenPositions):
+    with Session(engine) as session:
+        session.add(open_position)
+
+        session.commit()
+
+        session.refresh(open_position)
+
+        return {"success": True}
+
+
+@app.patch("/open-positions/{id}/close")
+def close_open_positions(id: int):
+    with Session(engine) as session:
+        db_open_position = session.exec(
+            select(OpenPositions).where(OpenPositions.id == id)
+        ).first()
+
+        session.delete(db_open_position)
+
+        session.commit()
+
+        return {"success": True}
 
 
 # applicants

@@ -235,6 +235,7 @@ from models.hollidays_scale import HollidaysScale
 from models.jobs import Jobs
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
+from models.open_positions import OpenPositions
 from models.parents_type import ParentsType
 from models.resignable_reasons import ResignableReasons
 from models.role import Role
@@ -277,6 +278,7 @@ from pyhints.workers import (
     WorkerLogDeleteInput,
     WorkerLogUpdateInput,
 )
+from routes.open_positions_routes import routes as open_positions_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
 from scripts.sync_workers_data import handle_post_sync_workers_data
@@ -289,7 +291,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -320,14 +322,66 @@ def verify_schema_diff():
 # users public routes
 
 
+@app.post("/users/create-password")
+def create_user_password(userData: CreateUserPasswordInput):
+    return handle_create_user_password(userData)
+
+
 @app.post("/users/login")
 def user_login(user: User):
     return handle_user_login(user)
 
 
-@app.post("/users/create-password")
-def create_user_password(userData: CreateUserPasswordInput):
-    return handle_create_user_password(userData)
+@app.post("/users/recovery-password/send-email")
+def recovery_user_password_send_email(user: User):
+    with Session(engine) as session:
+        GMAIL_USER = os.environ.get("EMAIL_REMETENTE")
+
+        GMAIL_APP_PASSWORD = os.environ.get("SENHA")
+
+        db_user = session.exec(
+            select(User).where(and_(User.name == user.name, User.email == user.email))
+        ).first()
+
+        if not db_user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+        msg = EmailMessage()
+
+        msg["Subject"] = "Recuperação de senha"
+
+        msg["From"] = GMAIL_USER
+
+        msg["To"] = db_user.email
+
+        msg.set_content(
+            f"""
+            Olá {db_user.name},
+
+            Recebemos uma solicitação para redefinir sua senha. 
+            Clique no link abaixo para continuar o processo de recuperação:
+
+            https://seusite.com/recovery/{db_user.id}
+
+            Se você não solicitou isso, ignore este e-mail.
+
+            Atenciosamente,
+            Equipe de Suporte
+            """
+        )
+
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+                smtp.starttls()
+
+                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+
+                smtp.send_message(msg)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
+
+        return {"message": "E-mail de recuperação enviado com sucesso"}
 
 
 # scripts public routes
@@ -1162,70 +1216,7 @@ def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
 
 # open positions
 
-from models.open_positions import OpenPositions
-
-
-@app.get("/open-positions")
-def get_open_positions():
-    with Session(engine) as session:
-        open_positions = session.exec(select(OpenPositions)).all()
-
-        result = [
-            {
-                "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
-                "function": session.get(Function, open_position.function_id),
-                "turn": session.get(Turn, open_position.turn_id),
-            }
-            for open_position in open_positions
-        ]
-
-        return result
-
-
-@app.get("/subsidiaries/{id}/open-positions")
-def get_open_positions_by_subsidiarie(id: int):
-    with Session(engine) as session:
-        open_positions = session.exec(
-            select(OpenPositions).where(OpenPositions.subsidiarie_id == id)
-        ).all()
-
-        result = [
-            {
-                "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
-                "function": session.get(Function, open_position.function_id),
-                "turn": session.get(Turn, open_position.turn_id),
-            }
-            for open_position in open_positions
-        ]
-
-        return result
-
-
-@app.post("/open-positions")
-def post_open_positions(open_position: OpenPositions):
-    with Session(engine) as session:
-        session.add(open_position)
-
-        session.commit()
-
-        session.refresh(open_position)
-
-        return {"success": True}
-
-
-@app.patch("/open-positions/{id}/close")
-def close_open_positions(id: int):
-    with Session(engine) as session:
-        db_open_position = session.exec(
-            select(OpenPositions).where(OpenPositions.id == id)
-        ).first()
-
-        session.delete(db_open_position)
-
-        session.commit()
-
-        return {"success": True}
-
+app.include_router(open_positions_routes)
 
 # applicants
 

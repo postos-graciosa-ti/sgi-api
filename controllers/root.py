@@ -17,10 +17,11 @@ from sqlmodel import Field, Session, SQLModel, select
 from database.sqlite import create_db_and_tables, engine
 from migrations.apply_migrations import apply_migrations
 from migrations.lib.watchmen.watch import watch
+from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
+from models.open_positions import OpenPositions
 from models.user import User
 from seeds.seed_all import seed_database
-from models.open_positions import OpenPositions
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 def handle_watch_models():
     watch(ApplicantsExams)
+
+    watch(Applicants)
 
     watch(OpenPositions)
 

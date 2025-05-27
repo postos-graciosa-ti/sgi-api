@@ -59,3 +59,4 @@ class Applicants(SQLModel, table=True):
     attendance_date: Optional[str] = Field(default=None, nullable=True)
     is_active: Optional[bool] = Field(default=True)
     email: Optional[str] = Field(default=None, nullable=True)
+    feedback_status: Optional[str] = Field(default=None, nullable=True)

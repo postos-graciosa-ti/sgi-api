@@ -379,6 +379,40 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
             return {"message": "E-mail enviado com sucesso"}
 
 
+class SendFeedbackEmailBody(BaseModel):
+    name: str
+    email: str
+    message: str
+
+
+@app.post("/send-feedback-email")
+def post_send_feedback_email(body: SendFeedbackEmailBody):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    BCC = os.environ.get("BCC")
+
+    msg = EmailMessage()
+
+    msg["Subject"] = f"Retorno de entrevista de {body.name}"
+
+    msg["From"] = EMAIL_REMETENTE
+
+    msg["To"] = body.email
+
+    msg["Bcc"] = BCC
+
+    msg.set_content(body.message)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_REMETENTE, SENHA)
+
+        smtp.send_message(msg)
+
+        return {"message": "E-mail enviado com sucesso"}
+
+
 @app.post("/users/recovery-password/send-email")
 def recovery_user_password_send_email(user: User):
     with Session(engine) as session:

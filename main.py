@@ -380,6 +380,7 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
 
 
 class SendFeedbackEmailBody(BaseModel):
+    id: int
     name: str
     email: str
     message: str
@@ -387,30 +388,39 @@ class SendFeedbackEmailBody(BaseModel):
 
 @app.post("/send-feedback-email")
 def post_send_feedback_email(body: SendFeedbackEmailBody):
-    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+    with Session(engine) as session:
+        db_applicant = session.exec(select(Applicants).where(Applicants.id == body.id)).first()
 
-    SENHA = os.environ.get("SENHA")
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
-    BCC = os.environ.get("BCC")
+        SENHA = os.environ.get("SENHA")
 
-    msg = EmailMessage()
+        BCC = os.environ.get("BCC")
 
-    msg["Subject"] = f"Retorno de entrevista de {body.name}"
+        msg = EmailMessage()
 
-    msg["From"] = EMAIL_REMETENTE
+        msg["Subject"] = f"Retorno de entrevista de {body.name}"
 
-    msg["To"] = body.email
+        msg["From"] = EMAIL_REMETENTE
 
-    msg["Bcc"] = BCC
+        msg["To"] = body.email
 
-    msg.set_content(body.message)
+        msg["Bcc"] = BCC
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_REMETENTE, SENHA)
+        msg.set_content(body.message)
 
-        smtp.send_message(msg)
+        db_applicant.feedback_status = "sim"
 
-        return {"message": "E-mail enviado com sucesso"}
+        session.add(db_applicant)
+
+        session.commit()
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            smtp.send_message(msg)
+
+            return {"message": "E-mail enviado com sucesso"}
 
 
 @app.post("/users/recovery-password/send-email")

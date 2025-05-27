@@ -291,7 +291,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -330,6 +330,53 @@ def create_user_password(userData: CreateUserPasswordInput):
 @app.post("/users/login")
 def user_login(user: User):
     return handle_user_login(user)
+
+
+class SendEmailToMabeconBodyProps(BaseModel):
+    subsidiarie: str
+    worker_name: str
+    worker_admission_date: str
+
+
+@app.post("/send-email-to-mabecon")
+def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
+    with Session(engine) as session:
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+        SENHA = os.environ.get("SENHA")
+
+        BCC = os.environ.get("BCC")
+
+        msg = EmailMessage()
+
+        msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
+
+        msg["From"] = EMAIL_REMETENTE
+
+        msg["To"] = "postosgraciosati@gmail.com"
+
+        msg["Bcc"] = BCC
+
+        msg.set_content(
+            f"""
+            Prezada Mabecon,
+
+            Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
+
+            Desde já, agradecemos o serviço prestado,
+
+            Atenciosamente,
+
+            RH Postos Graciosa
+            """
+        )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            smtp.send_message(msg)
+
+            return {"message": "E-mail enviado com sucesso"}
 
 
 @app.post("/users/recovery-password/send-email")

@@ -391,13 +391,23 @@ class SendFeedbackEmailBody(BaseModel):
 @app.post("/send-feedback-email")
 def post_send_feedback_email(body: SendFeedbackEmailBody):
     with Session(engine) as session:
-        db_applicant = session.exec(select(Applicants).where(Applicants.id == body.id)).first()
+        db_applicant = session.exec(
+            select(Applicants).where(Applicants.id == body.id)
+        ).first()
+
+        if not db_applicant:
+            raise HTTPException(status_code=404, detail="Candidato não encontrado")
 
         EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
         SENHA = os.environ.get("SENHA")
 
         BCC = os.environ.get("BCC")
+
+        if not all([EMAIL_REMETENTE, SENHA, BCC]):
+            raise HTTPException(
+                status_code=500, detail="Configuração de e-mail incompleta"
+            )
 
         msg = EmailMessage()
 
@@ -411,18 +421,36 @@ def post_send_feedback_email(body: SendFeedbackEmailBody):
 
         msg.set_content(body.message)
 
+        try:
+            with open("assets/lista_de_documentos.pdf", "rb") as f:
+                msg.add_attachment(
+                    f.read(),
+                    maintype="application",
+                    subtype="pdf",
+                    filename="lista_de_documentos.pdf",
+                )
+
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Arquivo PDF não encontrado")
+
         db_applicant.feedback_status = "sim"
 
         session.add(db_applicant)
 
         session.commit()
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_REMETENTE, SENHA)
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
 
-            smtp.send_message(msg)
+                smtp.send_message(msg)
 
-            return {"message": "E-mail enviado com sucesso"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Erro ao enviar e-mail: {str(e)}"
+            )
+
+        return {"message": "E-mail enviado com sucesso"}
 
 
 @app.post("/users/recovery-password/send-email")

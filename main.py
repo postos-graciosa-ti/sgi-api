@@ -526,28 +526,36 @@ async def post_sync_workers_data(subsidiarie_id: int, file: UploadFile = File(..
     return await handle_post_sync_workers_data(subsidiarie_id, file)
 
 
-import math
-import numpy as np
-import pandas as pd
-from io import BytesIO
-from fastapi import UploadFile, File
-from sqlmodel import Session, select
-
-def clean_nans(obj):
-    if isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
-        return obj
-    elif isinstance(obj, dict):
-        return {k: clean_nans(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [clean_nans(v) for v in obj]
-    return obj
-
 @app.post("/scripts/sync-workers-data")
 async def handle_post_sync_workers_data(
     file: UploadFile = File(...),
 ):
+    def clean_nans(obj):
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            
+            return obj
+        elif isinstance(obj, dict):
+            return {k: clean_nans(v) for k, v in obj.items()}
+        
+        elif isinstance(obj, list):
+            return [clean_nans(v) for v in obj]
+        
+        return obj
+
+    def convert_to_date(value):
+        if value is None:
+            return None
+        
+        if isinstance(value, pd.Timestamp):
+            return value.to_pydatetime().date()
+        
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        
+        return value
+
     contents = await file.read()
     
     file_extension = file.filename.lower().split(".")[-1]
@@ -565,7 +573,7 @@ async def handle_post_sync_workers_data(
         return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
 
     df.columns = df.columns.str.strip().str.lower()
-
+    
     df = df.replace([np.inf, -np.inf], np.nan)
     
     df = df.where(pd.notnull(df), None)
@@ -596,14 +604,14 @@ async def handle_post_sync_workers_data(
             
             if "cpf" in data: worker_in_db.cpf = data["cpf"]
 
-            if "esocial" in data: worker_in_db.esocial = data["esocial"]
-            
-            # if "data de nascimento" in data: worker_in_db.birthdate = data["data de nascimento"]
-            
-            # if "admissão" in data: worker_in_db.admission_date = data["admissão"]
+            if "data de nascimento" in data:
+                worker_in_db.birthdate = convert_to_date(data["data de nascimento"])
+
+            if "admissão" in data:
+                worker_in_db.admission_date = convert_to_date(data["admissão"])
 
             session.add(worker_in_db)
-    
+            
             updated_workers.append(worker_in_db)
 
         session.commit()

@@ -179,6 +179,9 @@ def handle_patch_applicants(id: int, applicant: Applicants):
         if applicant.email is not None:
             db_applicant.email = applicant.email
 
+        if applicant.mobile is not None:
+            db_applicant.mobile = applicant.mobile
+
         session.add(db_applicant)
 
         session.commit()

@@ -32,79 +32,79 @@ from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
 
-cache = TTLCache(maxsize=100, ttl=600)
+# cache = TTLCache(maxsize=100, ttl=600)
 
-_cache_invalidation_map = {}
-
-
-def register_cache_invalidation(model: Any, cache_func: Callable):
-    if model not in _cache_invalidation_map:
-        _cache_invalidation_map[model] = []
-
-        _setup_model_listeners(model)
-
-    _cache_invalidation_map[model].append(cache_func)
+# _cache_invalidation_map = {}
 
 
-def _setup_model_listeners(model: Any):
-    @event.listens_for(model, "after_insert")
-    @event.listens_for(model, "after_update")
-    @event.listens_for(model, "after_delete")
-    def receive_after_change(mapper, connection, target):
-        if model in _cache_invalidation_map:
-            for cache_func in _cache_invalidation_map[model]:
-                cache_func.invalidate_cache()
+# def register_cache_invalidation(model: Any, cache_func: Callable):
+#     if model not in _cache_invalidation_map:
+#         _cache_invalidation_map[model] = []
+
+#         _setup_model_listeners(model)
+
+#     _cache_invalidation_map[model].append(cache_func)
 
 
-def cached(cache_store: TTLCache):
-    def decorator(func):
-        def invalidate_cache():
-            cache_store.clear()
-
-        func.invalidate_cache = invalidate_cache
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = (func.__name__, args, frozenset(kwargs.items()))
-
-            if key in cache_store:
-                return cache_store[key]
-
-            result = func(*args, **kwargs)
-
-            cache_store[key] = result
-
-            return result
-
-        return wrapper
-
-    return decorator
+# def _setup_model_listeners(model: Any):
+#     @event.listens_for(model, "after_insert")
+#     @event.listens_for(model, "after_update")
+#     @event.listens_for(model, "after_delete")
+#     def receive_after_change(mapper, connection, target):
+#         if model in _cache_invalidation_map:
+#             for cache_func in _cache_invalidation_map[model]:
+#                 cache_func.invalidate_cache()
 
 
-MODELS_TO_TRACK = [
-    Workers,
-    Function,
-    Turn,
-    CostCenter,
-    Department,
-    ResignableReasons,
-    Genders,
-    CivilStatus,
-    Neighborhoods,
-    Cities,
-    States,
-    Ethnicity,
-    CnhCategories,
-    WagePaymentMethod,
-    AwayReasons,
-    SchoolLevels,
-    Banks,
-    Nationalities,
-    HierarchyStructure,
-]
+# def cached(cache_store: TTLCache):
+#     def decorator(func):
+#         def invalidate_cache():
+#             cache_store.clear()
+
+#         func.invalidate_cache = invalidate_cache
+
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             key = (func.__name__, args, frozenset(kwargs.items()))
+
+#             if key in cache_store:
+#                 return cache_store[key]
+
+#             result = func(*args, **kwargs)
+
+#             cache_store[key] = result
+
+#             return result
+
+#         return wrapper
+
+#     return decorator
 
 
-@cached(cache)
+# MODELS_TO_TRACK = [
+#     Workers,
+#     Function,
+#     Turn,
+#     CostCenter,
+#     Department,
+#     ResignableReasons,
+#     Genders,
+#     CivilStatus,
+#     Neighborhoods,
+#     Cities,
+#     States,
+#     Ethnicity,
+#     CnhCategories,
+#     WagePaymentMethod,
+#     AwayReasons,
+#     SchoolLevels,
+#     Banks,
+#     Nationalities,
+#     HierarchyStructure,
+# ]
+
+
+# @cached(cache)
 def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
     with Session(engine) as session:
         workers = session.exec(
@@ -544,8 +544,8 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
         return result
 
 
-for model in MODELS_TO_TRACK:
-    register_cache_invalidation(model, handle_get_workers_by_subsidiarie)
+# for model in MODELS_TO_TRACK:
+#     register_cache_invalidation(model, handle_get_workers_by_subsidiarie)
 
 
 def handle_get_worker_by_id(id: int):

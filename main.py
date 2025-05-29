@@ -552,6 +552,9 @@ async def handle_post_sync_workers_data(
             if "admissão" in data:
                 worker_in_db.admission_date = convert_to_date(data["admissão"])
 
+            if "esocial" in data:
+                worker_in_db.esocial = data["esocial"]
+
             session.add(worker_in_db)
 
             updated_workers.append(worker_in_db)

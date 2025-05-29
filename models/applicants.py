@@ -60,3 +60,5 @@ class Applicants(SQLModel, table=True):
     email: Optional[str] = Field(default=None, nullable=True)
     feedback_status: Optional[str] = Field(default=None, nullable=True)
     mobile: Optional[str] = Field(default=None, nullable=True)
+    email_feedback: Optional[str] = Field(default=None, nullable=True)
+    whatsapp_feedback: Optional[str] = Field(default=None, nullable=True)

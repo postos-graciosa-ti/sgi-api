@@ -188,6 +188,9 @@ def handle_patch_applicants(id: int, applicant: Applicants):
         if applicant.mobile is not None:
             db_applicant.mobile = applicant.mobile
 
+        if applicant.whatsapp_feedback is not None:
+            db_applicant.whatsapp_feedback = applicant.whatsapp_feedback
+
         session.add(db_applicant)
 
         session.commit()
@@ -462,7 +465,7 @@ def handle_post_send_feedback_email(body: SendFeedbackEmailBody):
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail="Arquivo PDF não encontrado")
 
-        db_applicant.feedback_status = "sim"
+        db_applicant.email_feedback = "sim"
 
         session.add(db_applicant)
 

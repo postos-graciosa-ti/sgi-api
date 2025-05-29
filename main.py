@@ -22,9 +22,10 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
-from sqlalchemy import and_, create_engine, event, inspect, text
+from sqlalchemy import and_, create_engine, event, func, inspect, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
+from unidecode import unidecode
 
 from controllers.all_subsidiaries_no_review import (
     handle_get_away_return_workers,
@@ -465,6 +466,7 @@ async def handle_post_sync_workers_data(
                 return None
 
             return obj
+
         elif isinstance(obj, dict):
             return {k: clean_nans(v) for k, v in obj.items()}
 
@@ -492,11 +494,10 @@ async def handle_post_sync_workers_data(
     if file_extension == "csv":
         df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
 
-    elif file_extension == "xlsx":
-        df = pd.read_excel(BytesIO(contents), engine="openpyxl")
+    elif file_extension in ["xlsx", "xls"]:
+        engine_used = "openpyxl" if file_extension == "xlsx" else "xlrd"
 
-    elif file_extension == "xls":
-        df = pd.read_excel(BytesIO(contents), engine="xlrd")
+        df = pd.read_excel(BytesIO(contents), engine=engine_used)
 
     else:
         return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
@@ -513,16 +514,24 @@ async def handle_post_sync_workers_data(
 
     updated_workers = []
 
+    not_found_names = []
+
     with Session(engine) as session:
         for data in cleaned_data:
-            if "nome" not in data:
+            nome = data.get("nome", "")
+
+            if not nome or not nome.strip():
                 continue
 
+            normalized_name = unidecode(nome.strip().lower())
+
             worker_in_db = session.exec(
-                select(Workers).where(Workers.name == data["nome"])
+                select(Workers).where(func.lower(Workers.name) == normalized_name)
             ).first()
 
             if not worker_in_db:
+                not_found_names.append(nome)
+
                 continue
 
             if "rg" in data:
@@ -549,7 +558,10 @@ async def handle_post_sync_workers_data(
 
         session.commit()
 
-    return {"updated_workers": len(updated_workers)}
+    return {
+        "updated_workers": len(updated_workers),
+        "not_found_names": not_found_names,
+    }
 
 
 # users

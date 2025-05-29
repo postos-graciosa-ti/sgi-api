@@ -291,7 +291,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 # startup function
 
@@ -1428,7 +1428,7 @@ def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(id, input)
 
 
-# open positions
+# open positions routes
 
 app.include_router(open_positions_routes)
 

@@ -278,6 +278,7 @@ from pyhints.workers import (
     WorkerLogDeleteInput,
     WorkerLogUpdateInput,
 )
+from routes.applicants_routes import routes as applicants_routes
 from routes.open_positions_routes import routes as open_positions_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
@@ -381,78 +382,6 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
             return {"message": "E-mail enviado com sucesso"}
 
 
-class SendFeedbackEmailBody(BaseModel):
-    id: int
-    name: str
-    email: str
-    message: str
-
-
-@app.post("/send-feedback-email")
-def post_send_feedback_email(body: SendFeedbackEmailBody):
-    with Session(engine) as session:
-        db_applicant = session.exec(
-            select(Applicants).where(Applicants.id == body.id)
-        ).first()
-
-        if not db_applicant:
-            raise HTTPException(status_code=404, detail="Candidato não encontrado")
-
-        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-
-        SENHA = os.environ.get("SENHA")
-
-        BCC = os.environ.get("BCC")
-
-        if not all([EMAIL_REMETENTE, SENHA, BCC]):
-            raise HTTPException(
-                status_code=500, detail="Configuração de e-mail incompleta"
-            )
-
-        msg = EmailMessage()
-
-        msg["Subject"] = f"Retorno de entrevista de {body.name}"
-
-        msg["From"] = EMAIL_REMETENTE
-
-        msg["To"] = body.email
-
-        msg["Bcc"] = BCC
-
-        msg.set_content(body.message)
-
-        try:
-            with open("assets/lista_de_documentos.pdf", "rb") as f:
-                msg.add_attachment(
-                    f.read(),
-                    maintype="application",
-                    subtype="pdf",
-                    filename="lista_de_documentos.pdf",
-                )
-
-        except FileNotFoundError:
-            raise HTTPException(status_code=500, detail="Arquivo PDF não encontrado")
-
-        db_applicant.feedback_status = "sim"
-
-        session.add(db_applicant)
-
-        session.commit()
-
-        try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(EMAIL_REMETENTE, SENHA)
-
-                smtp.send_message(msg)
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Erro ao enviar e-mail: {str(e)}"
-            )
-
-        return {"message": "E-mail enviado com sucesso"}
-
-
 @app.post("/users/recovery-password/send-email")
 def recovery_user_password_send_email(user: User):
     with Session(engine) as session:
@@ -534,52 +463,52 @@ async def handle_post_sync_workers_data(
         if isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
                 return None
-            
+
             return obj
         elif isinstance(obj, dict):
             return {k: clean_nans(v) for k, v in obj.items()}
-        
+
         elif isinstance(obj, list):
             return [clean_nans(v) for v in obj]
-        
+
         return obj
 
     def convert_to_date(value):
         if value is None:
             return None
-        
+
         if isinstance(value, pd.Timestamp):
             return value.to_pydatetime().date()
-        
+
         if isinstance(value, datetime.datetime):
             return value.date()
-        
+
         return value
 
     contents = await file.read()
-    
+
     file_extension = file.filename.lower().split(".")[-1]
 
     if file_extension == "csv":
         df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
-    
+
     elif file_extension == "xlsx":
         df = pd.read_excel(BytesIO(contents), engine="openpyxl")
-    
+
     elif file_extension == "xls":
         df = pd.read_excel(BytesIO(contents), engine="xlrd")
-    
+
     else:
         return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
 
     df.columns = df.columns.str.strip().str.lower()
-    
+
     df = df.replace([np.inf, -np.inf], np.nan)
-    
+
     df = df.where(pd.notnull(df), None)
 
     data = df.to_dict(orient="records")
-    
+
     cleaned_data = clean_nans(data)
 
     updated_workers = []
@@ -596,13 +525,17 @@ async def handle_post_sync_workers_data(
             if not worker_in_db:
                 continue
 
-            if "rg" in data: worker_in_db.rg = data["rg"]
-            
-            if "ctps" in data: worker_in_db.ctps = data["ctps"]
-            
-            if "pis" in data: worker_in_db.pis = data["pis"]
-            
-            if "cpf" in data: worker_in_db.cpf = data["cpf"]
+            if "rg" in data:
+                worker_in_db.rg = data["rg"]
+
+            if "ctps" in data:
+                worker_in_db.ctps = data["ctps"]
+
+            if "pis" in data:
+                worker_in_db.pis = data["pis"]
+
+            if "cpf" in data:
+                worker_in_db.cpf = data["cpf"]
 
             if "data de nascimento" in data:
                 worker_in_db.birthdate = convert_to_date(data["data de nascimento"])
@@ -611,7 +544,7 @@ async def handle_post_sync_workers_data(
                 worker_in_db.admission_date = convert_to_date(data["admissão"])
 
             session.add(worker_in_db)
-            
+
             updated_workers.append(worker_in_db)
 
         session.commit()
@@ -1428,75 +1361,13 @@ def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(id, input)
 
 
-# open positions routes
+# include open positions routes
 
 app.include_router(open_positions_routes)
 
-# applicants
+# include applicants routes
 
-
-@app.get("/applicants", dependencies=[Depends(verify_token)])
-def get_applicants():
-    return handle_get_applicants()
-
-
-@app.post("/applicants", dependencies=[Depends(verify_token)])
-def post_applicant(applicant: Applicants):
-    return handle_post_applicant(applicant)
-
-
-@app.patch("/applicants/{id}", dependencies=[Depends(verify_token)])
-def patch_applicants(id: int, applicant: Applicants):
-    return handle_patch_applicants(id, applicant)
-
-
-@app.delete("/applicants/{id}", dependencies=[Depends(verify_token)])
-def delete_applicants(id: int):
-    return handle_delete_applicants(id)
-
-
-# hire applicants
-
-
-@app.post("/applicants/hire", dependencies=[Depends(verify_token)])
-def post_hire_applicants(recruit: RecruitProps):
-    return handle_post_hire_applicants(recruit)
-
-
-# applicants notifications
-
-
-@app.get("/users/{id}/applicants/notifications", dependencies=[Depends(verify_token)])
-def get_applicants_notifications(id: int):
-    return handle_get_applicants_notifications(id)
-
-
-# applicants exam
-
-
-@app.get("/applicants/{id}/exams")
-def handle_get_applicants_exams(id: int):
-    with Session(engine) as session:
-        applicants_exams = session.exec(
-            select(ApplicantsExams).where(ApplicantsExams.applicant_id == id)
-        ).all()
-
-        return applicants_exams
-
-
-@app.post("/applicants/{id}/exams")
-def handle_post_applicants_exams(id: int, applicant_exam: ApplicantsExams):
-    applicant_exam.applicant_id = id
-
-    with Session(engine) as session:
-        session.add(applicant_exam)
-
-        session.commit()
-
-        session.refresh(applicant_exam)
-
-        return {"success": True}
-
+app.include_router(applicants_routes)
 
 # worker first review
 

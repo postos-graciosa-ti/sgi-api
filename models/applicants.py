@@ -1,7 +1,6 @@
-from datetime import date
 from typing import Optional
 
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, SQLModel
 
 
 class Applicants(SQLModel, table=True):

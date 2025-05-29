@@ -1,14 +1,20 @@
+import os
+import smtplib
 from datetime import datetime, timedelta
+from email.message import EmailMessage
+from typing import Optional
 
 from dateutil.relativedelta import relativedelta
+from fastapi import HTTPException
 from sqlalchemy import and_, create_engine, event, text
 from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.applicants import Applicants
+from models.applicants_exams import ApplicantsExams
 from models.function import Function
 from models.workers import Workers
-from pyhints.applicants import RecruitProps
+from pyhints.applicants import RecruitProps, SendFeedbackEmailBody
 
 # applicants
 
@@ -207,37 +213,171 @@ def handle_delete_applicants(id: int):
 # hire applicants
 
 
-def handle_post_hire_applicants(recruit: RecruitProps):
+def get_civil_status_id(estado_civil: Optional[str]) -> Optional[int]:
+    if not estado_civil:
+        return None
+
+    civil_status_map = {
+        "solteiro": 1,
+        "casado": 2,
+        "divorciado": 3,
+        "viúvo": 4,
+        "separado": 5,
+    }
+
+    return civil_status_map.get(estado_civil.lower(), 1)
+
+
+def get_school_level_id(escolaridade: Optional[str]) -> Optional[int]:
+    if not escolaridade:
+        return None
+
+    school_level_map = {
+        "fundamental incompleto": 1,
+        "fundamental completo": 2,
+        "médio incompleto": 3,
+        "médio completo": 4,
+        "superior incompleto": 5,
+        "superior completo": 6,
+        "pós-graduação": 7,
+        "mestrado": 8,
+        "doutorado": 9,
+    }
+
+    return school_level_map.get(escolaridade.lower(), 1)
+
+
+def handle_post_hire_applicants(recruit: RecruitProps) -> Optional[Workers]:
     with Session(engine) as session:
-        worker = Workers(**recruit.worker_data)
-
-        admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
-
-        worker.first_review_date = (admission_date + relativedelta(months=1)).strftime(
-            "%Y-%m-%d"
-        )
-        worker.second_review_date = (admission_date + relativedelta(months=2)).strftime(
-            "%Y-%m-%d"
-        )
-
-        session.add(worker)
-
-        session.commit()
-
-        session.refresh(worker)
-
-        applicant = session.exec(
+        db_applicant = session.exec(
             select(Applicants).where(Applicants.id == recruit.applicant_id)
         ).first()
 
-        session.delete(applicant)
+        if not db_applicant:
+            raise ValueError(f"Applicant with ID {recruit.applicant_id} not found")
+
+        new_worker = Workers(
+            name=db_applicant.name,
+            cpf=db_applicant.cpf,
+            rg=db_applicant.rg,
+            rg_issuing_agency="",
+            rg_expedition_date=db_applicant.data_nascimento,
+            fathername=db_applicant.nome_pai,
+            mothername=db_applicant.nome_mae,
+            birthdate=db_applicant.data_nascimento,
+            email=db_applicant.email,
+            mobile=db_applicant.contato or db_applicant.mobile,
+            phone=db_applicant.contato,
+            emergency_number=db_applicant.contato,
+            bairro=db_applicant.bairro,
+            street="",
+            street_number="",
+            street_complement="",
+            cep="",
+            experience_time=db_applicant.experiencia_funcao,
+            previous_experience=True if db_applicant.experiencia_funcao else False,
+            ultima_experiencia=db_applicant.ultima_experiencia,
+            penultima_experiencia=db_applicant.penultima_experiencia,
+            antepenultima_experiencia=db_applicant.antepenultima_experiencia,
+            admission_date=datetime.now().strftime("%Y-%m-%d"),
+            resignation_date=datetime.now().strftime("%Y-%m-%d"),
+            first_review_date=(datetime.now() + relativedelta(months=1)).strftime(
+                "%Y-%m-%d"
+            ),
+            second_review_date=(datetime.now() + relativedelta(months=2)).strftime(
+                "%Y-%m-%d"
+            ),
+            last_function_date=datetime.now().strftime("%Y-%m-%d"),
+            wage=db_applicant.ultimo_salario,
+            has_children=(
+                True
+                if db_applicant.filhos and db_applicant.filhos.lower() == "sim"
+                else False
+            ),
+            children_data="[]",
+            pis="",
+            ctps="",
+            ctps_serie="",
+            ctps_emission_date="",
+            rh_opinion=db_applicant.rh_opinion,
+            coordinator_opinion=db_applicant.coordinator_opinion,
+            special_notation=db_applicant.special_notation,
+            coordinator_observations=db_applicant.coordinator_observations,
+            is_active=True,
+            is_away=False,
+            first_job=False if db_applicant.experiencia_funcao else True,
+            was_employee=True if db_applicant.experiencia_funcao else False,
+            subsidiarie_id=1,
+            function_id=1,
+            cost_center_id=1,
+            department_id=1,
+            turn_id=1,
+            civil_status_id=get_civil_status_id(db_applicant.estado_civil),
+            school_level=get_school_level_id(db_applicant.escolaridade),
+            ethnicity_id=1,
+            gender_id=1,
+            neighborhood_id=1,
+            city=1,
+            state=1,
+            bank=1,
+            wage_payment_method=1,
+            enrolment="",
+            esocial="",
+            cbo="",
+            general_function_code="",
+            picture="",
+            timecode="",
+            sales_code="",
+            votant_title="",
+            votant_zone="",
+            votant_session="",
+            cnh="",
+            cnh_emition_date="",
+            cnh_valid_date="",
+            cnh_category=1,
+            union_contribute_current_year=False,
+            receiving_unemployment_insurance=False,
+            month_wage=db_applicant.ultimo_salario,
+            hour_wage="",
+            journey_wage="",
+            transport_voucher="",
+            transport_voucher_quantity="",
+            diary_workjourney="",
+            week_workjourney="",
+            month_workjourney="",
+            nocturne_hours="",
+            dangerousness=False,
+            unhealthy=False,
+            early_payment=False,
+            harmfull_exposition=False,
+            has_experience_time=True if db_applicant.experiencia_funcao else False,
+            has_nocturne_hours=False,
+            propotional_payment=False,
+            total_nocturne_workjourney="",
+            twenty_five_workjourney="",
+            twenty_two_to_five_week_workjourney="",
+            twenty_two_to_five_month_workjourney="",
+            twenty_two_to_five_effective_diary_workjourney="",
+            healthcare_plan=False,
+            healthcare_plan_discount="",
+            life_insurance=False,
+            life_insurance_discount="",
+            ag="",
+            cc="",
+            early_payment_discount="",
+        )
+
+        session.add(new_worker)
 
         session.commit()
 
-        return worker
+        session.refresh(new_worker)
 
+        session.delete(db_applicant)
 
-# applicants notifications
+        session.commit()
+
+        return new_worker
 
 
 def handle_get_applicants_notifications(id: int):
@@ -254,3 +394,89 @@ def handle_get_applicants_notifications(id: int):
         result = session.exec(query.params(user_id=id)).mappings().all()
 
         return result
+
+
+def handle_get_applicants_exams(id: int):
+    with Session(engine) as session:
+        applicants_exams = session.exec(
+            select(ApplicantsExams).where(ApplicantsExams.applicant_id == id)
+        ).all()
+
+        return applicants_exams
+
+
+def handle_post_applicants_exams(id: int, applicant_exam: ApplicantsExams):
+    applicant_exam.applicant_id = id
+
+    with Session(engine) as session:
+        session.add(applicant_exam)
+
+        session.commit()
+
+        session.refresh(applicant_exam)
+
+        return {"success": True}
+
+
+def handle_post_send_feedback_email(body: SendFeedbackEmailBody):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(Applicants).where(Applicants.id == body.id)
+        ).first()
+
+        if not db_applicant:
+            raise HTTPException(status_code=404, detail="Candidato não encontrado")
+
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+        SENHA = os.environ.get("SENHA")
+
+        BCC = os.environ.get("BCC")
+
+        if not all([EMAIL_REMETENTE, SENHA, BCC]):
+            raise HTTPException(
+                status_code=500, detail="Configuração de e-mail incompleta"
+            )
+
+        msg = EmailMessage()
+
+        msg["Subject"] = f"Retorno de entrevista de {body.name}"
+
+        msg["From"] = EMAIL_REMETENTE
+
+        msg["To"] = body.email
+
+        msg["Bcc"] = BCC
+
+        msg.set_content(body.message)
+
+        try:
+            with open("assets/lista_de_documentos.pdf", "rb") as f:
+                msg.add_attachment(
+                    f.read(),
+                    maintype="application",
+                    subtype="pdf",
+                    filename="lista_de_documentos.pdf",
+                )
+
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Arquivo PDF não encontrado")
+
+        db_applicant.feedback_status = "sim"
+
+        session.add(db_applicant)
+
+        session.commit()
+
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
+
+                smtp.send_message(msg)
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Erro ao enviar e-mail: {str(e)}"
+            )
+
+        return {"message": "E-mail enviado com sucesso"}

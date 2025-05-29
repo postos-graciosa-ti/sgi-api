@@ -526,6 +526,99 @@ async def post_sync_workers_data(subsidiarie_id: int, file: UploadFile = File(..
     return await handle_post_sync_workers_data(subsidiarie_id, file)
 
 
+@app.post("/scripts/sync-workers-data")
+async def handle_post_sync_workers_data(
+    file: UploadFile = File(...),
+):
+    def clean_nans(obj):
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            
+            return obj
+        elif isinstance(obj, dict):
+            return {k: clean_nans(v) for k, v in obj.items()}
+        
+        elif isinstance(obj, list):
+            return [clean_nans(v) for v in obj]
+        
+        return obj
+
+    def convert_to_date(value):
+        if value is None:
+            return None
+        
+        if isinstance(value, pd.Timestamp):
+            return value.to_pydatetime().date()
+        
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        
+        return value
+
+    contents = await file.read()
+    
+    file_extension = file.filename.lower().split(".")[-1]
+
+    if file_extension == "csv":
+        df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
+    
+    elif file_extension == "xlsx":
+        df = pd.read_excel(BytesIO(contents), engine="openpyxl")
+    
+    elif file_extension == "xls":
+        df = pd.read_excel(BytesIO(contents), engine="xlrd")
+    
+    else:
+        return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
+
+    df.columns = df.columns.str.strip().str.lower()
+    
+    df = df.replace([np.inf, -np.inf], np.nan)
+    
+    df = df.where(pd.notnull(df), None)
+
+    data = df.to_dict(orient="records")
+    
+    cleaned_data = clean_nans(data)
+
+    updated_workers = []
+
+    with Session(engine) as session:
+        for data in cleaned_data:
+            if "nome" not in data:
+                continue
+
+            worker_in_db = session.exec(
+                select(Workers).where(Workers.name == data["nome"])
+            ).first()
+
+            if not worker_in_db:
+                continue
+
+            if "rg" in data: worker_in_db.rg = data["rg"]
+            
+            if "ctps" in data: worker_in_db.ctps = data["ctps"]
+            
+            if "pis" in data: worker_in_db.pis = data["pis"]
+            
+            if "cpf" in data: worker_in_db.cpf = data["cpf"]
+
+            if "data de nascimento" in data:
+                worker_in_db.birthdate = convert_to_date(data["data de nascimento"])
+
+            if "admissão" in data:
+                worker_in_db.admission_date = convert_to_date(data["admissão"])
+
+            session.add(worker_in_db)
+            
+            updated_workers.append(worker_in_db)
+
+        session.commit()
+
+    return {"updated_workers": len(updated_workers)}
+
+
 # users
 
 

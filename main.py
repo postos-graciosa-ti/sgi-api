@@ -1,7 +1,9 @@
+import datetime
 import io
 import json
 import math
 import os
+import re
 import smtplib
 import threading
 from datetime import datetime, timedelta
@@ -18,7 +20,7 @@ import requests
 from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
@@ -471,6 +473,11 @@ async def handle_post_sync_workers_data(file: UploadFile = File(...)):
             return value.date()
         return value
 
+    def normalize_name(name):
+        if not name:
+            return ""
+        return re.sub(r"\s+", " ", unidecode(name.strip().lower()))
+
     contents = await file.read()
     file_extension = file.filename.lower().split(".")[-1]
 
@@ -486,6 +493,12 @@ async def handle_post_sync_workers_data(file: UploadFile = File(...)):
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.where(pd.notnull(df), None)
 
+    # Remove registros sem nome válido
+    if "nome" not in df.columns:
+        return {"error": "A coluna 'nome' é obrigatória no arquivo."}
+
+    df = df[df["nome"].notnull() & df["nome"].str.strip().astype(bool)]
+
     data = df.to_dict(orient="records")
     cleaned_data = clean_nans(data)
 
@@ -496,42 +509,46 @@ async def handle_post_sync_workers_data(file: UploadFile = File(...)):
         # Carrega todos os trabalhadores com nome normalizado em memória
         all_workers = session.exec(select(Workers)).all()
         normalized_workers = {
-            unidecode(worker.name.strip().lower()): worker for worker in all_workers
+            normalize_name(worker.name): worker for worker in all_workers
         }
 
-        for data in cleaned_data:
-            nome = data.get("nome", "")
+        for entry in cleaned_data:
+            nome = entry.get("nome", "")
 
             if not nome or not nome.strip():
                 continue
 
-            normalized_name = unidecode(nome.strip().lower())
+            normalized_name = normalize_name(nome)
             worker_in_db = normalized_workers.get(normalized_name)
 
             if not worker_in_db:
+                # Log para debug (remova se não quiser prints no console)
+                print(
+                    f"Nome não encontrado no banco: '{nome}' -> normalizado: '{normalized_name}'"
+                )
                 not_found_names.append(nome)
                 continue
 
-            if "rg" in data:
-                worker_in_db.rg = data["rg"]
+            if "rg" in entry:
+                worker_in_db.rg = entry["rg"]
 
-            if "ctps" in data:
-                worker_in_db.ctps = data["ctps"]
+            if "ctps" in entry:
+                worker_in_db.ctps = entry["ctps"]
 
-            if "pis" in data:
-                worker_in_db.pis = data["pis"]
+            if "pis" in entry:
+                worker_in_db.pis = entry["pis"]
 
-            if "cpf" in data:
-                worker_in_db.cpf = data["cpf"]
+            if "cpf" in entry:
+                worker_in_db.cpf = entry["cpf"]
 
-            if "data de nascimento" in data:
-                worker_in_db.birthdate = convert_to_date(data["data de nascimento"])
+            if "data de nascimento" in entry:
+                worker_in_db.birthdate = convert_to_date(entry["data de nascimento"])
 
-            if "admissão" in data:
-                worker_in_db.admission_date = convert_to_date(data["admissão"])
+            if "admissão" in entry:
+                worker_in_db.admission_date = convert_to_date(entry["admissão"])
 
-            if "esocial" in data:
-                worker_in_db.esocial = data["esocial"]
+            if "esocial" in entry:
+                worker_in_db.esocial = entry["esocial"]
 
             session.add(worker_in_db)
             updated_workers.append(worker_in_db)
@@ -1021,12 +1038,6 @@ def get_functions():
 @error_handler
 def get_functions_for_users():
     return handle_get_functions_for_users()
-
-
-@app.get("/functions/for-workers", dependencies=[Depends(verify_token)])
-@error_handler
-def get_functions_for_users():
-    return handle_get_functions_for_workers()
 
 
 @app.post("/functions", dependencies=[Depends(verify_token)])

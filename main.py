@@ -283,7 +283,6 @@ from routes.applicants_routes import routes as applicants_routes
 from routes.open_positions_routes import routes as open_positions_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
-from scripts.sync_workers_data import handle_post_sync_workers_data
 
 # pre settings
 
@@ -342,25 +341,24 @@ class SendEmailToMabeconBodyProps(BaseModel):
 
 @app.post("/send-email-to-mabecon")
 def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
-    with Session(engine) as session:
-        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
-        SENHA = os.environ.get("SENHA")
+    SENHA = os.environ.get("SENHA")
 
-        BCC = os.environ.get("BCC")
+    BCC = os.environ.get("BCC")
 
-        msg = EmailMessage()
+    msg = EmailMessage()
 
-        msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
+    msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
 
-        msg["From"] = EMAIL_REMETENTE
+    msg["From"] = EMAIL_REMETENTE
 
-        msg["To"] = "postosgraciosati@gmail.com"
+    msg["To"] = "postosgraciosati@gmail.com"
 
-        msg["Bcc"] = BCC
+    msg["Bcc"] = BCC
 
-        msg.set_content(
-            f"""
+    msg.set_content(
+        f"""
             Prezada Mabecon,
 
             Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
@@ -373,14 +371,14 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
 
             RH Postos Graciosa
             """
-        )
+    )
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_REMETENTE, SENHA)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_REMETENTE, SENHA)
 
-            smtp.send_message(msg)
+        smtp.send_message(msg)
 
-            return {"message": "E-mail enviado com sucesso"}
+        return {"message": "E-mail enviado com sucesso"}
 
 
 @app.post("/users/recovery-password/send-email")
@@ -451,72 +449,56 @@ async def post_scripts_rhsheets(
     return await handle_post_scripts_rhsheets(discountList, file)
 
 
-@app.post("/scripts/subsidiaries/{subsidiarie_id}/sync-workers-data")
-async def post_sync_workers_data(subsidiarie_id: int, file: UploadFile = File(...)):
-    return await handle_post_sync_workers_data(subsidiarie_id, file)
-
-
 @app.post("/scripts/sync-workers-data")
-async def handle_post_sync_workers_data(
-    file: UploadFile = File(...),
-):
+async def handle_post_sync_workers_data(file: UploadFile = File(...)):
     def clean_nans(obj):
         if isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
                 return None
-
             return obj
-
         elif isinstance(obj, dict):
             return {k: clean_nans(v) for k, v in obj.items()}
-
         elif isinstance(obj, list):
             return [clean_nans(v) for v in obj]
-
         return obj
 
     def convert_to_date(value):
         if value is None:
             return None
-
         if isinstance(value, pd.Timestamp):
             return value.to_pydatetime().date()
-
         if isinstance(value, datetime.datetime):
             return value.date()
-
         return value
 
     contents = await file.read()
-
     file_extension = file.filename.lower().split(".")[-1]
 
     if file_extension == "csv":
         df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
-
     elif file_extension in ["xlsx", "xls"]:
         engine_used = "openpyxl" if file_extension == "xlsx" else "xlrd"
-
         df = pd.read_excel(BytesIO(contents), engine=engine_used)
-
     else:
         return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
 
     df.columns = df.columns.str.strip().str.lower()
-
     df = df.replace([np.inf, -np.inf], np.nan)
-
     df = df.where(pd.notnull(df), None)
 
     data = df.to_dict(orient="records")
-
     cleaned_data = clean_nans(data)
 
     updated_workers = []
-
     not_found_names = []
 
     with Session(engine) as session:
+        # Carrega todos os trabalhadores com nome normalizado em memória
+        all_workers = session.exec(select(Workers)).all()
+        normalized_workers = {
+            unidecode(worker.name.strip().lower()): worker for worker in all_workers
+        }
+
         for data in cleaned_data:
             nome = data.get("nome", "")
 
@@ -524,14 +506,10 @@ async def handle_post_sync_workers_data(
                 continue
 
             normalized_name = unidecode(nome.strip().lower())
-
-            worker_in_db = session.exec(
-                select(Workers).where(func.lower(Workers.name) == normalized_name)
-            ).first()
+            worker_in_db = normalized_workers.get(normalized_name)
 
             if not worker_in_db:
                 not_found_names.append(nome)
-
                 continue
 
             if "rg" in data:
@@ -556,7 +534,6 @@ async def handle_post_sync_workers_data(
                 worker_in_db.esocial = data["esocial"]
 
             session.add(worker_in_db)
-
             updated_workers.append(worker_in_db)
 
         session.commit()

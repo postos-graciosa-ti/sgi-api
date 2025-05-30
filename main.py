@@ -927,6 +927,29 @@ def reactivate_worker(id: int):
     return handle_reactivate_worker(id)
 
 
+class PatchWorkersTurnBody(BaseModel):
+    worker_id: int
+    turn_id: int
+
+
+@app.patch("/patch-workers-turn")
+def patch_workers_turn(body: PatchWorkersTurnBody):
+    with Session(engine) as session:
+        db_worker = session.exec(
+            select(Workers).where(Workers.id == body.worker_id)
+        ).first()
+
+        db_worker.turn_id = body.turn_id
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
 # workers logs
 
 

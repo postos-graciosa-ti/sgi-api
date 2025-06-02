@@ -23,6 +23,7 @@ from models.open_positions import OpenPositions
 from models.user import User
 from seeds.seed_all import seed_database
 from models.workers_pictures import WorkersPictures
+from models.redirected_to import RedirectedTo
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,6 +36,8 @@ def handle_watch_models():
     watch(Applicants)
 
     watch(OpenPositions)
+
+    watch(RedirectedTo)
 
     watch(WorkersPictures)
 

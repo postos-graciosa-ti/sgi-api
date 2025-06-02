@@ -5,15 +5,18 @@ from controllers.applicants import (
     handle_get_applicants,
     handle_get_applicants_exams,
     handle_get_applicants_notifications,
+    handle_get_applicants_redirected_to,
     handle_patch_applicants,
     handle_post_applicant,
     handle_post_applicants_exams,
+    handle_post_applicants_redirected_to,
     handle_post_hire_applicants,
     handle_post_send_feedback_email,
 )
 from functions.auth import verify_token
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
+from models.redirected_to import RedirectedTo
 from pyhints.applicants import RecruitProps, SendFeedbackEmailBody
 
 routes = APIRouter(dependencies=[Depends(verify_token)])
@@ -62,3 +65,13 @@ def post_applicants_exams(id: int, applicant_exam: ApplicantsExams):
 @routes.post("/applicants/send-feedback-email")
 def post_send_feedback_email(body: SendFeedbackEmailBody):
     return handle_post_send_feedback_email(body)
+
+
+@routes.get("/applicants/{id}/redirected-to")
+def get_applicants_redirect_to(id: int):
+    return handle_get_applicants_redirected_to(id)
+
+
+@routes.post("/applicants/redirected-to")
+def post_applicants_redirect_to(body: RedirectedTo):
+    return handle_post_applicants_redirected_to(body)

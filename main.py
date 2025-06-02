@@ -1,3 +1,4 @@
+import base64
 import datetime
 import io
 import json
@@ -20,7 +21,16 @@ import requests
 from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
@@ -245,6 +255,7 @@ from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
 from models.open_positions import OpenPositions
 from models.parents_type import ParentsType
+from models.redirected_to import RedirectedTo
 from models.resignable_reasons import ResignableReasons
 from models.role import Role
 from models.scale import Scale
@@ -3023,3 +3034,19 @@ def get_admissions_report(id: int, input: AdmissionsReportInput):
                 result.append({"id": worker.id, "name": worker.name})
 
         return result
+
+
+class ImageData(BaseModel):
+    image: str
+
+
+@app.post("/api/upload-image")
+async def upload_image(data: ImageData):
+    header, encoded = data.image.split(",", 1)
+    
+    image_data = base64.b64decode(encoded)
+
+    with open("foto_usuario.jpg", "wb") as f:
+        f.write(image_data)
+
+    return {"status": "ok"}

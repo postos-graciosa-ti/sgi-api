@@ -13,6 +13,7 @@ from database.sqlite import engine
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.function import Function
+from models.redirected_to import RedirectedTo
 from models.workers import Workers
 from pyhints.applicants import RecruitProps, SendFeedbackEmailBody
 
@@ -483,3 +484,23 @@ def handle_post_send_feedback_email(body: SendFeedbackEmailBody):
             )
 
         return {"message": "E-mail enviado com sucesso"}
+
+
+def handle_get_applicants_redirected_to(id: int):
+    with Session(engine) as session:
+        result = session.exec(
+            select(RedirectedTo).where(RedirectedTo.applicant_id == id)
+        ).first()
+
+        return result
+
+
+def handle_post_applicants_redirected_to(body: RedirectedTo):
+    with Session(engine) as session:
+        session.add(body)
+
+        session.commit()
+
+        session.refresh(body)
+
+        return {"success": True}

@@ -211,6 +211,11 @@ from controllers.workers_parents import (
     handle_get_workers_parents,
     handle_post_workers_parents,
 )
+from controllers.workers_pictures import (
+    handle_delete_workers_pictures,
+    handle_get_workers_pictures,
+    handle_post_workers_pictures,
+)
 from database.sqlite import engine
 from functions.auth import verify_token
 from functions.error_handling import error_handler
@@ -1041,6 +1046,24 @@ def post_worker_notation(id: int, data: PostWorkerNotationInput):
 @error_handler
 def delete_worker_notation(id: int):
     return handle_delete_worker_notation(id)
+
+
+# workers pictures
+
+
+@app.get("/workers-pictures/{worker_id}")
+def get_workers_pictures(worker_id: int):
+    return handle_get_workers_pictures(worker_id)
+
+
+@app.post("/workers-pictures")
+def post_workers_pictures(body: WorkersPictures):
+    return handle_post_workers_pictures(body)
+
+
+@app.delete("/workers-pictures/{worker_id}")
+def delete_workers_pictures(worker_id: int):
+    return handle_delete_workers_pictures(worker_id)
 
 
 # functions
@@ -3000,31 +3023,3 @@ def get_admissions_report(id: int, input: AdmissionsReportInput):
                 result.append({"id": worker.id, "name": worker.name})
 
         return result
-
-
-from fastapi import HTTPException
-
-
-@app.get("/workers-pictures/{worker_id}")
-def get_workers_pictures(worker_id: int):
-    with Session(engine) as session:
-        worker_picture = session.exec(
-            select(WorkersPictures).where(WorkersPictures.worker_id == worker_id)
-        ).first()
-
-        if not worker_picture:
-            raise HTTPException(status_code=404, detail="Worker picture not found.")
-
-        return worker_picture
-
-
-@app.post("/workers-pictures")
-def post_workers_pictures(body: WorkersPictures):
-    with Session(engine) as session:
-        session.add(body)
-
-        session.commit()
-
-        session.refresh(body)
-
-        return {"success": "True"}

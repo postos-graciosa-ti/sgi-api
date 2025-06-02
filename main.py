@@ -3036,17 +3036,17 @@ def get_admissions_report(id: int, input: AdmissionsReportInput):
         return result
 
 
-class ImageData(BaseModel):
+class ImagePayload(BaseModel):
     image: str
 
 
 @app.post("/api/upload-image")
-async def upload_image(data: ImageData):
-    header, encoded = data.image.split(",", 1)
-    
-    image_data = base64.b64decode(encoded)
+async def upload_image(payload: ImagePayload):
+    header, data = payload.image.split(",", 1)
+
+    image_bytes = base64.b64decode(data)
 
     with open("foto_usuario.jpg", "wb") as f:
-        f.write(image_data)
+        f.write(image_bytes)
 
     return {"status": "ok"}

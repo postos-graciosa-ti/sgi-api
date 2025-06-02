@@ -257,6 +257,7 @@ from models.workers import Workers
 from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_parents import WorkersParents
+from models.workers_pictures import WorkersPictures
 from models.workers_second_review import WorkersSecondReview
 from pyhints.applicants import RecruitProps
 from pyhints.no_reviews import SubsidiaryFilter
@@ -2999,3 +3000,31 @@ def get_admissions_report(id: int, input: AdmissionsReportInput):
                 result.append({"id": worker.id, "name": worker.name})
 
         return result
+
+
+from fastapi import HTTPException
+
+
+@app.get("/workers-pictures/{worker_id}")
+def get_workers_pictures(worker_id: int):
+    with Session(engine) as session:
+        worker_picture = session.exec(
+            select(WorkersPictures).where(WorkersPictures.worker_id == worker_id)
+        ).first()
+
+        if not worker_picture:
+            raise HTTPException(status_code=404, detail="Worker picture not found.")
+
+        return worker_picture
+
+
+@app.post("/workers-pictures")
+def post_workers_pictures(body: WorkersPictures):
+    with Session(engine) as session:
+        session.add(body)
+
+        session.commit()
+
+        session.refresh(body)
+
+        return {"success": "True"}

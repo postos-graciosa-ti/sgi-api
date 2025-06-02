@@ -22,6 +22,7 @@ from models.applicants_exams import ApplicantsExams
 from models.open_positions import OpenPositions
 from models.user import User
 from seeds.seed_all import seed_database
+from models.workers_pictures import WorkersPictures
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +35,8 @@ def handle_watch_models():
     watch(Applicants)
 
     watch(OpenPositions)
+
+    watch(WorkersPictures)
 
 
 def handle_on_startup():

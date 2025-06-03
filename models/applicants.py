@@ -62,3 +62,24 @@ class Applicants(SQLModel, table=True):
     mobile: Optional[str] = Field(default=None, nullable=True)
     email_feedback: Optional[str] = Field(default=None, nullable=True)
     whatsapp_feedback: Optional[str] = Field(default=None, nullable=True)
+
+    # coordinator interview questions
+
+    personal_life: Optional[str] = Field(default=None, nullable=True)
+    gas_station_experience: Optional[str] = Field(default=None, nullable=True)
+    life_structure: Optional[str] = Field(default=None, nullable=True)
+    working_here_objectives: Optional[str] = Field(default=None, nullable=True)
+    expect_working_here: Optional[str] = Field(default=None, nullable=True)
+    applicant_criteria: Optional[str] = Field(default=None, nullable=True)
+    wage_info: Optional[str] = Field(default=None, nullable=True)
+
+    target_goals: Optional[str] = Field(default=None, nullable=True)
+    claimed_goals: Optional[str] = Field(default=None, nullable=True)
+    client_fidelity: Optional[str] = Field(default=None, nullable=True)
+    hard_situations: Optional[str] = Field(default=None, nullable=True)
+    bad_reputation: Optional[str] = Field(default=None, nullable=True)
+    boring_consumer: Optional[str] = Field(default=None, nullable=True)
+    rage_at_workplace: Optional[str] = Field(default=None, nullable=True)
+    ecorp_changes: Optional[str] = Field(default=None, nullable=True)
+    team_work: Optional[str] = Field(default=None, nullable=True)
+    work_relationships: Optional[str] = Field(default=None, nullable=True)

@@ -34,7 +34,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
-from sqlalchemy import and_, create_engine, event, func, inspect, text
+from sqlalchemy import and_, create_engine, event, extract, func, inspect, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 from unidecode import unidecode
@@ -814,6 +814,31 @@ def patch_workers_turn(body: PatchWorkersTurnBody):
         session.refresh(db_worker)
 
         return {"success": True}
+
+
+@app.get("/another-route-yet")
+def get_month_birthdays():
+    with Session(engine) as session:
+        today = datetime.today()
+
+        current_month = today.strftime("%m")
+
+        workers = session.exec(select(Workers).where(Workers.birthdate != None)).all()
+
+        result = []
+
+        for worker in workers:
+            birthdate = worker.birthdate
+
+            if isinstance(birthdate, str):
+                birthdate = datetime.strptime(birthdate, "%Y-%m-%d")
+
+            if birthdate.strftime("%m") == current_month:
+                result.append(
+                    {"name": worker.name, "birthdate": birthdate.strftime("%Y-%m-%d")}
+                )
+
+        return result
 
 
 # workers logs

@@ -228,7 +228,12 @@ def handle_get_test(arr: Test):
 def handle_get_users():
     with Session(engine) as session:
         users = (
-            session.exec(select(User, Role).join(Role, User.role_id == Role.id))
+            session.exec(
+                select(User, Role)
+                .join(Role, User.role_id == Role.id)
+                .where(User.is_active)
+                .order_by(User.name.desc())
+            )
             .tuples()
             .all()
         )
@@ -258,6 +263,7 @@ def handle_get_users():
                     "role_id": role.id,
                     "role_name": role.name,
                     "user_phone": user.phone,
+                    "user_is_active": user.is_active,
                 }
             )
 
@@ -363,3 +369,67 @@ def handle_change_password(userData: ChangeUserPasswordInput):
         session.refresh(user)
 
     return user
+
+
+def handle_get_users_by_status(status: str):
+    with Session(engine) as session:
+        query = (
+            select(User, Role).join(Role, User.role_id == Role.id).order_by(User.name)
+        )
+
+        if status == "active":
+            query = query.where(User.is_active)
+
+        elif status == "inactive":
+            query = query.where(~User.is_active)
+
+        elif status != "no-filters":
+            raise HTTPException(status_code=400, detail="Invalid status value")
+
+        users = session.exec(query).tuples().all()
+
+        result = []
+
+        for user, role in users:
+            subsidiary_ids = []
+
+            if user.subsidiaries_id:
+                try:
+                    subsidiary_ids = json.loads(user.subsidiaries_id)
+
+                except json.JSONDecodeError:
+                    subsidiary_ids = []
+
+            subsidiaries = [
+                session.get(Subsidiarie, id)
+                for id in subsidiary_ids
+                if id is not None and session.get(Subsidiarie, id) is not None
+            ]
+
+            result.append(
+                {
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "user_name": user.name,
+                    "user_subsidiaries": subsidiaries,
+                    "role_id": role.id,
+                    "role_name": role.name,
+                    "user_phone": user.phone,
+                    "user_is_active": user.is_active,
+                }
+            )
+
+    return result
+
+
+def handle_patch_deactivate_user(id: int):
+    with Session(engine) as session:
+        db_user = session.exec(select(User).where(User.id == id)).first()
+
+        db_user.is_active = False
+
+        session.add(db_user)
+
+        session.commit()
+
+        session.refresh(db_user)

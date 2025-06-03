@@ -300,6 +300,7 @@ from pyhints.workers import (
 )
 from routes.applicants_routes import routes as applicants_routes
 from routes.open_positions_routes import routes as open_positions_routes
+from routes.users_routes import users_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
 
@@ -350,106 +351,6 @@ def create_user_password(userData: CreateUserPasswordInput):
 @app.post("/users/login")
 def user_login(user: User):
     return handle_user_login(user)
-
-
-class SendEmailToMabeconBodyProps(BaseModel):
-    subsidiarie: str
-    worker_name: str
-    worker_admission_date: str
-
-
-@app.post("/send-email-to-mabecon")
-def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
-    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-
-    SENHA = os.environ.get("SENHA")
-
-    BCC = os.environ.get("BCC")
-
-    msg = EmailMessage()
-
-    msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
-
-    msg["From"] = EMAIL_REMETENTE
-
-    msg["To"] = "postosgraciosati@gmail.com"
-
-    msg["Bcc"] = BCC
-
-    msg.set_content(
-        f"""
-            Prezada Mabecon,
-
-            Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
-
-            Demais informações de funcionário disponíveis em https://sgi-prod-front.onrender.com,
-
-            Desde já, agradecemos o serviço prestado,
-
-            Atenciosamente,
-
-            RH Postos Graciosa
-            """
-    )
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_REMETENTE, SENHA)
-
-        smtp.send_message(msg)
-
-        return {"message": "E-mail enviado com sucesso"}
-
-
-@app.post("/users/recovery-password/send-email")
-def recovery_user_password_send_email(user: User):
-    with Session(engine) as session:
-        GMAIL_USER = os.environ.get("EMAIL_REMETENTE")
-
-        GMAIL_APP_PASSWORD = os.environ.get("SENHA")
-
-        db_user = session.exec(
-            select(User).where(and_(User.name == user.name, User.email == user.email))
-        ).first()
-
-        if not db_user:
-            raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-        msg = EmailMessage()
-
-        msg["Subject"] = "Recuperação de senha"
-
-        msg["From"] = GMAIL_USER
-
-        msg["To"] = db_user.email
-
-        msg.set_content(
-            f"""
-            Olá {db_user.name},
-
-            Recebemos uma solicitação para redefinir sua senha. 
-            Clique no link abaixo para continuar o processo de recuperação:
-
-            https://seusite.com/recovery/{db_user.id}
-
-            Se você não solicitou isso, ignore este e-mail.
-
-            Atenciosamente,
-            Equipe de Suporte
-            """
-        )
-
-        try:
-            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-                smtp.starttls()
-
-                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-
-                smtp.send_message(msg)
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
-
-        return {"message": "E-mail de recuperação enviado com sucesso"}
 
 
 # scripts public routes
@@ -578,62 +479,10 @@ async def handle_post_sync_workers_data(file: UploadFile = File(...)):
     }
 
 
-# users
+# users routes (private)
 
 
-@app.get("/users", dependencies=[Depends(verify_token)])
-@error_handler
-def get_users():
-    return handle_get_users()
-
-
-@app.get("/users/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_user_by_id(id: int):
-    return handle_get_user_by_id(id)
-
-
-@app.get("/users_roles", dependencies=[Depends(verify_token)])
-@error_handler
-def get_users_roles():
-    return handle_get_users_roles()
-
-
-@app.post("/users", dependencies=[Depends(verify_token)])
-@error_handler
-def post_user(user: User):
-    return handle_post_user(user)
-
-
-@app.put("/users/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_user(id: int, user: User):
-    return handle_put_user(id, user)
-
-
-@app.delete("/users/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_user(id: int):
-    return handle_delete_user(id)
-
-
-@app.post("/test", dependencies=[Depends(verify_token)])
-@error_handler
-def test(arr: Test):
-    return handle_get_test(arr)
-
-
-@app.post("/confirm-password", dependencies=[Depends(verify_token)])
-@error_handler
-def confirm_password(userData: ConfirmPassword):
-    return handle_confirm_password(userData)
-
-
-@app.post("/users/change-password", dependencies=[Depends(verify_token)])
-@error_handler
-def change_password(userData: ChangeUserPasswordInput):
-    return handle_change_password(userData)
-
+app.include_router(users_routes)
 
 # user logs
 
@@ -3050,3 +2899,103 @@ async def upload_image(payload: ImagePayload):
         f.write(image_bytes)
 
     return {"status": "ok"}
+
+
+class SendEmailToMabeconBodyProps(BaseModel):
+    subsidiarie: str
+    worker_name: str
+    worker_admission_date: str
+
+
+@app.post("/send-email-to-mabecon")
+def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    BCC = os.environ.get("BCC")
+
+    msg = EmailMessage()
+
+    msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
+
+    msg["From"] = EMAIL_REMETENTE
+
+    msg["To"] = "postosgraciosati@gmail.com"
+
+    msg["Bcc"] = BCC
+
+    msg.set_content(
+        f"""
+            Prezada Mabecon,
+
+            Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
+
+            Demais informações de funcionário disponíveis em https://sgi-prod-front.onrender.com,
+
+            Desde já, agradecemos o serviço prestado,
+
+            Atenciosamente,
+
+            RH Postos Graciosa
+            """
+    )
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_REMETENTE, SENHA)
+
+        smtp.send_message(msg)
+
+        return {"message": "E-mail enviado com sucesso"}
+
+
+@app.post("/users/recovery-password/send-email")
+def recovery_user_password_send_email(user: User):
+    with Session(engine) as session:
+        GMAIL_USER = os.environ.get("EMAIL_REMETENTE")
+
+        GMAIL_APP_PASSWORD = os.environ.get("SENHA")
+
+        db_user = session.exec(
+            select(User).where(and_(User.name == user.name, User.email == user.email))
+        ).first()
+
+        if not db_user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+        msg = EmailMessage()
+
+        msg["Subject"] = "Recuperação de senha"
+
+        msg["From"] = GMAIL_USER
+
+        msg["To"] = db_user.email
+
+        msg.set_content(
+            f"""
+            Olá {db_user.name},
+
+            Recebemos uma solicitação para redefinir sua senha. 
+            Clique no link abaixo para continuar o processo de recuperação:
+
+            https://seusite.com/recovery/{db_user.id}
+
+            Se você não solicitou isso, ignore este e-mail.
+
+            Atenciosamente,
+            Equipe de Suporte
+            """
+        )
+
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+                smtp.starttls()
+
+                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+
+                smtp.send_message(msg)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
+
+        return {"message": "E-mail de recuperação enviado com sucesso"}

@@ -7,7 +7,9 @@ from controllers.users import (
     handle_get_test,
     handle_get_user_by_id,
     handle_get_users,
+    handle_get_users_by_status,
     handle_get_users_roles,
+    handle_patch_deactivate_user,
     handle_post_user,
     handle_put_user,
 )
@@ -33,6 +35,11 @@ def get_users_roles():
     return handle_get_users_roles()
 
 
+@users_routes.get("/users/status/{status}")
+def get_users_by_status(status: str):
+    return handle_get_users_by_status(status)
+
+
 @users_routes.post("/users")
 def post_user(user: User):
     return handle_post_user(user)
@@ -41,6 +48,11 @@ def post_user(user: User):
 @users_routes.put("/users/{id}")
 def put_user(id: int, user: User):
     return handle_put_user(id, user)
+
+
+@users_routes.patch("/users/{id}/deactivate")
+def patch_deactivate_user(id: int):
+    return handle_patch_deactivate_user(id)
 
 
 @users_routes.delete("/users/{id}")

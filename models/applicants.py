@@ -83,3 +83,5 @@ class Applicants(SQLModel, table=True):
     ecorp_changes: Optional[str] = Field(default=None, nullable=True)
     team_work: Optional[str] = Field(default=None, nullable=True)
     work_relationships: Optional[str] = Field(default=None, nullable=True)
+
+    work_experiences: Optional[str] = Field(default=None, nullable=True)

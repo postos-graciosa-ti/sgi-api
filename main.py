@@ -2416,7 +2416,7 @@ def send_email(request: EmailRequest):
 
             writer = PdfWriter()
 
-            for page_num in [0, 5]:
+            for page_num in [2, 8]:
                 if page_num < len(original_pdf.pages):
                     writer.add_page(original_pdf.pages[page_num])
 
@@ -2440,7 +2440,7 @@ def send_email(request: EmailRequest):
                 new_pdf_stream.read(),
                 maintype="application",
                 subtype="pdf",
-                filename="Contrato_paginas_1_e_6.pdf",
+                filename="Contrato_paginas_3_e_9.pdf",
             )
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
@@ -2448,7 +2448,7 @@ def send_email(request: EmailRequest):
 
                 smtp.send_message(msg)
 
-            return {"message": "E-mail enviado com sucesso com as páginas 1 e 6"}
+            return {"message": "E-mail enviado com sucesso com as páginas 3 e 9"}
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

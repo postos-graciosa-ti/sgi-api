@@ -2830,6 +2830,8 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
 
     SENHA = os.environ.get("SENHA")
 
+    MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+
     BCC = os.environ.get("BCC")
 
     msg = EmailMessage()
@@ -2838,7 +2840,7 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
 
     msg["From"] = EMAIL_REMETENTE
 
-    msg["To"] = "postosgraciosati@gmail.com"
+    msg["To"] = MABECON_EMAIL
 
     msg["Bcc"] = BCC
 
@@ -2848,7 +2850,7 @@ def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
 
             Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
 
-            Demais informações de funcionário disponíveis em https://sgi-prod-front.onrender.com,
+            Demais informações de funcionário disponíveis em https://sgi-front-prod.onrender.com,
 
             Desde já, agradecemos o serviço prestado,
 

@@ -38,6 +38,9 @@ def handle_user_login(user: User):
         if not db_user:
             raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
+        if not db_user.is_active:
+            raise HTTPException(status_code=401, detail="Usuário inativo")
+
         if not pbkdf2_sha256.verify(user.password, db_user.password):
             raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
@@ -422,8 +425,11 @@ def handle_get_users_by_status(status: str):
     return result
 
 
-def handle_patch_deactivate_user(id: int):
+def handle_patch_deactivate_user(id: int, created_by_id: int):
     with Session(engine) as session:
+        if id == created_by_id:
+            raise HTTPException(status_code=404, detail="Você não pode desativar a si mesmo")
+
         db_user = session.exec(select(User).where(User.id == id)).first()
 
         db_user.is_active = False

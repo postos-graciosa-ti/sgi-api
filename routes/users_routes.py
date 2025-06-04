@@ -50,9 +50,9 @@ def put_user(id: int, user: User):
     return handle_put_user(id, user)
 
 
-@users_routes.patch("/users/{id}/deactivate")
-def patch_deactivate_user(id: int):
-    return handle_patch_deactivate_user(id)
+@users_routes.patch("/users/{id}/created_by/{created_by_id}/deactivate")
+def patch_deactivate_user(id: int, created_by_id: int):
+    return handle_patch_deactivate_user(id, created_by_id)
 
 
 @users_routes.delete("/users/{id}")

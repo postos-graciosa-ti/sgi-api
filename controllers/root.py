@@ -20,10 +20,11 @@ from migrations.lib.watchmen.watch import watch
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.open_positions import OpenPositions
-from models.user import User
-from seeds.seed_all import seed_database
-from models.workers_pictures import WorkersPictures
 from models.redirected_to import RedirectedTo
+from models.user import User
+from models.workers_periodic_reviews import WorkersPeriodicReviews
+from models.workers_pictures import WorkersPictures
+from seeds.seed_all import seed_database
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,6 +39,8 @@ def handle_watch_models():
     watch(OpenPositions)
 
     watch(RedirectedTo)
+
+    watch(WorkersPeriodicReviews)
 
     watch(WorkersPictures)
 

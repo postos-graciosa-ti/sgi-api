@@ -1,107 +1,136 @@
 import math
+import re
+from datetime import datetime
 from io import BytesIO
 
 import numpy as np
 import pandas as pd
 from fastapi import File, UploadFile
-from sqlalchemy import and_
 from sqlmodel import Session, select
+from unidecode import unidecode
 
 from database.sqlite import engine
 from models.workers import Workers
 
 
-def clean_nans(obj):
-    if isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
+async def handle_post_sync_workers_data(file: UploadFile = File(...)):
+    def clean_nans(obj):
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+
+            return obj
+
+        elif isinstance(obj, dict):
+            return {k: clean_nans(v) for k, v in obj.items()}
+
+        elif isinstance(obj, list):
+            return [clean_nans(v) for v in obj]
 
         return obj
 
-    elif isinstance(obj, dict):
-        return {k: clean_nans(v) for k, v in obj.items()}
+    def convert_to_date(value):
+        if value is None:
+            return None
 
-    elif isinstance(obj, list):
-        return [clean_nans(v) for v in obj]
+        if isinstance(value, pd.Timestamp):
+            return value.to_pydatetime().date()
 
-    return obj
+        if isinstance(value, datetime.datetime):
+            return value.date()
 
+        return value
 
-def convert_value(value):
-    if isinstance(value, pd.Timestamp):
-        return value.to_pydatetime()
+    def normalize_name(name):
+        if not name:
+            return ""
 
-    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-        return None
+        return re.sub(r"\s+", " ", unidecode(name.strip().lower()))
 
-    return value
+    contents = await file.read()
 
+    file_extension = file.filename.lower().split(".")[-1]
 
-async def handle_post_sync_workers_data(
-    subsidiarie_id: int, file: UploadFile = File(...)
-):
+    if file_extension == "csv":
+        df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
+
+    elif file_extension in ["xlsx", "xls"]:
+        engine_used = "openpyxl" if file_extension == "xlsx" else "xlrd"
+
+        df = pd.read_excel(BytesIO(contents), engine=engine_used)
+
+    else:
+        return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
+
+    df.columns = df.columns.str.strip().str.lower()
+
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    df = df.where(pd.notnull(df), None)
+
+    if "nome" not in df.columns:
+        return {"error": "A coluna 'nome' é obrigatória no arquivo."}
+
+    df = df[df["nome"].notnull() & df["nome"].str.strip().astype(bool)]
+
+    data = df.to_dict(orient="records")
+
+    cleaned_data = clean_nans(data)
+
+    updated_workers = []
+
+    not_found_names = []
+
     with Session(engine) as session:
-        contents = await file.read()
+        all_workers = session.exec(select(Workers)).all()
 
-        excel_io = BytesIO(contents)
-
-        df = pd.read_excel(excel_io)
-
-        df = df.replace([np.inf, -np.inf], np.nan)
-
-        df = df.where(pd.notnull(df), None)
-
-        data = df.to_dict(orient="records")
-
-        cleaned_data = clean_nans(data)
-
-        field_map = {
-            "cpf": "cpf",
-            "Carteira de Trabalho": "ctps",
-            "Data de Nascimento": "birthdate",
-            "email": "email",
-            "esocial": "esocial",
-            "nome": "name",
-            "pis": "pis",
-            "rg": "rg",
-            "telefone": "mobile",
-            "ponto": "timecode",
+        normalized_workers = {
+            normalize_name(worker.name): worker for worker in all_workers
         }
 
-        updated_workers = []
+        for entry in cleaned_data:
+            nome = entry.get("nome", "")
 
-        for worker in cleaned_data:
-            nome = worker.get("nome")
-
-            if not nome:
+            if not nome or not nome.strip():
                 continue
 
-            in_db_worker = session.exec(
-                select(Workers).where(
-                    and_(Workers.name == nome, Workers.subsidiarie_id == subsidiarie_id)
-                )
-            ).first()
+            normalized_name = normalize_name(nome)
 
-            if in_db_worker:
-                for excel_field, model_field in field_map.items():
-                    if not model_field or excel_field not in worker:
-                        continue
+            worker_in_db = normalized_workers.get(normalized_name)
 
-                    value = worker[excel_field]
+            if not worker_in_db:
+                not_found_names.append(nome)
 
-                    if value not in [None, ""]:
-                        setattr(in_db_worker, model_field, convert_value(value))
+                continue
 
-                session.add(in_db_worker)
+            if "rg" in entry:
+                worker_in_db.rg = entry["rg"]
 
-                updated_workers.append(in_db_worker)
+            if "ctps" in entry:
+                worker_in_db.ctps = entry["ctps"]
+
+            if "pis" in entry:
+                worker_in_db.pis = entry["pis"]
+
+            if "cpf" in entry:
+                worker_in_db.cpf = entry["cpf"]
+
+            if "data de nascimento" in entry:
+                worker_in_db.birthdate = convert_to_date(entry["data de nascimento"])
+
+            if "admissão" in entry:
+                worker_in_db.admission_date = convert_to_date(entry["admissão"])
+
+            if "esocial" in entry:
+                worker_in_db.esocial = entry["esocial"]
+
+            session.add(worker_in_db)
+
+            updated_workers.append(worker_in_db)
 
         session.commit()
 
-        all_workers = session.exec(select(Workers)).all()
-
-        return {
-            "updated": len(updated_workers),
-            # "workers": updated_workers,
-            "all_workers": all_workers,
-        }
+    return {
+        "updated_workers": len(updated_workers),
+        "not_found_names": not_found_names,
+    }

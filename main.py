@@ -273,6 +273,7 @@ from models.workers import Workers
 from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_parents import WorkersParents
+from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from models.workers_second_review import WorkersSecondReview
 from pyhints.applicants import RecruitProps
@@ -303,6 +304,7 @@ from routes.open_positions_routes import routes as open_positions_routes
 from routes.users_routes import users_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
+from scripts.sync_workers_data import handle_post_sync_workers_data
 
 # pre settings
 
@@ -335,11 +337,6 @@ def health_check():
     return handle_health_check()
 
 
-@app.get("/verify-schema-diff")
-def verify_schema_diff():
-    return handle_verify_schema_diff()
-
-
 # users public routes
 
 
@@ -370,113 +367,8 @@ async def post_scripts_rhsheets(
 
 
 @app.post("/scripts/sync-workers-data")
-async def handle_post_sync_workers_data(file: UploadFile = File(...)):
-    def clean_nans(obj):
-        if isinstance(obj, float):
-            if math.isnan(obj) or math.isinf(obj):
-                return None
-            return obj
-        elif isinstance(obj, dict):
-            return {k: clean_nans(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [clean_nans(v) for v in obj]
-        return obj
-
-    def convert_to_date(value):
-        if value is None:
-            return None
-        if isinstance(value, pd.Timestamp):
-            return value.to_pydatetime().date()
-        if isinstance(value, datetime.datetime):
-            return value.date()
-        return value
-
-    def normalize_name(name):
-        if not name:
-            return ""
-        return re.sub(r"\s+", " ", unidecode(name.strip().lower()))
-
-    contents = await file.read()
-    file_extension = file.filename.lower().split(".")[-1]
-
-    if file_extension == "csv":
-        df = pd.read_csv(BytesIO(contents), encoding_errors="ignore")
-    elif file_extension in ["xlsx", "xls"]:
-        engine_used = "openpyxl" if file_extension == "xlsx" else "xlrd"
-        df = pd.read_excel(BytesIO(contents), engine=engine_used)
-    else:
-        return {"error": "Unsupported file format. Please upload a CSV or Excel file."}
-
-    df.columns = df.columns.str.strip().str.lower()
-    df = df.replace([np.inf, -np.inf], np.nan)
-    df = df.where(pd.notnull(df), None)
-
-    # Remove registros sem nome válido
-    if "nome" not in df.columns:
-        return {"error": "A coluna 'nome' é obrigatória no arquivo."}
-
-    df = df[df["nome"].notnull() & df["nome"].str.strip().astype(bool)]
-
-    data = df.to_dict(orient="records")
-    cleaned_data = clean_nans(data)
-
-    updated_workers = []
-    not_found_names = []
-
-    with Session(engine) as session:
-        # Carrega todos os trabalhadores com nome normalizado em memória
-        all_workers = session.exec(select(Workers)).all()
-        normalized_workers = {
-            normalize_name(worker.name): worker for worker in all_workers
-        }
-
-        for entry in cleaned_data:
-            nome = entry.get("nome", "")
-
-            if not nome or not nome.strip():
-                continue
-
-            normalized_name = normalize_name(nome)
-            worker_in_db = normalized_workers.get(normalized_name)
-
-            if not worker_in_db:
-                # Log para debug (remova se não quiser prints no console)
-                print(
-                    f"Nome não encontrado no banco: '{nome}' -> normalizado: '{normalized_name}'"
-                )
-                not_found_names.append(nome)
-                continue
-
-            if "rg" in entry:
-                worker_in_db.rg = entry["rg"]
-
-            if "ctps" in entry:
-                worker_in_db.ctps = entry["ctps"]
-
-            if "pis" in entry:
-                worker_in_db.pis = entry["pis"]
-
-            if "cpf" in entry:
-                worker_in_db.cpf = entry["cpf"]
-
-            if "data de nascimento" in entry:
-                worker_in_db.birthdate = convert_to_date(entry["data de nascimento"])
-
-            if "admissão" in entry:
-                worker_in_db.admission_date = convert_to_date(entry["admissão"])
-
-            if "esocial" in entry:
-                worker_in_db.esocial = entry["esocial"]
-
-            session.add(worker_in_db)
-            updated_workers.append(worker_in_db)
-
-        session.commit()
-
-    return {
-        "updated_workers": len(updated_workers),
-        "not_found_names": not_found_names,
-    }
+async def post_sync_workers_data(file: UploadFile = File(...)):
+    return handle_post_sync_workers_data(file)
 
 
 # users routes (private)
@@ -3024,3 +2916,52 @@ def recovery_user_password_send_email(user: User):
             raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 
         return {"message": "E-mail de recuperação enviado com sucesso"}
+
+
+@app.get("/workers-periodic-reviews/{worker_id}")
+def get_workers_periodic_reviews(worker_id: int):
+    with Session(engine) as session:
+        workers_periodic_reviews = session.exec(
+            select(WorkersPeriodicReviews).where(
+                WorkersPeriodicReviews.worker_id == worker_id
+            )
+        ).all()
+
+        result = [
+            {
+                "id": review.id,
+                "worker_id": review.worker_id,
+                "label": review.label,
+                "date": review.date,
+                "answers": json.loads(review.answers),
+            }
+            for review in workers_periodic_reviews
+        ]
+
+        return result
+
+
+@app.post("/workers-periodic-reviews")
+def post_workers_periodic_reviews(body: WorkersPeriodicReviews):
+    with Session(engine) as session:
+        session.add(body)
+
+        session.commit()
+
+        session.refresh(body)
+
+        return body
+
+
+@app.delete("/workers-periodic-reviews/{id}")
+def delete_workers_periodic_reviews(id: int):
+    with Session(engine) as session:
+        db_review = session.exec(
+            select(WorkersPeriodicReviews).where(WorkersPeriodicReviews.id == id)
+        ).first()
+
+        session.delete(db_review)
+
+        session.commit()
+
+        return {"success": True}

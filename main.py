@@ -272,6 +272,7 @@ from models.school_levels import SchoolLevels
 from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.subsidiarie_logs import SubsidiarieLogs
+from models.system_log import SystemLog
 from models.turn import Turn
 from models.TurnsLogs import TurnsLogs
 from models.user import User
@@ -313,6 +314,7 @@ from routes.nationalities_routes import nationalities_routes
 from routes.neighborhoods_routes import neighborhoods_routes
 from routes.open_positions_routes import routes as open_positions_routes
 from routes.states_routes import states_routes
+from routes.system_log_routes import system_log_routes
 from routes.users_routes import users_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
@@ -383,8 +385,11 @@ async def post_sync_workers_data(file: UploadFile = File(...)):
     return handle_post_sync_workers_data(file)
 
 
-# users routes (private)
+# system log routes (private)
 
+app.include_router(system_log_routes)
+
+# users routes (private)
 
 app.include_router(users_routes)
 

@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
 from jose import jwt
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -11,7 +12,12 @@ secret = os.environ.get("SECRET")
 algorithm = os.environ.get("ALGORITHM")
 
 
-def verify_token(authorization: str = Header(...)):
+class AuthUser(BaseModel):
+    id: int
+    username: str
+
+
+def verify_token(authorization: str = Header(...)) -> AuthUser:
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=400, detail="Invalid token")
 

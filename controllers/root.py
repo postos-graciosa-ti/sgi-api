@@ -21,6 +21,7 @@ from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
+from models.system_log import SystemLog
 from models.user import User
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
@@ -39,6 +40,8 @@ def handle_watch_models():
     watch(OpenPositions)
 
     watch(RedirectedTo)
+
+    watch(SystemLog)
 
     watch(WorkersPeriodicReviews)
 

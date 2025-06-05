@@ -18,6 +18,15 @@ def handle_get_neighborhood_by_id(id: int):
         return neighborhood
 
 
+def handle_get_neighborhoods_by_city(id: int):
+    with Session(engine) as session:
+        neighborhoods = session.exec(
+            select(Neighborhoods).where(Neighborhoods.city_id == id)
+        ).all()
+
+        return neighborhoods
+
+
 def handle_post_neighborhood(neighborhood: Neighborhoods):
     with Session(engine) as session:
         session.add(neighborhood)
@@ -37,6 +46,12 @@ def handle_put_neighborhood(id: int, neighborhood: Neighborhoods):
 
         if neighborhood is not None and neighborhood.name != db_neighborhood.name:
             db_neighborhood.name = neighborhood.name
+
+        if (
+            neighborhood.city_id is not None
+            and neighborhood.city_id != db_neighborhood.city_id
+        ):
+            db_neighborhood.city_id = neighborhood.city_id
 
         session.add(db_neighborhood)
 

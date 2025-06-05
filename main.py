@@ -58,6 +58,14 @@ from controllers.candidates import (
     handle_get_candidates_by_status,
     handle_post_candidate,
 )
+from controllers.cities import (
+    handle_delete_cities,
+    handle_get_cities,
+    handle_get_cities_by_state,
+    handle_get_city_by_id,
+    handle_post_new_city,
+    handle_put_cities,
+)
 from controllers.cnh_categories import handle_get_cnh_categories
 from controllers.cost_center import (
     handle_delete_cost_center,
@@ -300,7 +308,11 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from routes.applicants_routes import routes as applicants_routes
+from routes.cities_routes import cities_routes
+from routes.nationalities_routes import nationalities_routes
+from routes.neighborhoods_routes import neighborhoods_routes
 from routes.open_positions_routes import routes as open_positions_routes
+from routes.states_routes import states_routes
 from routes.users_routes import users_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
@@ -1940,355 +1952,21 @@ def get_scales(id: int, scales_list_props: ScalesListProps):
         return in_range_scales
 
 
-@app.get("/test-worker")
-def test_worker():
-    with Session(engine) as session:
-        workers = session.exec(select(Workers)).all()
+# nationalities routes (private)
 
-        return workers
+app.include_router(nationalities_routes)
 
+# states routes (private)
 
-# nationalities
+app.include_router(states_routes)
 
+# cities routes (private)
 
-@app.get("/nationalities", dependencies=[Depends(verify_token)])
-def get_nationalities():
-    return handle_get_nationalities()
+app.include_router(cities_routes)
 
+# neighborhoods routes (private)
 
-@app.post("/nationalities", dependencies=[Depends(verify_token)])
-def post_nationalities(nationalitie: Nationalities):
-    return handle_post_nationalities(nationalitie)
-
-
-@app.put("/nationalities/{id}", dependencies=[Depends(verify_token)])
-def put_nationalities(id: int, nationalitie: Nationalities):
-    return handle_put_nationalities(id, nationalitie)
-
-
-@app.delete("/nationalities/{id}", dependencies=[Depends(verify_token)])
-def delete_nationalities(id: int):
-    return handle_delete_nationalities(id)
-
-
-# states
-
-
-@app.get("/states", dependencies=[Depends(verify_token)])
-def get_states():
-    return handle_get_states()
-
-
-@app.get("/states/{id}", dependencies=[Depends(verify_token)])
-def get_states_by_id(id: int):
-    return handle_get_states_by_id(id)
-
-
-@app.get("/nationalities/{id}/states", dependencies=[Depends(verify_token)])
-def get_states_by_nationalitie(id: int):
-    return handle_get_states_by_nationalitie(id)
-
-
-@app.post("/states", dependencies=[Depends(verify_token)])
-def post_states(state: States):
-    return handle_post_states(state)
-
-
-@app.put("/states/{id}", dependencies=[Depends(verify_token)])
-def put_states(id: int, state: States):
-    return handle_put_states(id, state)
-
-
-@app.delete("/states/{id}")
-def delete_states(id: int):
-    return handle_delete_states(id)
-
-
-# cities
-
-
-@app.get("/cities")
-def get_cities():
-    with Session(engine) as session:
-        cities = (
-            session.exec(
-                select(Cities, States).join(States, Cities.state_id == States.id)
-            )
-            .mappings()
-            .all()
-        )
-
-        return cities
-
-
-# @app.get("/cities", dependencies=[Depends(verify_token)])
-# @error_handler
-# def get_cities():
-#     with Session(engine) as session:
-#         cities = session.exec(select(Cities)).all()
-
-#         return cities
-
-
-@app.get("/states/{id}/cities")
-def get_cities_by_state(id: int):
-    with Session(engine) as session:
-        cities = session.exec(select(Cities).where(Cities.state_id == id)).all()
-
-        return cities
-
-
-@app.get("/cities/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_city_by_id(id: int):
-    with Session(engine) as session:
-        cities = session.exec(select(Cities).where(Cities.id == id)).first()
-
-        return cities
-
-
-async def get_state_by_city_name(city_name: str) -> str:
-    # Tenta encontrar no Brasil (via IBGE)
-    ibge_url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
-
-    async with httpx.AsyncClient() as client:
-        ibge_response = await client.get(ibge_url)
-
-    if ibge_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Erro ao acessar a API do IBGE")
-
-    cities_data = ibge_response.json()
-
-    for city in cities_data:
-        if city["nome"].lower() == city_name.lower():
-            return city["microrregiao"]["mesorregiao"]["UF"]["sigla"]
-
-    # Se não encontrar no IBGE, tenta via Nominatim (OpenStreetMap)
-    nominatim_url = (
-        f"https://nominatim.openstreetmap.org/search"
-        f"?q={city_name},Venezuela&format=json&addressdetails=1&limit=1"
-    )
-
-    headers = {"User-Agent": "MyApp/1.0 (meuemail@example.com)"}
-
-    async with httpx.AsyncClient() as client:
-        osm_response = await client.get(nominatim_url, headers=headers)
-
-    if osm_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Erro ao acessar a API Nominatim")
-
-    data = osm_response.json()
-    if not data:
-        raise HTTPException(
-            status_code=404, detail="Cidade não encontrada no Brasil nem na Venezuela"
-        )
-
-    address = data[0].get("address", {})
-    state = address.get("state") or address.get("region")
-
-    if not state:
-        raise HTTPException(
-            status_code=500, detail="Estado não encontrado na resposta da API"
-        )
-
-    return state
-
-
-class PostCitiesInput(BaseModel):
-    name: str
-
-
-@app.post("/cities")
-async def post_cities(city: PostCitiesInput):
-    with Session(engine) as session:
-        result = await get_state_by_city_name(city.name)
-
-        new_city_state_id = session.exec(
-            select(States.id).where(States.sail == result)
-        ).first()
-
-        new_city = Cities(name=city.name, state_id=new_city_state_id)
-
-        session.add(new_city)
-
-        session.commit()
-
-        session.refresh(new_city)
-
-        cities_list = session.exec(select(Cities)).all()
-
-        return cities_list
-
-
-@app.post("/new-city")
-def post_new_city(city: Cities):
-    with Session(engine) as session:
-        session.add(city)
-
-        session.commit()
-
-        session.refresh(city)
-
-        return city
-
-
-@app.put("/cities/{id}")
-def put_cities(id: int, city: Cities):
-    with Session(engine) as session:
-        db_city = session.exec(select(Cities).where(Cities.id == id)).first()
-
-        db_city.name = city.name if city.name else db_city.name
-
-        db_city.state_id = city.state_id if city.state_id else db_city.state_id
-
-        session.add(db_city)
-
-        session.commit()
-
-        session.refresh(db_city)
-
-        return db_city
-
-
-@app.delete("/cities/{id}")
-def delete_cities(id: int):
-    with Session(engine) as session:
-        db_city = session.exec(select(Cities).where(Cities.id == id)).first()
-
-        session.delete(db_city)
-
-        session.commit()
-
-        return {"success": True}
-
-
-# neighborhoods
-
-
-@app.get("/neighborhoods")
-def get_neighborhoods():
-    with Session(engine) as session:
-        neighborhoods = session.exec(select(Neighborhoods)).all()
-
-        return neighborhoods
-
-
-@app.get("/neighborhoods/{id}")
-def get_neighborhood_by_id(id: int):
-    with Session(engine) as session:
-        neighborhood = session.get(Neighborhoods, id)
-
-        return neighborhood
-
-
-@app.get("/cities/{id}/neighborhoods")
-def get_neighborhoods_by_city(id: int):
-    with Session(engine) as session:
-        neighborhoods = session.exec(
-            select(Neighborhoods).where(Neighborhoods.city_id == id)
-        ).all()
-
-        return neighborhoods
-
-
-@app.post("/neighborhoods")
-def post_neighborhood(neighborhood: Neighborhoods):
-    with Session(engine) as session:
-        session.add(neighborhood)
-
-        session.commit()
-
-        session.refresh(neighborhood)
-
-        return neighborhood
-
-
-def get_city_by_neighborhood(bairro: str) -> str:
-    url = "https://nominatim.openstreetmap.org/search"
-
-    params = {
-        "q": f"{bairro}, Brasil",
-        "format": "json",
-        "addressdetails": 1,
-        "limit": 1,
-    }
-
-    headers = {"User-Agent": "MinhaAplicacao/1.0"}
-
-    response = requests.get(url, params=params, headers=headers)
-
-    data = response.json()
-
-    if not data:
-        return "Cidade não encontrada"
-
-    address = data[0].get("address", {})
-
-    return (
-        address.get("city")
-        or address.get("town")
-        or address.get("village", "Cidade não identificada")
-    )
-
-
-class PostNeighborhoodsInput(BaseModel):
-    name: str
-
-
-@app.post("/news")
-def post_cities(neighborhood: PostNeighborhoodsInput):
-    with Session(engine) as session:
-        new_neighborhood_city_name = get_city_by_neighborhood(neighborhood.name)
-
-        new_neighborhood_city_id = session.exec(
-            select(Cities.id).where(Cities.name == new_neighborhood_city_name)
-        ).first()
-
-        new_neighborhood = Neighborhoods(
-            name=neighborhood.name, city_id=new_neighborhood_city_id
-        )
-
-        session.add(new_neighborhood)
-
-        session.commit()
-
-        session.refresh(new_neighborhood)
-
-        all_neighborhoods = session.exec(select(Neighborhoods)).all()
-
-        return all_neighborhoods
-
-
-@app.put("/neighborhoods/{id}")
-def put_neighborhood(id: int, neighborhood: Neighborhoods):
-    with Session(engine) as session:
-        db_neighborhood = session.exec(
-            select(Neighborhoods).where(Neighborhoods.id == id)
-        ).one()
-
-        if neighborhood is not None and neighborhood.name != db_neighborhood.name:
-            db_neighborhood.name = neighborhood.name
-
-        session.add(db_neighborhood)
-
-        session.commit()
-
-        session.refresh(db_neighborhood)
-
-        return db_neighborhood
-
-
-@app.delete("/neighborhoods/{neighborhood_id}")
-def delete_neighborhood(neighborhood_id: int):
-    with Session(engine) as session:
-        neighborhood = session.get(Neighborhoods, neighborhood_id)
-
-        session.delete(neighborhood)
-
-        session.commit()
-
-        return {"message": "Neighborhood deleted successfully"}
-
+app.include_router(neighborhoods_routes)
 
 # workers docs
 

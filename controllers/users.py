@@ -2,13 +2,15 @@ import json
 import os
 
 from dotenv import load_dotenv
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.responses import JSONResponse
 from jose import jwt
 from passlib.hash import pbkdf2_sha256
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from functions.auth import AuthUser, verify_token
+from functions.logs import log_action
 from models.function import Function
 from models.role import Role
 from models.subsidiarie import Subsidiarie
@@ -80,56 +82,7 @@ def handle_user_login(user: User):
         )
 
 
-# def handle_get_users():
-#     with Session(engine) as session:
-#         statement = (
-#             select(
-#                 User.id,
-#                 User.name,
-#                 User.email,
-#                 User.subsidiaries_id,
-#                 Role.id.label("role_id"),
-#                 Role.name.label("role_name"),
-#                 Function.id.label("function_id"),
-#                 Function.name.label("function_name"),
-#             )
-#             .join(Role, User.role_id == Role.id)
-#             .join(Function, User.function_id == Function.id)
-#         )
-
-#         users = session.exec(statement).all()
-
-#         all_subsidiaries = session.exec(select(Subsidiarie.id, Subsidiarie.name)).all()
-
-#         subsidiaries_map = {sub.id: sub.name for sub in all_subsidiaries}
-
-#         result = []
-
-#         for user in users:
-#             subsidiary_ids = json.loads(user[3])
-
-#             subsidiaries = [
-#                 {"id": sub_id, "name": subsidiaries_map.get(sub_id, "Unknown")}
-#                 for sub_id in subsidiary_ids
-#             ]
-
-#             result.append(
-#                 {
-#                     "user_id": user[0],
-#                     "user_name": user[1],
-#                     "user_email": user[2],
-#                     "subsidiaries": subsidiaries,
-#                     "role_id": user[4],
-#                     "role_name": user[5],
-#                     "function_id": user[6],
-#                     "function_name": user[7],
-#                 }
-#             )
-
-#     return result
-
-
-def handle_post_user(user: User):
+def handle_post_user(request, user: User, loged_user: AuthUser = Depends(verify_token)):
     with Session(engine) as session:
         session.add(user)
 
@@ -137,14 +90,40 @@ def handle_post_user(user: User):
 
         session.refresh(user)
 
+        log_action(
+            action="post",
+            table_name="user",
+            record_id=user.id,
+            user_id=loged_user["id"],
+            details={
+                "before": None,
+                "after": user.dict(exclude={"password"}),
+            },
+            endpoint=str(request.url.path),
+        )
+
         return user
 
 
-def handle_put_user(id: int, user: User):
+def handle_put_user(
+    request, id: int, user: User, loged_user: AuthUser = Depends(verify_token)
+):
     with Session(engine) as session:
         statement = select(User).where(User.id == id)
 
         db_user = session.exec(statement).first()
+
+        log_action(
+            action="put",
+            table_name="user",
+            record_id=db_user.id,
+            user_id=loged_user["id"],
+            details={
+                "before": db_user.dict(exclude={"password"}),
+                "after": user.dict(exclude={"password"}),
+            },
+            endpoint=str(request.url.path),
+        )
 
         db_user.email = user.email if user.email else db_user.email
 
@@ -425,12 +404,31 @@ def handle_get_users_by_status(status: str):
     return result
 
 
-def handle_patch_deactivate_user(id: int, created_by_id: int):
+def handle_patch_deactivate_user(
+    request, id: int, created_by_id: int, logged_user: AuthUser = Depends(verify_token)
+):
     with Session(engine) as session:
         if id == created_by_id:
-            raise HTTPException(status_code=404, detail="Você não pode desativar a si mesmo")
+            raise HTTPException(
+                status_code=400, detail="Você não pode desativar a si mesmo"
+            )
 
         db_user = session.exec(select(User).where(User.id == id)).first()
+
+        if not db_user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+        log_action(
+            action="patch",
+            table_name="user",
+            record_id=db_user.id,
+            user_id=logged_user["id"],
+            details={
+                "before": db_user.dict(exclude={"password"}),
+                "after": {**db_user.dict(exclude={"password"}), "is_active": False},
+            },
+            endpoint=str(request.url.path),
+        )
 
         db_user.is_active = False
 
@@ -439,3 +437,5 @@ def handle_patch_deactivate_user(id: int, created_by_id: int):
         session.commit()
 
         session.refresh(db_user)
+
+        return db_user

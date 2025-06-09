@@ -349,7 +349,7 @@ def handle_post_hire_applicants(recruit: RecruitProps) -> Optional[Workers]:
             department_id=1,
             turn_id=1,
             civil_status_id=get_civil_status_id(db_applicant.estado_civil),
-            school_level=get_school_level_id(db_applicant.escolaridade),
+            # school_level=get_school_level_id(db_applicant.escolaridade),
             ethnicity_id=1,
             gender_id=1,
             neighborhood_id=1,

@@ -501,8 +501,6 @@ def post_turns_logs(id: int, turn_log: TurnsLogs):
     return handle_post_turns_logs(id, turn_log)
 
 
-# workers
-
 # workers logs
 
 

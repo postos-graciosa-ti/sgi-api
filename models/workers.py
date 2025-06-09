@@ -158,3 +158,8 @@ class WorkerDeactivateInput(BaseModel):
 class PatchWorkersTurnBody(BaseModel):
     worker_id: int
     turn_id: int
+
+
+class GetWorkersVtReportBody(BaseModel):
+    start_date: str
+    end_date: str

@@ -11,13 +11,20 @@ from controllers.workers import (
     handle_get_workers_by_turn,
     handle_get_workers_by_turn_and_function,
     handle_get_workers_by_turn_and_subsidiarie,
+    handle_get_workers_need_open_account,
+    handle_get_workers_need_vt,
     handle_patch_workers_turn,
     handle_post_worker,
     handle_put_worker,
     handle_reactivate_worker,
 )
 from functions.auth import AuthUser, verify_token
-from models.workers import PatchWorkersTurnBody, WorkerDeactivateInput, Workers
+from models.workers import (
+    GetWorkersVtReportBody,
+    PatchWorkersTurnBody,
+    WorkerDeactivateInput,
+    Workers,
+)
 
 workers_routes = APIRouter()
 
@@ -102,6 +109,18 @@ def post_worker(
     request: Request, worker: Workers, user: AuthUser = Depends(verify_token)
 ):
     return handle_post_worker(request, worker, user)
+
+
+@workers_routes.post("/workers/vt-report", dependencies=[Depends(verify_token)])
+def get_workers_need_vt(body: GetWorkersVtReportBody):
+    return handle_get_workers_need_vt(body)
+
+
+@workers_routes.post(
+    "/workers/open-account-report", dependencies=[Depends(verify_token)]
+)
+def get_workers_need_open_account(body: GetWorkersVtReportBody):
+    return handle_get_workers_need_open_account(body)
 
 
 @workers_routes.put("/workers/{id}")

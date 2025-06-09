@@ -29,7 +29,7 @@ from models.school_levels import SchoolLevels
 from models.states import States
 from models.turn import Turn
 from models.wage_payment_method import WagePaymentMethod
-from models.workers import PatchWorkersTurnBody, Workers
+from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
@@ -897,3 +897,41 @@ def handle_patch_workers_turn(body: PatchWorkersTurnBody):
         session.refresh(db_worker)
 
         return {"success": True}
+
+
+def handle_get_workers_need_vt(body: GetWorkersVtReportBody):
+    with Session(engine) as session:
+        start_date = datetime.strptime(body.start_date, "%Y-%m-%d").date()
+
+        end_date = datetime.strptime(body.end_date, "%Y-%m-%d").date()
+
+        workers = session.exec(select(Workers).where(Workers.transport_voucher)).all()
+
+        result = []
+
+        for worker in workers:
+            admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+            if admission_date >= start_date and admission_date <= end_date:
+                result.append(worker)
+
+        return result
+
+
+def handle_get_workers_need_open_account(body: GetWorkersVtReportBody):
+    with Session(engine) as session:
+        start_date = datetime.strptime(body.start_date, "%Y-%m-%d").date()
+
+        end_date = datetime.strptime(body.end_date, "%Y-%m-%d").date()
+
+        workers = session.exec(select(Workers)).all()
+
+        result = []
+
+        for worker in workers:
+            admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+            if admission_date >= start_date and admission_date <= end_date:
+                result.append(worker)
+
+        return result

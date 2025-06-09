@@ -285,6 +285,8 @@ from models.workers_parents import WorkersParents
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from models.workers_second_review import WorkersSecondReview
+from private_routes import private_routes
+from public_routes import public_routes
 from pyhints.applicants import RecruitProps
 from pyhints.no_reviews import SubsidiaryFilter
 from pyhints.resignable_reasons import StatusResignableReasonsInput
@@ -309,18 +311,19 @@ from pyhints.workers import (
     WorkerLogUpdateInput,
 )
 from routes.applicants_routes import routes as applicants_routes
+from routes.auth_routes import auth_routes
 from routes.cities_routes import cities_routes
 from routes.nationalities_routes import nationalities_routes
 from routes.neighborhoods_routes import neighborhoods_routes
 from routes.open_positions_routes import routes as open_positions_routes
+from routes.root_routes import root_routes
+from routes.scripts_routes import scripts_routes
 from routes.states_routes import states_routes
 from routes.system_log_routes import system_log_routes
 from routes.users_routes import users_routes
 from scripts.excel_scraping import handle_excel_scraping
 from scripts.rh_sheets import handle_post_scripts_rhsheets
 from scripts.sync_workers_data import handle_post_sync_workers_data
-
-# pre settings
 
 load_dotenv()
 
@@ -330,92 +333,21 @@ add_cors_middleware(app)
 
 threading.Thread(target=keep_alive_function, daemon=True).start()
 
-# startup function
-
 
 @app.on_event("startup")
 def on_startup():
     return handle_on_startup()
 
 
-# utils public routes
+# include public routes
 
+for public_route in public_routes:
+    app.include_router(public_route)
 
-@app.get("/")
-def get_docs_info():
-    return handle_get_docs_info()
+# include private routes
 
-
-@app.get("/health-check")
-def health_check():
-    return handle_health_check()
-
-
-# users public routes
-
-
-@app.post("/users/create-password")
-def create_user_password(userData: CreateUserPasswordInput):
-    return handle_create_user_password(userData)
-
-
-@app.post("/users/login")
-def user_login(user: User):
-    return handle_user_login(user)
-
-
-# scripts public routes
-
-
-@app.post("/subsidiaries/{id}/scripts/excel-scraping")
-async def excel_scraping(id: int, file: UploadFile = File(...)):
-    return await handle_excel_scraping(id, file)
-
-
-@app.post("/scripts/rhsheets")
-async def post_scripts_rhsheets(
-    discountList: Annotated[str, Form()],
-    file: UploadFile = File(...),
-):
-    return await handle_post_scripts_rhsheets(discountList, file)
-
-
-@app.post("/scripts/sync-workers-data")
-async def post_sync_workers_data(file: UploadFile = File(...)):
-    return handle_post_sync_workers_data(file)
-
-
-# system log routes (private)
-
-app.include_router(system_log_routes)
-
-# users routes (private)
-
-app.include_router(users_routes)
-
-# user logs
-
-
-@app.get("/logs/users", dependencies=[Depends(verify_token)])
-@error_handler
-def get_logs_user():
-    return handle_get_logs_user()
-
-
-@app.post("/logs/users", dependencies=[Depends(verify_token)])
-@error_handler
-def post_logs_user(users_logs: UsersLogs):
-    return handle_post_logs_user(users_logs)
-
-
-# months
-
-
-@app.get("/months", dependencies=[Depends(verify_token)])
-@error_handler
-def get_months():
-    return handle_get_months()
-
+for private_route in private_routes:
+    app.include_router(private_route)
 
 # subsidiaries
 
@@ -569,187 +501,6 @@ def post_turns_logs(id: int, turn_log: TurnsLogs):
     return handle_post_turns_logs(id, turn_log)
 
 
-# workers
-
-
-@app.get("/workers/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_worker_by_id(id: int):
-    return handle_get_worker_by_id(id)
-
-
-@app.get(
-    "/workers/turns/{turn_id}/subsidiarie/{subsidiarie_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
-    return handle_get_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
-
-
-@app.get(
-    "/workers/on-track/turn/{turn_id}/subsidiarie/{subsidiarie_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_active_workers_by_turn_and_subsidiarie(turn_id: int, subsidiarie_id: int):
-    return handle_get_active_workers_by_turn_and_subsidiarie(turn_id, subsidiarie_id)
-
-
-@app.get(
-    "/workers/active/subsidiarie/{subsidiarie_id}/function/{function_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_active_workers_by_subsidiarie_and_function(
-    subsidiarie_id: int, function_id: int
-):
-    return handle_get_active_workers_by_subsidiarie_and_function(
-        subsidiarie_id, function_id
-    )
-
-
-@app.get("/workers/subsidiarie/{subsidiarie_id}", dependencies=[Depends(verify_token)])
-def get_workers_by_subsidiarie(subsidiarie_id: int):
-    return handle_get_workers_by_subsidiarie(subsidiarie_id)
-
-
-@app.get(
-    "/workers/subsidiaries/{subsidiarie_id}/functions/{function_id}/turns/{turn_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_workers_by_subsidiaries_functions_and_turns(
-    subsidiarie_id: int, function_id: int, turn_id: int
-):
-    return handle_get_workers_by_subsidiaries_functions_and_turns(
-        subsidiarie_id, function_id, turn_id
-    )
-
-
-@app.get(
-    "/subsidiaries/{subsidiarie_id}/turns/{turn_id}/functions/{function_id}/workers",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_workers_by_turn_and_function(
-    subsidiarie_id: int, turn_id: int, function_id: int
-):
-    with Session(engine) as session:
-        workers = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-            .where(Workers.turn_id == turn_id)
-            .where(Workers.function_id == function_id)
-        ).all()
-
-        return workers
-
-
-@app.get(
-    "/subsidiaries/{subsidiarie_id}/turns/{turn_id}/workers",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
-    with Session(engine) as session:
-        workers = session.exec(
-            select(Workers)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-            .where(Workers.turn_id == turn_id)
-        ).all()
-
-        return workers
-
-
-@app.post("/workers")
-def post_worker(worker: Workers):
-    admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
-
-    first_review = admission_date + relativedelta(months=1)
-
-    second_review = admission_date + relativedelta(months=2)
-
-    worker.first_review_date = first_review.strftime("%Y-%m-%d")
-
-    worker.second_review_date = second_review.strftime("%Y-%m-%d")
-
-    with Session(engine) as session:
-        session.add(worker)
-
-        session.commit()
-
-        session.refresh(worker)
-
-        return worker
-
-
-@app.put("/workers/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_worker(id: int, worker: Workers):
-    return handle_put_worker(id, worker)
-
-
-@app.put("/workers/{id}/deactivate", dependencies=[Depends(verify_token)])
-@error_handler
-def deactivate_worker(id: int, worker: WorkerDeactivateInput):
-    return handle_deactivate_worker(id, worker)
-
-
-@app.put("/workers/{id}/reactivate", dependencies=[Depends(verify_token)])
-@error_handler
-def reactivate_worker(id: int):
-    return handle_reactivate_worker(id)
-
-
-class PatchWorkersTurnBody(BaseModel):
-    worker_id: int
-    turn_id: int
-
-
-@app.patch("/patch-workers-turn")
-def patch_workers_turn(body: PatchWorkersTurnBody):
-    with Session(engine) as session:
-        db_worker = session.exec(
-            select(Workers).where(Workers.id == body.worker_id)
-        ).first()
-
-        db_worker.turn_id = body.turn_id
-
-        session.add(db_worker)
-
-        session.commit()
-
-        session.refresh(db_worker)
-
-        return {"success": True}
-
-
-@app.get("/another-route-yet")
-def get_month_birthdays():
-    with Session(engine) as session:
-        today = datetime.today()
-
-        current_month = today.strftime("%m")
-
-        workers = session.exec(select(Workers).where(Workers.birthdate != None)).all()
-
-        result = []
-
-        for worker in workers:
-            birthdate = worker.birthdate
-
-            if isinstance(birthdate, str):
-                birthdate = datetime.strptime(birthdate, "%Y-%m-%d")
-
-            if birthdate.strftime("%m") == current_month:
-                result.append(
-                    {"name": worker.name, "birthdate": birthdate.strftime("%Y-%m-%d")}
-                )
-
-        return result
-
-
 # workers logs
 
 
@@ -770,56 +521,7 @@ def post_workers_logs(id: int, workers_log: WorkersLogs):
     return handle_post_workers_logs(id, workers_log)
 
 
-# workers logs create
-
-
-@app.get("/logs/subsidiaries/{id}/workers/create", dependencies=[Depends(verify_token)])
-@error_handler
-def get_create_workers_logs(id: int):
-    return handle_get_create_workers_logs(id)
-
-
-@app.post(
-    "/logs/subsidiaries/{id}/workers/create", dependencies=[Depends(verify_token)]
-)
-@error_handler
-def post_create_workers_logs(id: int, worker_log: WorkerLogCreateInput):
-    return handle_post_create_workers_logs(id, worker_log)
-
-
-# workers logs update
-
-
-@app.get("/logs/subsidiaries/{id}/workers/update", dependencies=[Depends(verify_token)])
-@error_handler
-def get_update_workers_logs(id: int):
-    return handle_get_update_workers_logs(id)
-
-
-@app.post(
-    "/logs/subsidiaries/{id}/workers/update", dependencies=[Depends(verify_token)]
-)
-@error_handler
-def post_update_workers_logs(id: int, worker_log: WorkerLogUpdateInput):
-    return handle_post_update_workers_logs(id, worker_log)
-
-
-# workers logs delete
-
-
-@app.get("/logs/subsidiaries/{id}/workers/delete", dependencies=[Depends(verify_token)])
-@error_handler
-def get_delete_workers_logs(id: int):
-    return handle_get_delete_workers_logs(id)
-
-
-@app.post(
-    "/logs/subsidiaries/{id}/workers/delete", dependencies=[Depends(verify_token)]
-)
-@error_handler
-def post_delete_workers_logs(id: int, worker_log: WorkerLogDeleteInput):
-    return handle_post_delete_workers_logs(id, worker_log)
-
+# workers
 
 # workers notations
 
@@ -1204,14 +906,6 @@ def get_resignable_reasons():
 def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
     return handle_resignable_reasons_report(id, input)
 
-
-# include open positions routes
-
-app.include_router(open_positions_routes)
-
-# include applicants routes
-
-app.include_router(applicants_routes)
 
 # worker first review
 
@@ -1956,22 +1650,6 @@ def get_scales(id: int, scales_list_props: ScalesListProps):
 
         return in_range_scales
 
-
-# nationalities routes (private)
-
-app.include_router(nationalities_routes)
-
-# states routes (private)
-
-app.include_router(states_routes)
-
-# cities routes (private)
-
-app.include_router(cities_routes)
-
-# neighborhoods routes (private)
-
-app.include_router(neighborhoods_routes)
 
 # workers docs
 

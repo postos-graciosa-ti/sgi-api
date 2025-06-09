@@ -1,5 +1,6 @@
 from typing import Optional
 
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
 
@@ -146,3 +147,19 @@ class Workers(SQLModel, table=True):
     ag: str = Field(default=None, nullable=True)
     cc: str = Field(default=None, nullable=True)
     early_payment_discount: str = Field(default=None, nullable=True)
+
+
+class WorkerDeactivateInput(BaseModel):
+    is_active: bool
+    resignation_date: str
+    resignation_reason: int
+
+
+class PatchWorkersTurnBody(BaseModel):
+    worker_id: int
+    turn_id: int
+
+
+class GetWorkersVtReportBody(BaseModel):
+    start_date: str
+    end_date: str

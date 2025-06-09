@@ -13,7 +13,7 @@ def handle_get_nationalities():
         return nationalities
 
 
-def handle_post_nationalities(nationalitie: Nationalities, user: AuthUser):
+def handle_post_nationalities(request, nationalitie: Nationalities, user: AuthUser):
     with Session(engine) as session:
         session.add(nationalitie)
 
@@ -22,7 +22,6 @@ def handle_post_nationalities(nationalitie: Nationalities, user: AuthUser):
         session.refresh(nationalitie)
 
         log_action(
-            session=session,
             action="post",
             table_name="nationalities",
             record_id=nationalitie.id,
@@ -31,19 +30,19 @@ def handle_post_nationalities(nationalitie: Nationalities, user: AuthUser):
                 "before": None,
                 "after": nationalitie.dict(),
             },
+            endpoint=str(request.url.path),
         )
 
         return nationalitie
 
 
-def handle_put_nationalities(id: int, nationalitie: Nationalities, user: dict):
+def handle_put_nationalities(request, id: int, nationalitie: Nationalities, user: dict):
     with Session(engine) as session:
         db_nationalitie = session.exec(
             select(Nationalities).where(Nationalities.id == id)
         ).first()
 
         log_action(
-            session=session,
             action="put",
             table_name="nationalities",
             record_id=id,
@@ -52,6 +51,7 @@ def handle_put_nationalities(id: int, nationalitie: Nationalities, user: dict):
                 "before": db_nationalitie.dict(),
                 "after": nationalitie.dict(),
             },
+            endpoint=str(request.url.path),
         )
 
         if nationalitie.name is not None:
@@ -66,14 +66,13 @@ def handle_put_nationalities(id: int, nationalitie: Nationalities, user: dict):
         return db_nationalitie
 
 
-def handle_delete_nationalities(id: int, user: dict):
+def handle_delete_nationalities(request, id: int, user: dict):
     with Session(engine) as session:
         db_nationalitie = session.exec(
             select(Nationalities).where(Nationalities.id == id)
         ).first()
 
         log_action(
-            session=session,
             action="delete",
             table_name="nationalities",
             record_id=id,
@@ -82,6 +81,7 @@ def handle_delete_nationalities(id: int, user: dict):
                 "before": db_nationalitie.dict(),
                 "after": None,
             },
+            endpoint=str(request.url.path),
         )
 
         session.delete(db_nationalitie)

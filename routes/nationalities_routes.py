@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from controllers.nationalities import (
     handle_delete_nationalities,
@@ -19,18 +19,23 @@ def get_nationalities():
 
 @nationalities_routes.post("/nationalities")
 def post_nationalities(
-    nationality: Nationalities, user: AuthUser = Depends(verify_token)
+    request: Request, nationality: Nationalities, user: AuthUser = Depends(verify_token)
 ):
-    return handle_post_nationalities(nationality, user)
+    return handle_post_nationalities(request, nationality, user)
 
 
 @nationalities_routes.put("/nationalities/{id}")
 def put_nationalities(
-    id: int, nationality: Nationalities, user: AuthUser = Depends(verify_token)
+    request: Request,
+    id: int,
+    nationality: Nationalities,
+    user: AuthUser = Depends(verify_token),
 ):
-    return handle_put_nationalities(id, nationality, user)
+    return handle_put_nationalities(request, id, nationality, user)
 
 
 @nationalities_routes.delete("/nationalities/{id}")
-def delete_nationalities(id: int, user: AuthUser = Depends(verify_token)):
-    return handle_delete_nationalities(id, user)
+def delete_nationalities(
+    request: Request, id: int, user: AuthUser = Depends(verify_token)
+):
+    return handle_delete_nationalities(request, id, user)

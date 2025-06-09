@@ -3,10 +3,12 @@ from functools import wraps
 from typing import Annotated, Any, Callable, Dict, List, Optional, Set
 
 from cachetools import TTLCache, cached
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, create_engine, event, inspect, text
 from sqlmodel import Session, select, update
 
 from database.sqlite import engine
+from functions.logs import log_action
 from models.away_reasons import AwayReasons
 from models.banks import Banks
 from models.cities import Cities
@@ -27,7 +29,7 @@ from models.school_levels import SchoolLevels
 from models.states import States
 from models.turn import Turn
 from models.wage_payment_method import WagePaymentMethod
-from models.workers import Workers
+from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
@@ -647,13 +649,83 @@ def handle_get_worker_notations(id: int):
         return worker_notations
 
 
-def handle_post_worker(worker: Workers):
+def handle_get_workers_by_turn_and_function(
+    subsidiarie_id: int, turn_id: int, function_id: int
+):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.turn_id == turn_id)
+            .where(Workers.function_id == function_id)
+        ).all()
+
+        return workers
+
+
+def handle_get_workers_by_turn(subsidiarie_id: int, turn_id: int):
+    with Session(engine) as session:
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return workers
+
+
+def handle_get_month_birthdays():
+    with Session(engine) as session:
+        today = datetime.today()
+
+        current_month = today.strftime("%m")
+
+        workers = session.exec(select(Workers).where(Workers.birthdate != None)).all()
+
+        result = []
+
+        for worker in workers:
+            try:
+                birthdate = datetime.strptime(worker.birthdate, "%Y-%m-%d").date()
+
+                if birthdate.strftime("%m") == current_month:
+                    result.append({"name": worker.name, "birthdate": worker.birthdate})
+
+            except ValueError:
+                continue
+
+        return result
+
+
+def handle_post_worker(request, worker: Workers, user):
+    admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+    first_review = admission_date + relativedelta(months=1)
+
+    second_review = admission_date + relativedelta(months=2)
+
+    worker.first_review_date = first_review.strftime("%Y-%m-%d")
+
+    worker.second_review_date = second_review.strftime("%Y-%m-%d")
+
     with Session(engine) as session:
         session.add(worker)
 
         session.commit()
 
         session.refresh(worker)
+
+        log_action(
+            action="post",
+            table_name="workers",
+            record_id=worker.id,
+            user_id=user["id"],
+            details={
+                "before": None,
+                "after": worker.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
 
         return worker
 
@@ -671,9 +743,21 @@ def handle_post_worker_notation(id: int, data: PostWorkerNotationInput):
         return worker_notation
 
 
-def handle_put_worker(id: int, worker: Workers):
+def handle_put_worker(request, id: int, worker: Workers, user):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
+
+        log_action(
+            action="put",
+            table_name="workers",
+            record_id=worker.id,
+            user_id=user["id"],
+            details={
+                "before": db_worker.dict(),
+                "after": worker.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
 
         for field in worker.__fields__.keys():
             value = getattr(worker, field)
@@ -726,45 +810,65 @@ def handle_put_worker(id: int, worker: Workers):
     return db_worker
 
 
-def handle_reactivate_worker(id: int):
+def handle_reactivate_worker(request, id: int, user):
     with Session(engine) as session:
         worker = session.get(Workers, id)
 
-        worker.is_active = True
+        before_state = worker.dict()
 
-        session.add(worker)
+        worker.is_active = True
 
         session.commit()
 
         session.refresh(worker)
 
+        log_action(
+            action="put",
+            table_name="workers",
+            record_id=worker.id,
+            user_id=user["id"],
+            details={
+                "before": before_state,
+                "after": worker.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
+
         return worker
 
 
-def handle_deactivate_worker(id: int, worker: WorkerDeactivateInput):
+def handle_deactivate_worker(request, id: int, worker: WorkerDeactivateInput, user):
     with Session(engine) as session:
         db_worker = session.get(Workers, id)
 
-        db_worker.is_active = (
-            worker.is_active if worker.is_active is not None else db_worker.is_active
-        )
+        before_state = db_worker.dict()
 
-        db_worker.resignation_reason_id = (
-            worker.resignation_reason
-            if worker.resignation_reason
-            else db_worker.resignation_reason_id
-        )
+        if worker.is_active is not None:
+            db_worker.is_active = worker.is_active
 
-        db_worker.resignation_date = (
-            worker.resignation_date
-            if worker.resignation_date
-            else db_worker.resignation_date
-        )
+        if worker.resignation_reason is not None:
+            db_worker.resignation_reason_id = worker.resignation_reason
+
+        if worker.resignation_date is not None:
+            db_worker.resignation_date = worker.resignation_date
 
         session.commit()
 
         session.refresh(db_worker)
-    return db_worker
+
+        log_action(
+            action="put",
+            table_name="workers",
+            record_id=db_worker.id,
+            user_id=user["id"],
+            details={
+                "before": before_state,
+                "after": db_worker.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
+
+        return db_worker
 
 
 def handle_delete_worker_notation(id: int):
@@ -776,3 +880,58 @@ def handle_delete_worker_notation(id: int):
         session.commit()
 
         return {"status": "ok"}
+
+
+def handle_patch_workers_turn(body: PatchWorkersTurnBody):
+    with Session(engine) as session:
+        db_worker = session.exec(
+            select(Workers).where(Workers.id == body.worker_id)
+        ).first()
+
+        db_worker.turn_id = body.turn_id
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
+def handle_get_workers_need_vt(body: GetWorkersVtReportBody):
+    with Session(engine) as session:
+        start_date = datetime.strptime(body.start_date, "%Y-%m-%d").date()
+
+        end_date = datetime.strptime(body.end_date, "%Y-%m-%d").date()
+
+        workers = session.exec(select(Workers).where(Workers.transport_voucher)).all()
+
+        result = []
+
+        for worker in workers:
+            admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+            if admission_date >= start_date and admission_date <= end_date:
+                result.append(worker)
+
+        return result
+
+
+def handle_get_workers_need_open_account(body: GetWorkersVtReportBody):
+    with Session(engine) as session:
+        start_date = datetime.strptime(body.start_date, "%Y-%m-%d").date()
+
+        end_date = datetime.strptime(body.end_date, "%Y-%m-%d").date()
+
+        workers = session.exec(select(Workers)).all()
+
+        result = []
+
+        for worker in workers:
+            admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d").date()
+
+            if admission_date >= start_date and admission_date <= end_date:
+                result.append(worker)
+
+        return result

@@ -1,12 +1,15 @@
-from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
 
+from sqlmodel import Field, SQLModel
+
+
 class SystemLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    action: str  # 'create', 'update', 'delete', etc.
+    action: str
     table_name: str
     record_id: Optional[int]
-    user_id: Optional[int]  # se quiser logar o usuário
+    user_id: Optional[int]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    details: Optional[str] = None  # informações extras (JSON string, por ex.)
+    details: Optional[str] = None
+    endpoint: str

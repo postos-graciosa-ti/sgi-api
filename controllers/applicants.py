@@ -15,6 +15,7 @@ from models.applicants_exams import ApplicantsExams
 from models.function import Function
 from models.redirected_to import RedirectedTo
 from models.workers import Workers
+from models.workers_pictures import WorkersPictures
 from pyhints.applicants import RecruitProps, SendFeedbackEmailBody
 
 # applicants
@@ -407,6 +408,14 @@ def handle_post_hire_applicants(recruit: RecruitProps) -> Optional[Workers]:
         session.commit()
 
         session.refresh(new_worker)
+
+        new_worker_picture = WorkersPictures(
+            worker_id=new_worker.id, picture_url=db_applicant.picture_url
+        )
+
+        session.add(new_worker_picture)
+
+        session.commit()
 
         session.delete(db_applicant)
 

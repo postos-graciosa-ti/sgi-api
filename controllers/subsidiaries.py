@@ -1,8 +1,11 @@
+from fastapi import Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from functions.auth import AuthUser
+from functions.logs import log_action
 from models.subsidiarie import Subsidiarie
 from pyhints.subsidiaries import PutSubsidiarie
 
@@ -10,7 +13,8 @@ from pyhints.subsidiaries import PutSubsidiarie
 def handle_get_subsidiaries():
     with Session(engine) as session:
         subsidiaries = session.exec(select(Subsidiarie)).all()
-    return subsidiaries
+
+        return subsidiaries
 
 
 def handle_get_subsidiarie_by_id(id: int):
@@ -22,51 +26,87 @@ def handle_get_subsidiarie_by_id(id: int):
         return subsidiarie
 
 
-def handle_post_subsidiaries(formData: Subsidiarie):
+def handle_post_subsidiaries(request: Request, formData: Subsidiarie, user: AuthUser):
     with Session(engine) as session:
         session.add(formData)
 
         session.commit()
 
         session.refresh(formData)
-    return formData
+
+        log_action(
+            action="post",
+            table_name="subsidiaries",
+            record_id=formData.id,
+            user_id=user["id"],
+            details={
+                "before": None,
+                "after": formData.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
+
+        return formData
 
 
-def handle_put_subsidiarie(id: int, formData: PutSubsidiarie):
+def handle_put_subsidiarie(
+    id: int, formData: Subsidiarie, request: Request, user: AuthUser
+):
     with Session(engine) as session:
-        subsidiarie = session.get(Subsidiarie, id)
+        db_subsidiarie = session.exec(
+            select(Subsidiarie).where(Subsidiarie.id == id)
+        ).first()
 
-        if formData.name:
-            subsidiarie.name = formData.name
+        old_values = db_subsidiarie.dict()
 
-        if formData.adress:
-            subsidiarie.adress = formData.adress
+        for field, value in formData.dict(exclude_unset=True).items():
+            current_value = getattr(db_subsidiarie, field)
 
-        if formData.phone:
-            subsidiarie.phone = formData.phone
+            if current_value != value:
+                setattr(db_subsidiarie, field, value)
 
-        if formData.email:
-            subsidiarie.email = formData.email
-
-        if formData.coordinator:
-            subsidiarie.coordinator = formData.coordinator
-
-        if formData.manager:
-            subsidiarie.manager = formData.manager
+        session.add(db_subsidiarie)
 
         session.commit()
 
-        session.refresh(subsidiarie)
+        session.refresh(db_subsidiarie)
 
-        return subsidiarie
+        if db_subsidiarie.dict() != old_values:
+            log_action(
+                action="put",
+                table_name="subsidiaries",
+                record_id=id,
+                user_id=user["id"],
+                details={
+                    "before": old_values,
+                    "after": db_subsidiarie.dict(),
+                },
+                endpoint=str(request.url.path),
+            )
+
+        return db_subsidiarie
 
 
-def handle_delete_subsidiarie(id: int):
+def handle_delete_subsidiarie(request: Request, id: int, user: AuthUser):
     with Session(engine) as session:
         subsidiarie = session.get(Subsidiarie, id)
 
-        if subsidiarie:
-            session.delete(subsidiarie)
+        old_data = subsidiarie.dict()
 
-            session.commit()
-        return {"message": "Subsidiarie deleted successfully"}
+        session.delete(subsidiarie)
+
+        session.commit()
+
+        log_action(
+            action="delete",
+            table_name="subsidiaries",
+            record_id=id,
+            user_id=user["id"],
+            details={
+                "before": old_data,
+                "after": None,
+            },
+            endpoint=str(request.url.path),
+        )
+
+        return {"message": "Subsidiária deletada com sucesso"}

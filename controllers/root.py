@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import threading
 import time
 from typing import Set
 
@@ -15,6 +16,7 @@ from sqlalchemy_utils import database_exists
 from sqlmodel import Field, Session, SQLModel, select
 
 from database.sqlite import create_db_and_tables, engine
+from keep_alive import keep_alive_function
 from migrations.apply_migrations import apply_migrations
 from migrations.lib.watchmen.watch import watch
 from models.applicants import Applicants
@@ -51,6 +53,8 @@ def handle_watch_models():
 def handle_on_startup():
     try:
         database_url = os.environ.get("SQLITE_URL")
+
+        threading.Thread(target=keep_alive_function, daemon=True).start()
 
         if not database_exists(engine.url):
             print("Banco de dados não encontrado. Criando...")

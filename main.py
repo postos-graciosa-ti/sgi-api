@@ -2008,16 +2008,21 @@ class ImagePayload(BaseModel):
     image: str
 
 
-@app.post("/api/upload-image")
-async def upload_image(payload: ImagePayload):
-    header, data = payload.image.split(",", 1)
+@app.post("/applicants/{id}/api/upload-image")
+async def upload_image(id: int, payload: ImagePayload):
+    with Session(engine) as session:
+        applicant = session.exec(select(Applicants).where(Applicants.id == id)).first()
 
-    image_bytes = base64.b64decode(data)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant não encontrado")
 
-    with open("foto_usuario.jpg", "wb") as f:
-        f.write(image_bytes)
+        applicant.picture = payload.image
 
-    return {"status": "ok"}
+        session.add(applicant)
+
+        session.commit()
+
+        return {"status": "ok"}
 
 
 class SendEmailToMabeconBodyProps(BaseModel):

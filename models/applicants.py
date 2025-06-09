@@ -85,3 +85,5 @@ class Applicants(SQLModel, table=True):
     work_relationships: Optional[str] = Field(default=None, nullable=True)
 
     work_experiences: Optional[str] = Field(default=None, nullable=True)
+
+    picture_url: Optional[str] = Field(default=None, nullable=True)

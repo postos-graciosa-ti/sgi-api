@@ -2016,7 +2016,7 @@ async def upload_image(id: int, payload: ImagePayload):
         if not applicant:
             raise HTTPException(status_code=404, detail="Applicant não encontrado")
 
-        applicant.picture = payload.image
+        applicant.picture_url = payload.image
 
         session.add(applicant)
 

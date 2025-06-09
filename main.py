@@ -331,7 +331,7 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-threading.Thread(target=keep_alive_function, daemon=True).start()
+# threading.Thread(target=keep_alive_function, daemon=True).start()
 
 
 @app.on_event("startup")
@@ -348,104 +348,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-# subsidiaries
-
-
-@app.get("/subsidiaries", dependencies=[Depends(verify_token)])
-@error_handler
-def get_subsidiaries():
-    return handle_get_subsidiaries()
-
-
-@app.get("/subsidiaries/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_subsidiarie_by_id(id: int):
-    return handle_get_subsidiarie_by_id(id)
-
-
-@app.post("/subsidiaries", dependencies=[Depends(verify_token)])
-@error_handler
-def post_subsidiaries(formData: Subsidiarie):
-    return handle_post_subsidiaries(formData)
-
-
-@app.put("/subsidiaries/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_subsidiarie(id: int, subsidiarie: Subsidiarie):
-    with Session(engine) as session:
-        db_subsidiarie = session.exec(
-            select(Subsidiarie).where(Subsidiarie.id == id)
-        ).first()
-
-        if subsidiarie.name and subsidiarie.name != db_subsidiarie.name:
-            db_subsidiarie.name = subsidiarie.name
-
-        if subsidiarie.adress and subsidiarie.adress != db_subsidiarie.adress:
-            db_subsidiarie.adress = subsidiarie.adress
-
-        if subsidiarie.phone and subsidiarie.phone != db_subsidiarie.phone:
-            db_subsidiarie.phone = subsidiarie.phone
-
-        if subsidiarie.email and subsidiarie.email != db_subsidiarie.email:
-            db_subsidiarie.email = subsidiarie.email
-
-        if (
-            subsidiarie.coordinator is not None
-            and subsidiarie.coordinator != db_subsidiarie.coordinator
-        ):
-            db_subsidiarie.coordinator = subsidiarie.coordinator
-
-        if (
-            subsidiarie.manager is not None
-            and subsidiarie.manager != db_subsidiarie.manager
-        ):
-            db_subsidiarie.manager = subsidiarie.manager
-
-        session.add(db_subsidiarie)
-
-        session.commit()
-
-        session.refresh(db_subsidiarie)
-
-        return db_subsidiarie
-
-
-@app.delete("/subsidiaries/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_subsidiaries(id: int):
-    return handle_delete_subsidiarie(id)
-
-
-# subsidiaries notifications
-
-
-@app.get("/subsidiaries/{id}/notifications", dependencies=[Depends(verify_token)])
-@error_handler
-async def get_subsidiarie_notifications(id: int):
-    return await handle_get_subsidiarie_notifications(id)
-
-
-@app.get("/subsidiaries/{id}/workers-status", dependencies=[Depends(verify_token)])
-@error_handler
-def get_subsidiaries_status(id: int):
-    handle_get_subsidiaries_status(id)
-
-
-# subsidiaries logs
-
-
-@app.get("/subsidiaries-logs", dependencies=[Depends(verify_token)])
-@error_handler
-def get_subsidiarie_logs():
-    return handle_get_subsidiarie_logs()
-
-
-@app.post("/subsidiaries/logs", dependencies=[Depends(verify_token)])
-@error_handler
-def post_subsidiaries_logs(subsidiarie_log: SubsidiarieLogs):
-    return handle_post_subsidiaries_logs(subsidiarie_log)
-
 
 # turns
 
@@ -499,67 +401,6 @@ def get_turns_logs(id: int):
 @error_handler
 def post_turns_logs(id: int, turn_log: TurnsLogs):
     return handle_post_turns_logs(id, turn_log)
-
-
-# workers logs
-
-
-@app.get("/logs/subsidiaries/{id}/workers", dependencies=[Depends(verify_token)])
-@error_handler
-def get_workers_logs(id: int):
-    with Session(engine) as session:
-        query = select(WorkersLogs).where(WorkersLogs.subsidiarie_id == id)
-
-        workers_logs = session.exec(query).all()
-
-        return workers_logs
-
-
-@app.post("/logs/subsidiaries/{id}/workers", dependencies=[Depends(verify_token)])
-@error_handler
-def post_workers_logs(id: int, workers_log: WorkersLogs):
-    return handle_post_workers_logs(id, workers_log)
-
-
-# workers
-
-# workers notations
-
-
-@app.get("/workers/{id}/notations", dependencies=[Depends(verify_token)])
-@error_handler
-def get_worker_notations(id: int):
-    return handle_get_worker_notations(id)
-
-
-@app.post("/workers/{id}/notations", dependencies=[Depends(verify_token)])
-@error_handler
-def post_worker_notation(id: int, data: PostWorkerNotationInput):
-    return handle_post_worker_notation(id, data)
-
-
-@app.delete("/workers-notations/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_worker_notation(id: int):
-    return handle_delete_worker_notation(id)
-
-
-# workers pictures
-
-
-@app.get("/workers-pictures/{worker_id}")
-def get_workers_pictures(worker_id: int):
-    return handle_get_workers_pictures(worker_id)
-
-
-@app.post("/workers-pictures")
-def post_workers_pictures(body: WorkersPictures):
-    return handle_post_workers_pictures(body)
-
-
-@app.delete("/workers-pictures/{worker_id}")
-def delete_workers_pictures(worker_id: int):
-    return handle_delete_workers_pictures(worker_id)
 
 
 # functions

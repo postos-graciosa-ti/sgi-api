@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, Request
 
 from controllers.workers import (
     handle_deactivate_worker,
+    handle_delete_worker_notation,
     handle_get_active_workers_by_subsidiarie_and_function,
     handle_get_active_workers_by_turn_and_subsidiarie,
     handle_get_month_birthdays,
     handle_get_worker_by_id,
+    handle_get_worker_notations,
     handle_get_workers_by_subsidiarie,
     handle_get_workers_by_subsidiaries_functions_and_turns,
     handle_get_workers_by_turn,
@@ -15,8 +17,14 @@ from controllers.workers import (
     handle_get_workers_need_vt,
     handle_patch_workers_turn,
     handle_post_worker,
+    handle_post_worker_notation,
     handle_put_worker,
     handle_reactivate_worker,
+)
+from controllers.workers_pictures import (
+    handle_delete_workers_pictures,
+    handle_get_workers_pictures,
+    handle_post_workers_pictures,
 )
 from functions.auth import AuthUser, verify_token
 from models.workers import (
@@ -25,6 +33,8 @@ from models.workers import (
     WorkerDeactivateInput,
     Workers,
 )
+from models.workers_pictures import WorkersPictures
+from pyhints.workers import PostWorkerNotationInput
 
 workers_routes = APIRouter()
 
@@ -150,3 +160,33 @@ def reactivate_worker(
 @workers_routes.patch("/patch-workers-turn", dependencies=[Depends(verify_token)])
 def patch_workers_turn(body: PatchWorkersTurnBody):
     return handle_patch_workers_turn(body)
+
+
+@workers_routes.get("/workers/{id}/notations", dependencies=[Depends(verify_token)])
+def get_worker_notations(id: int):
+    return handle_get_worker_notations(id)
+
+
+@workers_routes.post("/workers/{id}/notations", dependencies=[Depends(verify_token)])
+def post_worker_notation(id: int, data: PostWorkerNotationInput):
+    return handle_post_worker_notation(id, data)
+
+
+@workers_routes.delete("/workers-notations/{id}", dependencies=[Depends(verify_token)])
+def delete_worker_notation(id: int):
+    return handle_delete_worker_notation(id)
+
+
+@workers_routes.get("/workers-pictures/{worker_id}")
+def get_workers_pictures(worker_id: int):
+    return handle_get_workers_pictures(worker_id)
+
+
+@workers_routes.post("/workers-pictures")
+def post_workers_pictures(body: WorkersPictures):
+    return handle_post_workers_pictures(body)
+
+
+@workers_routes.delete("/workers-pictures/{worker_id}")
+def delete_workers_pictures(worker_id: int):
+    return handle_delete_workers_pictures(worker_id)

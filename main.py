@@ -2018,12 +2018,16 @@ async def upload_image(id: int, payload: ImagePayload):
 
         applicant.picture_url = payload.image
 
+        applicant.identity_complete = True
+
         session.add(applicant)
+
         session.commit()
 
         print(f"Imagem salva para applicant {id}: {payload.image}")
 
         return {"status": "ok"}
+
 
 class SendEmailToMabeconBodyProps(BaseModel):
     subsidiarie: str

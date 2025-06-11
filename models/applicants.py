@@ -87,3 +87,8 @@ class Applicants(SQLModel, table=True):
     work_experiences: Optional[str] = Field(default=None, nullable=True)
 
     picture_url: Optional[str] = Field(default=None, nullable=True)
+
+    avaliation_complete: Optional[bool] = Field(default=False)
+    identity_complete: Optional[bool] = Field(default=False)
+    rh_interview_complete: Optional[bool] = Field(default=False)
+    coordinator_interview_complete: Optional[bool] = Field(default=False)

@@ -905,7 +905,9 @@ def handle_get_workers_need_vt(body: GetWorkersVtReportBody):
 
         end_date = datetime.strptime(body.end_date, "%Y-%m-%d").date()
 
-        workers = session.exec(select(Workers).where(Workers.transport_voucher)).all()
+        workers = session.exec(
+            select(Workers).where(Workers.transport_voucher is not None)
+        ).all()
 
         result = []
 

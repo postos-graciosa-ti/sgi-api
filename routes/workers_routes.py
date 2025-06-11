@@ -109,9 +109,9 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
     return handle_get_workers_by_turn(subsidiarie_id, turn_id)
 
 
-@workers_routes.get("/another-route-yet", dependencies=[Depends(verify_token)])
-def get_month_birthdays():
-    return handle_get_month_birthdays()
+@workers_routes.get("/subsidiaries/{id}/another-route-yet")
+def get_month_birthdays(id: int):
+    return handle_get_month_birthdays(id)
 
 
 @workers_routes.post("/workers")

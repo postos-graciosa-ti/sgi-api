@@ -674,25 +674,30 @@ def handle_get_workers_by_turn(subsidiarie_id: int, turn_id: int):
         return workers
 
 
-def handle_get_month_birthdays():
+def handle_get_month_birthdays(id: int) -> List[Dict[str, str]]:
     with Session(engine) as session:
-        today = datetime.today()
+        current_month = date.today().month
 
-        current_month = today.strftime("%m")
-
-        workers = session.exec(select(Workers).where(Workers.birthdate != None)).all()
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.birthdate != None)
+        ).all()
 
         result = []
 
         for worker in workers:
-            try:
-                birthdate = datetime.strptime(worker.birthdate, "%Y-%m-%d").date()
+            birthdate = worker.birthdate
 
-                if birthdate.strftime("%m") == current_month:
-                    result.append({"name": worker.name, "birthdate": worker.birthdate})
+            if isinstance(birthdate, str):
+                try:
+                    birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date()
 
-            except ValueError:
-                continue
+                except ValueError:
+                    continue
+
+            if birthdate and birthdate.month == current_month:
+                result.append({"name": worker.name, "birthdate": birthdate.isoformat()})
 
         return result
 

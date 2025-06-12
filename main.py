@@ -2,6 +2,7 @@ import base64
 import datetime
 import io
 import json
+import logging
 import math
 import os
 import re
@@ -348,6 +349,71 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+ONESIGNAL_APP_ID = "fdfaca19-f574-478f-904b-135e6ac264ef"
+
+ONESIGNAL_API_KEY = "os_v2_app_7x5mugpvordy7eclcnpgvqte56elahs5xl2utk4bya3owzyytxdpuln63gvwhbcp36noyo6rupxbjm5qn3z64qixcaxwrzmsjifjyyi"
+
+
+class Notification(BaseModel):
+    title: str
+    message: str
+    url: str | None = None  # opcional
+    player_ids: list[str] | None = None  # opcional — se não enviar, vai para todos
+
+
+@app.post("/send-notification")
+async def send_notification(payload: Notification):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
+    }
+
+    body = {
+        "app_id": ONESIGNAL_APP_ID,
+        "headings": {"en": payload.title},
+        "contents": {"en": payload.message},
+    }
+
+    if payload.url:
+        body["url"] = payload.url
+
+    if payload.player_ids:
+        body["include_player_ids"] = payload.player_ids
+        logging.info(f"Enviando para player_ids: {payload.player_ids}")
+    else:
+        body["included_segments"] = ["Subscribed Users"]
+        logging.info("Enviando para todos os inscritos")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://onesignal.com/api/v1/notifications",
+                headers=headers,
+                json=body,
+            )
+            response.raise_for_status()  # Levanta exceção para códigos 4XX/5XX
+            result = response.json()
+            logging.info(f"Notificação enviada com sucesso: {result.get('id')}")
+            return result
+
+    except httpx.HTTPStatusError as e:
+        try:
+            error = e.response.json()
+        except ValueError:
+            error = e.response.text
+        logging.error(f"Erro ao enviar notificação: {error}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=error
+        )
+    except Exception as e:
+        logging.error(f"Erro inesperado: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Ocorreu um erro inesperado ao enviar a notificação"
+        )
+
 
 # turns
 

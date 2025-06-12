@@ -349,6 +349,17 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
+
+@app.get("/applicants/redirected/{user_id}")
+def get_applicants_redirected(user_id: int):
+    with Session(engine) as session:
+        applicants_redirected = session.exec(
+            select(Applicants).where(Applicants.redirect_to == user_id)
+        ).all()
+
+        return applicants_redirected
+
+
 # turns
 
 

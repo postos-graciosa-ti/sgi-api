@@ -332,12 +332,12 @@ app = FastAPI()
 
 add_cors_middleware(app)
 
-# threading.Thread(target=keep_alive_function, daemon=True).start()
-
 
 @app.on_event("startup")
 def on_startup():
-    return handle_on_startup()
+    threading.Thread(target=keep_alive_function, daemon=True).start()
+
+    handle_on_startup()
 
 
 # include public routes
@@ -349,37 +349,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-ONESIGNAL_APP_ID = "a884fea7-2f84-4b09-9815-7de82198616e"
-
-ONESIGNAL_API_KEY = "r55jbdaxreyefl76yftbaxh7q"
-
-
-class Notification(BaseModel):
-    player_id: str
-    title: str
-    message: str
-
-
-@app.post("/send-notification/")
-def send_notification(data: Notification):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
-    }
-
-    payload = {
-        "app_id": ONESIGNAL_APP_ID,
-        "include_player_ids": [data.player_id],
-        "headings": {"en": data.title},
-        "contents": {"en": data.message},
-    }
-
-    response = requests.post(
-        "https://onesignal.com/api/v1/notifications", json=payload, headers=headers
-    )
-
-    return response.json()
 
 
 # turns

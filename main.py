@@ -351,6 +351,22 @@ for private_route in private_routes:
     app.include_router(private_route)
 
 
+@app.patch("/workers/{worker_id}/change-subsidiarie/{subsidiarie_id}")
+def patch_worker_subsidiarie(worker_id: int, subsidiarie_id: int):
+    with Session(engine) as session:
+        db_worker = session.exec(select(Workers).where(Workers.id == worker_id)).first()
+
+        db_worker.subsidiarie_id = subsidiarie_id
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
 # turns
 
 

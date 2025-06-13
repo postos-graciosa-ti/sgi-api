@@ -10,6 +10,7 @@ from controllers.users import (
     handle_get_users_by_status,
     handle_get_users_roles,
     handle_patch_deactivate_user,
+    handle_patch_reset_password,
     handle_post_user,
     handle_put_user,
 )
@@ -62,6 +63,11 @@ def patch_deactivate_user(
     loged_user: AuthUser = Depends(verify_token),
 ):
     return handle_patch_deactivate_user(request, id, created_by_id, loged_user)
+
+
+@users_routes.patch("/users/{id}/reset-password")
+def patch_reset_password(id: int, logged_user: AuthUser = Depends(verify_token)):
+    return handle_patch_reset_password(id, logged_user)
 
 
 @users_routes.delete("/users/{id}", dependencies=[Depends(verify_token)])

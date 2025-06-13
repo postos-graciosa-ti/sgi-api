@@ -876,6 +876,21 @@ def handle_deactivate_worker(request, id: int, worker: WorkerDeactivateInput, us
         return db_worker
 
 
+def handle_patch_worker_subsidiarie(worker_id: int, subsidiarie_id: int):
+    with Session(engine) as session:
+        db_worker = session.exec(select(Workers).where(Workers.id == worker_id)).first()
+
+        db_worker.subsidiarie_id = subsidiarie_id
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
 def handle_delete_worker_notation(id: int):
     with Session(engine) as session:
         worker_notation = session.get(WorkersNotations, id)

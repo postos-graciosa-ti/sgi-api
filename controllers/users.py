@@ -152,6 +152,31 @@ def handle_put_user(
     return db_user
 
 
+def handle_patch_reset_password(id: int, logged_user: AuthUser = Depends(verify_token)):
+    default_pwd = os.environ.get("DEFAULT_PWD")
+
+    with Session(engine) as session:
+        user_is_admin = session.exec(
+            select(User).where(User.id == logged_user["id"]).where(User.role_id == 1)
+        ).first()
+
+        if user_is_admin:
+            db_user = session.exec(select(User).where(User.id == id)).first()
+
+            db_user.password = pbkdf2_sha256.hash(default_pwd)
+
+            session.add(db_user)
+
+            session.commit()
+
+            session.refresh(db_user)
+
+            return {"success": True}
+
+        else:
+            return {"success": False}
+
+
 def handle_delete_user(id: int):
     with Session(engine) as session:
         user = session.get(User, id)

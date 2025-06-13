@@ -33,6 +33,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import JSONResponse, StreamingResponse
+from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
 from sqlalchemy import and_, create_engine, event, extract, func, inspect, text
@@ -236,7 +237,7 @@ from controllers.workers_pictures import (
     handle_post_workers_pictures,
 )
 from database.sqlite import engine
-from functions.auth import verify_token
+from functions.auth import AuthUser, verify_token
 from functions.error_handling import error_handler
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
@@ -349,22 +350,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-
-@app.patch("/workers/{worker_id}/change-subsidiarie/{subsidiarie_id}")
-def patch_worker_subsidiarie(worker_id: int, subsidiarie_id: int):
-    with Session(engine) as session:
-        db_worker = session.exec(select(Workers).where(Workers.id == worker_id)).first()
-
-        db_worker.subsidiarie_id = subsidiarie_id
-
-        session.add(db_worker)
-
-        session.commit()
-
-        session.refresh(db_worker)
-
-        return {"success": True}
 
 
 # turns

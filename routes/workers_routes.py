@@ -15,6 +15,7 @@ from controllers.workers import (
     handle_get_workers_by_turn_and_subsidiarie,
     handle_get_workers_need_open_account,
     handle_get_workers_need_vt,
+    handle_patch_worker_subsidiarie,
     handle_patch_workers_turn,
     handle_post_worker,
     handle_post_worker_notation,
@@ -160,6 +161,11 @@ def reactivate_worker(
 @workers_routes.patch("/patch-workers-turn", dependencies=[Depends(verify_token)])
 def patch_workers_turn(body: PatchWorkersTurnBody):
     return handle_patch_workers_turn(body)
+
+
+@workers_routes.patch("/workers/{worker_id}/change-subsidiarie/{subsidiarie_id}")
+def patch_worker_subsidiarie(worker_id: int, subsidiarie_id: int):
+    return handle_patch_worker_subsidiarie(worker_id, subsidiarie_id)
 
 
 @workers_routes.get("/workers/{id}/notations", dependencies=[Depends(verify_token)])

@@ -350,69 +350,36 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
-ONESIGNAL_APP_ID = "fdfaca19-f574-478f-904b-135e6ac264ef"
+ONESIGNAL_APP_ID = "a884fea7-2f84-4b09-9815-7de82198616e"
 
-ONESIGNAL_API_KEY = "os_v2_app_7x5mugpvordy7eclcnpgvqte56elahs5xl2utk4bya3owzyytxdpuln63gvwhbcp36noyo6rupxbjm5qn3z64qixcaxwrzmsjifjyyi"
+ONESIGNAL_API_KEY = "r55jbdaxreyefl76yftbaxh7q"
 
 
 class Notification(BaseModel):
+    player_id: str
     title: str
     message: str
-    url: str | None = None  # opcional
-    player_ids: list[str] | None = None  # opcional — se não enviar, vai para todos
 
 
-@app.post("/send-notification")
-async def send_notification(payload: Notification):
+@app.post("/send-notification/")
+def send_notification(data: Notification):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Basic {ONESIGNAL_API_KEY}",
     }
 
-    body = {
+    payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "headings": {"en": payload.title},
-        "contents": {"en": payload.message},
+        "include_player_ids": [data.player_id],
+        "headings": {"en": data.title},
+        "contents": {"en": data.message},
     }
 
-    if payload.url:
-        body["url"] = payload.url
+    response = requests.post(
+        "https://onesignal.com/api/v1/notifications", json=payload, headers=headers
+    )
 
-    if payload.player_ids:
-        body["include_player_ids"] = payload.player_ids
-        logging.info(f"Enviando para player_ids: {payload.player_ids}")
-    else:
-        body["included_segments"] = ["Subscribed Users"]
-        logging.info("Enviando para todos os inscritos")
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://onesignal.com/api/v1/notifications",
-                headers=headers,
-                json=body,
-            )
-            response.raise_for_status()  # Levanta exceção para códigos 4XX/5XX
-            result = response.json()
-            logging.info(f"Notificação enviada com sucesso: {result.get('id')}")
-            return result
-
-    except httpx.HTTPStatusError as e:
-        try:
-            error = e.response.json()
-        except ValueError:
-            error = e.response.text
-        logging.error(f"Erro ao enviar notificação: {error}")
-        raise HTTPException(
-            status_code=e.response.status_code,
-            detail=error
-        )
-    except Exception as e:
-        logging.error(f"Erro inesperado: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Ocorreu um erro inesperado ao enviar a notificação"
-        )
+    return response.json()
 
 
 # turns
@@ -1620,7 +1587,7 @@ def get_pdf(doc_id: int):
 @app.post("/upload-pdf/{worker_id}")
 async def upload_pdf(
     worker_id: int,
-    doc_title: str = Form(...),  # Novo parâmetro
+    doc_title: str = Form(...),
     file: UploadFile = File(...),
 ):
     if file.content_type != "application/pdf":
@@ -1633,18 +1600,44 @@ async def upload_pdf(
             db_doc = WorkersDocs(
                 worker_id=worker_id,
                 doc=pdf_bytes,
-                doc_title=doc_title,  # Adicionando o título
+                doc_title=doc_title,
             )
 
             session.add(db_doc)
+
             session.commit()
+
             session.refresh(db_doc)
+
+            if db_doc.doc_title == "Contrato de trabalho":
+                EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+                SENHA = os.environ.get("SENHA")
+
+                BCC = os.environ.get("BCC")
+
+                msg = EmailMessage()
+
+                msg["Subject"] = "Novo contrato de trabalho"
+
+                msg["From"] = EMAIL_REMETENTE
+
+                msg["To"] = BCC
+
+                msg.set_content(
+                    "Um novo contrato de trabalho foi anexado ao SGI, confira já!"
+                )
+
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                    smtp.login(EMAIL_REMETENTE, SENHA)
+
+                    smtp.send_message(msg)
 
             return {
                 "message": "PDF salvo com sucesso",
                 "id": db_doc.id,
                 "worker_id": db_doc.worker_id,
-                "doc_title": db_doc.doc_title,  # Retornando o título
+                "doc_title": db_doc.doc_title,
                 "filename": file.filename,
             }
 

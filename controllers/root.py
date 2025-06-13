@@ -54,7 +54,7 @@ def handle_on_startup():
     try:
         database_url = os.environ.get("SQLITE_URL")
 
-        threading.Thread(target=keep_alive_function, daemon=True).start()
+        # threading.Thread(target=keep_alive_function, daemon=True).start()
 
         if not database_exists(engine.url):
             print("Banco de dados não encontrado. Criando...")

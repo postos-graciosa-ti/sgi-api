@@ -1680,22 +1680,32 @@ def get_pdf(doc_id: int):
     try:
         with Session(engine) as session:
             doc = session.get(WorkersDocs, doc_id)
+
             if not doc:
                 raise HTTPException(status_code=404, detail="Documento não encontrado")
 
-            from io import BytesIO
+            if doc.doc_title == "Ficha da contabilidade":
+                media_type = (
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
-            from fastapi.responses import StreamingResponse
+                filename = f"ficha_contabilidade_{doc_id}.xlsx"
+
+            else:
+                media_type = "application/pdf"
+
+                filename = f"document_{doc_id}.pdf"
 
             return StreamingResponse(
                 BytesIO(doc.doc),
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": f"inline; filename=document_{doc_id}.pdf"
-                },
+                media_type=media_type,
+                headers={"Content-Disposition": f"inline; filename={filename}"},
             )
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao recuperar PDF: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao recuperar documento: {str(e)}"
+        )
 
 
 @app.post("/upload-pdf/{worker_id}")
@@ -1704,16 +1714,27 @@ async def upload_pdf(
     doc_title: str = Form(...),
     file: UploadFile = File(...),
 ):
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
-
     try:
-        pdf_bytes = await file.read()
+        file_bytes = await file.read()
+
+        if doc_title == "Ficha da contabilidade":
+            if (
+                file.content_type
+                != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="O arquivo deve estar no formato Excel (.xlsx)",
+                )
+            
+        else:
+            if file.content_type != "application/pdf":
+                raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
 
         with Session(engine) as session:
             db_doc = WorkersDocs(
                 worker_id=worker_id,
-                doc=pdf_bytes,
+                doc=file_bytes,
                 doc_title=doc_title,
             )
 
@@ -1748,7 +1769,7 @@ async def upload_pdf(
                     smtp.send_message(msg)
 
             return {
-                "message": "PDF salvo com sucesso",
+                "message": "Arquivo salvo com sucesso",
                 "id": db_doc.id,
                 "worker_id": db_doc.worker_id,
                 "doc_title": db_doc.doc_title,
@@ -1756,7 +1777,9 @@ async def upload_pdf(
             }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar o PDF: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}"
+        )
 
 
 class EmailRequest(BaseModel):

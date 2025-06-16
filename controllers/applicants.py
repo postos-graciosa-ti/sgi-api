@@ -10,6 +10,7 @@ from sqlalchemy import and_, create_engine, event, text
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.function import Function
@@ -544,3 +545,53 @@ def handle_post_applicants_redirected_to(body: RedirectedTo):
         session.refresh(body)
 
         return {"success": True}
+
+
+def handle_get_applicant_process(applicant_id: int):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(ApplicantProcess).where(
+                ApplicantProcess.applicant_id == applicant_id
+            )
+        ).first()
+
+        if not db_applicant:
+            raise HTTPException(status_code=404, detail="Processo não encontrado")
+
+        return db_applicant
+
+
+def handle_upsert_applicant_process(
+    applicant_id: int, applicant_process: ApplicantProcess
+):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(ApplicantProcess).where(
+                ApplicantProcess.applicant_id == applicant_id
+            )
+        ).first()
+
+        if db_applicant:
+            db_applicant.exam = applicant_process.exam
+            db_applicant.hr_interview = applicant_process.hr_interview
+            db_applicant.coordinator_interview = applicant_process.coordinator_interview
+            db_applicant.accounting_form = applicant_process.accounting_form
+            db_applicant.add_time_system = applicant_process.add_time_system
+            db_applicant.add_web_system = applicant_process.add_web_system
+            db_applicant.add_sgi_system = applicant_process.add_sgi_system
+        else:
+            db_applicant = ApplicantProcess(
+                applicant_id=applicant_id,
+                exam=applicant_process.exam,
+                hr_interview=applicant_process.hr_interview,
+                coordinator_interview=applicant_process.coordinator_interview,
+                accounting_form=applicant_process.accounting_form,
+                add_time_system=applicant_process.add_time_system,
+                add_web_system=applicant_process.add_web_system,
+                add_sgi_system=applicant_process.add_sgi_system,
+            )
+
+        session.add(db_applicant)
+        session.commit()
+        session.refresh(db_applicant)
+        return db_applicant

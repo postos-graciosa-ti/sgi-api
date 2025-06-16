@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from controllers.applicants import (
     handle_delete_applicants,
+    handle_get_applicant_process,
     handle_get_applicants,
     handle_get_applicants_exams,
     handle_get_applicants_notifications,
@@ -12,8 +13,10 @@ from controllers.applicants import (
     handle_post_applicants_redirected_to,
     handle_post_hire_applicants,
     handle_post_send_feedback_email,
+    handle_upsert_applicant_process,
 )
 from functions.auth import verify_token
+from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.redirected_to import RedirectedTo
@@ -75,3 +78,13 @@ def get_applicants_redirect_to(id: int):
 @routes.post("/applicants/redirected-to")
 def post_applicants_redirect_to(body: RedirectedTo):
     return handle_post_applicants_redirected_to(body)
+
+
+@routes.get("/applicant-process/{applicant_id}")
+def get_applicant_process(applicant_id: int):
+    return handle_get_applicant_process(applicant_id)
+
+
+@routes.put("/applicant-process/{applicant_id}")
+def upsert_applicant_process(applicant_id: int, applicant_process: ApplicantProcess):
+    return handle_upsert_applicant_process(applicant_id, applicant_process)

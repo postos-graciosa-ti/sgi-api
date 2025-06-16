@@ -243,6 +243,7 @@ from functions.auth import AuthUser, verify_token
 from functions.error_handling import error_handler
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
+from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.away_reasons import AwayReasons
@@ -1533,6 +1534,7 @@ def get_worker_pdfs(worker_id: int):
         )
 
 
+# Baixar documento por ID
 @app.get("/get-pdf/{doc_id}")
 def get_pdf(doc_id: int):
     try:
@@ -1543,15 +1545,16 @@ def get_pdf(doc_id: int):
                 raise HTTPException(status_code=404, detail="Documento não encontrado")
 
             if doc.doc_title == "Ficha da contabilidade":
+                # Detectar se é .xlsx (formato zip) ou .xls (binário)
+                ext = ".xlsx" if doc.doc[:4] == b"PK\x03\x04" else ".xls"
                 media_type = (
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    if ext == ".xlsx"
+                    else "application/vnd.ms-excel"
                 )
-
-                filename = f"ficha_contabilidade_{doc_id}.xlsx"
-
+                filename = f"ficha_contabilidade_{doc_id}{ext}"
             else:
                 media_type = "application/pdf"
-
                 filename = f"document_{doc_id}.pdf"
 
             return StreamingResponse(
@@ -1566,6 +1569,7 @@ def get_pdf(doc_id: int):
         )
 
 
+# Upload de documento
 @app.post("/upload-pdf/{worker_id}")
 async def upload_pdf(
     worker_id: int,
@@ -1578,13 +1582,15 @@ async def upload_pdf(
         if doc_title == "Ficha da contabilidade":
             if (
                 file.content_type
-                != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                not in [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
+                    "application/vnd.ms-excel",  # .xls
+                ]
             ):
                 raise HTTPException(
                     status_code=400,
-                    detail="O arquivo deve estar no formato Excel (.xlsx)",
+                    detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
                 )
-
         else:
             if file.content_type != "application/pdf":
                 raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
@@ -1597,33 +1603,24 @@ async def upload_pdf(
             )
 
             session.add(db_doc)
-
             session.commit()
-
             session.refresh(db_doc)
 
             if db_doc.doc_title == "Contrato de trabalho":
                 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-
                 SENHA = os.environ.get("SENHA")
-
                 BCC = os.environ.get("BCC")
 
                 msg = EmailMessage()
-
                 msg["Subject"] = "Novo contrato de trabalho"
-
                 msg["From"] = EMAIL_REMETENTE
-
                 msg["To"] = BCC
-
                 msg.set_content(
                     "Um novo contrato de trabalho foi anexado ao SGI, confira já!"
                 )
 
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
                     smtp.login(EMAIL_REMETENTE, SENHA)
-
                     smtp.send_message(msg)
 
             return {

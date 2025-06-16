@@ -28,6 +28,7 @@ from models.user import User
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from seeds.seed_all import seed_database
+from models.applicant_process import ApplicantProcess
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,6 +49,8 @@ def handle_watch_models():
     watch(WorkersPeriodicReviews)
 
     watch(WorkersPictures)
+
+    watch(ApplicantProcess)
 
 
 def handle_on_startup():

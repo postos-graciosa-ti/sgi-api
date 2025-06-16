@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request
 from controllers.workers import (
     handle_deactivate_worker,
     handle_delete_worker_notation,
+    handle_export_single_worker_excel,
     handle_get_active_workers_by_subsidiarie_and_function,
     handle_get_active_workers_by_turn_and_subsidiarie,
     handle_get_month_birthdays,
@@ -113,6 +114,11 @@ def get_workers_by_turn(subsidiarie_id: int, turn_id: int):
 @workers_routes.get("/subsidiaries/{id}/another-route-yet")
 def get_month_birthdays(id: int):
     return handle_get_month_birthdays(id)
+
+
+@workers_routes.get("/export/worker/{worker_id}")
+def export_single_worker_excel(worker_id: int):
+    return handle_export_single_worker_excel(worker_id)
 
 
 @workers_routes.post("/workers")

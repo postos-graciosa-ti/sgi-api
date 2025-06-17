@@ -348,86 +348,6 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
-# functions
-
-
-@app.get("/subsidiaries/{id}/functions", dependencies=[Depends(verify_token)])
-@error_handler
-def get_functions_by_subsidiarie(id: int):
-    return handle_get_functions_by_subsidiarie(id)
-
-
-@app.get("/functions", dependencies=[Depends(verify_token)])
-@error_handler
-def get_functions():
-    return handle_get_functions()
-
-
-@app.get("/functions/for-users", dependencies=[Depends(verify_token)])
-@error_handler
-def get_functions_for_users():
-    return handle_get_functions_for_users()
-
-
-@app.post("/functions", dependencies=[Depends(verify_token)])
-@error_handler
-def post_function(function: Function):
-    return handle_post_function(function)
-
-
-@app.put("/functions/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_function(id: int, function: Function):
-    return handle_put_function(id, function)
-
-
-@app.delete("/functions/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_function(id: int):
-    return handle_delete_function(id)
-
-
-# functions logs
-
-
-@app.get("/subsidiaries/{id}/functions/logs", dependencies=[Depends(verify_token)])
-@error_handler
-def get_functions_logs(id: int):
-    return handle_get_functions_logs(id)
-
-
-@app.post("/subsidiaries/{id}/functions/logs", dependencies=[Depends(verify_token)])
-@error_handler
-def post_functions_logs(id: int, function_log: FunctionLogs):
-    return handle_post_functions_logs(id, function_log)
-
-
-# jobs
-
-
-@app.get("/jobs", dependencies=[Depends(verify_token)])
-@error_handler
-def get_jobs():
-    return handle_get_jobs()
-
-
-@app.get("/jobs/subsidiarie/{subsidiarie_id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_jobs_by_subsidiarie_id(subsidiarie_id: int):
-    return handle_get_jobs_by_subsidiarie_id(subsidiarie_id)
-
-
-@app.post("/jobs", dependencies=[Depends(verify_token)])
-@error_handler
-def post_job(job: Jobs):
-    return handle_post_job(job)
-
-
-@app.delete("/jobs/{job_id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_job(job_id: int):
-    return handle_delete_job(job_id)
-
 
 # roles
 
@@ -2168,3 +2088,49 @@ def delete_workers_periodic_reviews(id: int):
         session.commit()
 
         return {"success": True}
+
+
+class NrBodyProps(BaseModel):
+    message: str
+
+
+@app.post("/send-nr-20-email-to-coordinators")
+def post_send_email_to_coordinators(body: NrBodyProps):
+    with Session(engine) as session:
+        managers = session.exec(select(Subsidiarie.manager)).all()
+
+        coordinators = session.exec(select(Subsidiarie.coordinator)).all()
+
+        staffs = set(managers + coordinators)
+
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+        SENHA = os.environ.get("SENHA")
+
+        BCC = os.environ.get("BCC")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            for staff_id in staffs:
+                user = session.get(User, staff_id)
+
+                if not user or not user.email:
+                    continue
+
+                msg = EmailMessage()
+
+                msg["Subject"] = "Treinamento de NR-20"
+
+                msg["From"] = EMAIL_REMETENTE
+
+                msg["To"] = user.email
+
+                if BCC:
+                    msg["Bcc"] = BCC
+
+                msg.set_content(body.message)
+
+                smtp.send_message(msg)
+
+    return {"message": "E-mails enviados com sucesso"}

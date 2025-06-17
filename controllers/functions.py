@@ -1,6 +1,9 @@
+from fastapi import Request
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from functions.auth import AuthUser
+from functions.logs import log_action
 from models.function import Function
 
 
@@ -45,7 +48,7 @@ def handle_get_functions_for_workers():
         return functions_for_workers
 
 
-def handle_post_function(function: Function):
+def handle_post_function(request: Request, function: Function, user: AuthUser):
     with Session(engine) as session:
         session.add(function)
 
@@ -53,14 +56,28 @@ def handle_post_function(function: Function):
 
         session.refresh(function)
 
+        log_action(
+            action="post",
+            table_name="functions",
+            record_id=function.id,
+            user_id=user["id"],
+            details={
+                "before": None,
+                "after": function.dict(),
+            },
+            endpoint=str(request.url.path),
+        )
+
         return function
 
 
-def handle_put_function(id: int, function: Function):
+def handle_put_function(request: Request, id: int, function: Function, user: AuthUser):
     with Session(engine) as session:
         db_function = session.exec(select(Function).where(Function.id == id)).first()
 
         if db_function:
+            before_update = db_function.dict()
+
             db_function.name = function.name if function.name else db_function.name
 
             db_function.description = (
@@ -84,14 +101,39 @@ def handle_put_function(id: int, function: Function):
             session.commit()
 
             session.refresh(db_function)
-    return db_function
+
+            log_action(
+                action="put",
+                table_name="functions",
+                record_id=db_function.id,
+                user_id=user["id"],
+                details={
+                    "before": before_update,
+                    "after": db_function.dict(),
+                },
+                endpoint=str(request.url.path),
+            )
+
+        return db_function
 
 
-def handle_delete_function(id: int):
+def handle_delete_function(request: Request, id: int, user: AuthUser):
     with Session(engine) as session:
         statement = select(Function).where(Function.id == id)
 
         db_function = session.exec(statement).first()
+
+        log_action(
+            action="delete",
+            table_name="functions",
+            record_id=db_function.id,
+            user_id=user["id"],
+            details={
+                "before": db_function.dict(),
+                "after": None,
+            },
+            endpoint=str(request.url.path),
+        )
 
         session.delete(db_function)
 

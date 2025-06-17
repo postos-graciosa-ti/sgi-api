@@ -1,5 +1,6 @@
 from routes.applicants_routes import routes as applicants_routes
 from routes.cities_routes import cities_routes
+from routes.functions_routes import functions_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
 from routes.nationalities_routes import nationalities_routes
 from routes.neighborhoods_routes import neighborhoods_routes
@@ -17,6 +18,7 @@ private_routes = [
 
     subsidiaries_routes,
     turns_routes,
+    functions_routes,
 
     hollidays_schedule_routes,
 

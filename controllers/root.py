@@ -19,8 +19,10 @@ from database.sqlite import create_db_and_tables, engine
 from keep_alive import keep_alive_function
 from migrations.apply_migrations import apply_migrations
 from migrations.lib.watchmen.watch import watch
+from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
+from models.hollidays_scale import HollidaysScale
 from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
 from models.system_log import SystemLog
@@ -28,7 +30,6 @@ from models.user import User
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from seeds.seed_all import seed_database
-from models.applicant_process import ApplicantProcess
 
 logging.basicConfig(level=logging.INFO)
 
@@ -51,6 +52,8 @@ def handle_watch_models():
     watch(WorkersPictures)
 
     watch(ApplicantProcess)
+
+    watch(HollidaysScale)
 
 
 def handle_on_startup():

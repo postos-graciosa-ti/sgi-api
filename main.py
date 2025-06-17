@@ -113,11 +113,6 @@ from controllers.functions_logs import (
     handle_post_functions_logs,
 )
 from controllers.hierarchy_structure import handle_get_hierarchy_structure
-from controllers.hollidays_scale import (
-    handle_delete_hollidays_scale,
-    handle_get_hollidays_scale,
-    handle_post_hollidays_scale,
-)
 from controllers.jobs import (
     handle_delete_job,
     handle_get_jobs,
@@ -302,7 +297,6 @@ from pyhints.scales import (
     ScalesReportInput,
     WorkerDeactivateInput,
 )
-from pyhints.turns import PutTurn
 from pyhints.users import (
     ChangeUserPasswordInput,
     ConfirmPassword,
@@ -353,61 +347,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-
-# turns
-
-
-@app.get("/subsidiaries/{id}/turns", dependencies=[Depends(verify_token)])
-@error_handler
-def get_subsidiarie_turns(id: int):
-    return handle_get_subsidiarie_turns(id)
-
-
-@app.get("/turns", dependencies=[Depends(verify_token)])
-@error_handler
-def get_turns():
-    return handle_get_turns()
-
-
-@app.get("/turns/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_turn_by_id(id: int):
-    return handle_get_turn_by_id(id)
-
-
-@app.post("/turns", dependencies=[Depends(verify_token)])
-@error_handler
-def post_turns(formData: Turn):
-    return handle_post_turns(formData)
-
-
-@app.put("/turns/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def put_turn(id: int, formData: PutTurn):
-    return handle_put_turn(id, formData)
-
-
-@app.delete("/turns/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def delete_turn(id: int):
-    return handle_delete_turn(id)
-
-
-# turns logs
-
-
-@app.get("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
-@error_handler
-def get_turns_logs(id: int):
-    return handle_get_turns_logs(id)
-
-
-@app.post("/subsidiaries/{id}/logs/turns", dependencies=[Depends(verify_token)])
-@error_handler
-def post_turns_logs(id: int, turn_log: TurnsLogs):
-    return handle_post_turns_logs(id, turn_log)
-
 
 # functions
 
@@ -1343,19 +1282,19 @@ def get_wage_payment_method():
 # hollidays scale
 
 
-@app.get("/subsidiaries/{id}/hollidays-scale/{date}")
-def get_hollidays_scale(id: int, date: str):
-    return handle_get_hollidays_scale(id, date)
+# @app.get("/subsidiaries/{id}/hollidays-scale/{date}")
+# def get_hollidays_scale(id: int, date: str):
+#     return handle_get_hollidays_scale(id, date)
 
 
-@app.post("/hollidays-scale")
-def post_hollidays_scale(holliday_scale: HollidaysScale):
-    return handle_post_hollidays_scale(holliday_scale)
+# @app.post("/hollidays-scale")
+# def post_hollidays_scale(holliday_scale: HollidaysScale):
+#     return handle_post_hollidays_scale(holliday_scale)
 
 
-@app.delete("/hollidays-scale/{id}")
-def delete_hollidays_scale(id: int):
-    return handle_delete_hollidays_scale(id)
+# @app.delete("/hollidays-scale/{id}")
+# def delete_hollidays_scale(id: int):
+#     return handle_delete_hollidays_scale(id)
 
 
 # cnh categories

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from database.sqlite import engine
 from models.function import Function
 from models.scale import Scale
+from models.scale_logs import ScaleLogs
 from models.turn import Turn
 from models.workers import Workers
 from pyhints.scales import PostScaleInput, PostSomeWorkersScaleInput, ScalesPrintInput
@@ -250,7 +251,7 @@ def handle_post_scale(form_data: PostScaleInput):
                             "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime(
                                 "%A"
                             ),
-                            "proporcao": f"{count-1}x1",
+                            "proporcao": f"{count - 1}x1",
                         }
                     )
                     count = 0
@@ -389,7 +390,7 @@ def handle_post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
                                 "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime(
                                     "%A"
                                 ),
-                                "proporcao": f"{count-1}x1",
+                                "proporcao": f"{count - 1}x1",
                             }
                         )
                         count = 0
@@ -478,7 +479,7 @@ def handle_handle_scale(form_data: PostScaleInput):
                     {
                         "data": dia,
                         "weekday": datetime.strptime(dia, "%d-%m-%Y").strftime("%A"),
-                        "proporcao": f"{count-1}x1",
+                        "proporcao": f"{count - 1}x1",
                     }
                 )
 
@@ -574,11 +575,16 @@ def handle_delete_scale(scale_id: int, subsidiarie_id: int):
 
 from fastapi import HTTPException
 
-def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
+
+def handle_post_subsidiarie_scale_to_print(
+    id: int, scales_print_input: ScalesPrintInput
+):
     start_date = datetime.strptime(scales_print_input.start_date, "%d-%m-%Y").date()
     end_date = datetime.strptime(scales_print_input.end_date, "%d-%m-%Y").date()
 
-    workers_ids_filter = set(scales_print_input.workers_ids) if scales_print_input.workers_ids else None
+    workers_ids_filter = (
+        set(scales_print_input.workers_ids) if scales_print_input.workers_ids else None
+    )
     scales_print = []
 
     with Session(engine) as session:
@@ -601,8 +607,12 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
             if not worker:
                 continue
 
-            scale_days_off = json.loads(scale.days_off) if isinstance(scale.days_off, str) else scale.days_off or []
-            
+            scale_days_off = (
+                json.loads(scale.days_off)
+                if isinstance(scale.days_off, str)
+                else scale.days_off or []
+            )
+
             # Check for day off conflicts
             for day in scale_days_off:
                 if isinstance(day, dict) and "date" in day:
@@ -610,14 +620,16 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
                         date_obj = datetime.strptime(day["date"], "%d-%m-%Y").date()
                         if start_date <= date_obj <= end_date:
                             conflict_key = (day["date"], worker.function_id)
-                            
+
                             if conflict_key not in day_off_conflicts:
                                 day_off_conflicts[conflict_key] = []
-                            
-                            day_off_conflicts[conflict_key].append({
-                                "worker_id": worker.id,
-                                "worker_name": worker.name  # Assuming Workers has a 'name' field
-                            })
+
+                            day_off_conflicts[conflict_key].append(
+                                {
+                                    "worker_id": worker.id,
+                                    "worker_name": worker.name,  # Assuming Workers has a 'name' field
+                                }
+                            )
                     except:
                         continue
 
@@ -625,17 +637,18 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
         conflict_messages = []
         for (date_str, function_id), workers in day_off_conflicts.items():
             if len(workers) > 1:
-                worker_list = ", ".join([f"{w['worker_name']} (ID: {w['worker_id']})" for w in workers])
+                worker_list = ", ".join(
+                    [f"{w['worker_name']} (ID: {w['worker_id']})" for w in workers]
+                )
                 conflict_messages.append(
                     f"Conflito no dia {date_str} (função ID: {function_id}): {worker_list}"
                 )
 
         if conflict_messages:
-            error_msg = "Conflito de dias off encontrados:\n" + "\n".join(conflict_messages)
-            raise HTTPException(
-                status_code=400,
-                detail=error_msg
+            error_msg = "Conflito de dias off encontrados:\n" + "\n".join(
+                conflict_messages
             )
+            raise HTTPException(status_code=400, detail=error_msg)
 
         # Process scales if no conflicts found
         for scale in scales:
@@ -646,35 +659,84 @@ def handle_post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPr
             if not worker:
                 continue
 
-            scale_days_off = json.loads(scale.days_off) if isinstance(scale.days_off, str) else scale.days_off or []
-            scale_days_on = json.loads(scale.days_on) if isinstance(scale.days_on, str) else scale.days_on or []
-            scale_proportion = json.loads(scale.proportion) if isinstance(scale.proportion, str) else scale.proportion or []
+            scale_days_off = (
+                json.loads(scale.days_off)
+                if isinstance(scale.days_off, str)
+                else scale.days_off or []
+            )
+            scale_days_on = (
+                json.loads(scale.days_on)
+                if isinstance(scale.days_on, str)
+                else scale.days_on or []
+            )
+            scale_proportion = (
+                json.loads(scale.proportion)
+                if isinstance(scale.proportion, str)
+                else scale.proportion or []
+            )
 
             valid_days_off = [
                 datetime.strptime(day["date"], "%d-%m-%Y").date()
-                for day in scale_days_off if isinstance(day, dict) and "date" in day
-                and start_date <= datetime.strptime(day["date"], "%d-%m-%Y").date() <= end_date
+                for day in scale_days_off
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
             ]
 
             valid_days_on = [
                 datetime.strptime(day["date"], "%d-%m-%Y").date()
-                for day in scale_days_on if isinstance(day, dict) and "date" in day
-                and start_date <= datetime.strptime(day["date"], "%d-%m-%Y").date() <= end_date
+                for day in scale_days_on
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
             ]
 
             valid_proportion = [
                 day
-                for day in scale_proportion if isinstance(day, dict)
-                and start_date <= datetime.strptime(day["data"], "%d-%m-%Y").date() <= end_date
+                for day in scale_proportion
+                if isinstance(day, dict)
+                and start_date
+                <= datetime.strptime(day["data"], "%d-%m-%Y").date()
+                <= end_date
             ]
 
-            scales_print.append({
-                "worker": worker,
-                "days_on": valid_days_on,
-                "days_off": valid_days_off,
-                "proportion": valid_proportion,
-                "start_date": start_date,
-                "end_date": end_date,
-            })
+            scales_print.append(
+                {
+                    "worker": worker,
+                    "days_on": valid_days_on,
+                    "days_off": valid_days_off,
+                    "proportion": valid_proportion,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                }
+            )
 
     return scales_print
+
+
+def handle_get_scales_logs(id: int):
+    with Session(engine) as session:
+        scales_logs = session.exec(
+            select(ScaleLogs)
+            .where(ScaleLogs.subsidiarie_id == id)
+            .order_by(ScaleLogs.id.desc())
+        ).all()
+
+        return scales_logs
+
+
+def handle_post_scales_logs(id: int, scale_log: ScaleLogs):
+    with Session(engine) as session:
+        scale_log.subsidiarie_id = id
+
+        session.add(scale_log)
+
+        session.commit()
+
+        session.refresh(scale_log)
+
+        return scale_log

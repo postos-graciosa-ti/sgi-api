@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import math
+import mimetypes
 import os
 import re
 import smtplib
@@ -41,6 +42,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from sqlalchemy import and_, create_engine, event, extract, func, inspect, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
+from starlette.status import HTTP_404_NOT_FOUND
 from unidecode import unidecode
 
 from controllers.all_subsidiaries_no_review import (
@@ -131,7 +133,7 @@ from controllers.resignable_reasons import (
     handle_get_resignable_reasons,
     handle_resignable_reasons_report,
 )
-from controllers.roles import handle_get_roles
+from controllers.roles import handle_get_roles, handle_get_roles_by_id
 from controllers.root import (
     handle_get_docs_info,
     handle_health_check,
@@ -347,155 +349,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-
-# roles
-
-
-@app.get("/roles", dependencies=[Depends(verify_token)])
-@error_handler
-def get_roles():
-    return handle_get_roles()
-
-
-@app.get("/roles/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_roles_by_id(id: int):
-    with Session(engine) as session:
-        role = session.exec(select(Role).where(Role.id == id)).first()
-
-        return role
-
-
-# candidates
-
-
-@app.get("/candidates", dependencies=[Depends(verify_token)])
-@error_handler
-def get_candidates():
-    return handle_get_candidates()
-
-
-@app.get("/candidates/status/{id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_candidates_by_status(id: int):
-    return handle_get_candidates_by_status(id)
-
-
-@app.post("/candidates", dependencies=[Depends(verify_token)])
-@error_handler
-def post_candidate(candidate: Candidate):
-    return handle_post_candidate(candidate)
-
-
-# scales
-
-
-@app.get("/scales/subsidiaries/{subsidiarie_id}", dependencies=[Depends(verify_token)])
-@error_handler
-def get_scales_by_subsidiarie_id(subsidiarie_id: int):
-    return handle_get_scales_by_subsidiarie_id(subsidiarie_id)
-
-
-@app.get(
-    "/scales/subsidiaries/{subsidiarie_id}/workers/{worker_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def get_scales_by_subsidiarie_and_worker_id(subsidiarie_id: int, worker_id: int):
-    return handle_get_scales_by_subsidiarie_and_worker_id(subsidiarie_id, worker_id)
-
-
-@app.get("/scales/day-off/quantity", dependencies=[Depends(verify_token)])
-@error_handler
-def get_days_off_quantity():
-    return handle_get_days_off_quantity()
-
-
-@app.post("/scales", dependencies=[Depends(verify_token)])
-@error_handler
-def post_scale(form_data: PostScaleInput):
-    return handle_post_scale(form_data)
-
-
-@app.post("/scales/some-workers", dependencies=[Depends(verify_token)])
-@error_handler
-def post_some_workers_scale(form_data: PostSomeWorkersScaleInput):
-    return handle_post_some_workers_scale(form_data)
-
-
-@app.post("/delete-scale", dependencies=[Depends(verify_token)])
-@error_handler
-def handle_scale(form_data: PostScaleInput):
-    return handle_handle_scale(form_data)
-
-
-@app.delete(
-    "/scales/{scale_id}/subsidiaries/{subsidiarie_id}",
-    dependencies=[Depends(verify_token)],
-)
-@error_handler
-def delete_scale(scale_id: int, subsidiarie_id: int):
-    return handle_delete_scale(scale_id, subsidiarie_id)
-
-
-# scale logs
-
-
-@app.get("/subsidiaries/{id}/scales/logs", dependencies=[Depends(verify_token)])
-@error_handler
-def get_scales_logs(id: int):
-    with Session(engine) as session:
-        scales_logs = session.exec(
-            select(ScaleLogs)
-            .where(ScaleLogs.subsidiarie_id == id)
-            .order_by(ScaleLogs.id.desc())
-        ).all()
-
-        return scales_logs
-
-
-@app.post("/subsidiaries/{id}/scales/logs", dependencies=[Depends(verify_token)])
-@error_handler
-def post_scales_logs(id: int, scale_log: ScaleLogs):
-    with Session(engine) as session:
-        scale_log.subsidiarie_id = id
-
-        session.add(scale_log)
-
-        session.commit()
-
-        session.refresh(scale_log)
-
-        return scale_log
-
-
-# scale reports
-
-
-@app.post(
-    "/reports/subsidiaries/{subsidiarie_id}/scales/days-on",
-    dependencies=[Depends(verify_token)],
-)
-async def generate_scale_days_on_report(subsidiarie_id: int, input: ScalesReportInput):
-    return await handle_generate_scale_days_on_report(subsidiarie_id, input)
-
-
-@app.post(
-    "/reports/subsidiaries/{subsidiarie_id}/scales/days-off",
-    dependencies=[Depends(verify_token)],
-)
-async def generate_scale_days_off_report(subsidiarie_id: int, input: ScalesReportInput):
-    return await handle_generate_scale_days_off_report(subsidiarie_id, input)
-
-
-# scales print
-
-
-@app.post("/subsidiaries/{id}/scales/print", dependencies=[Depends(verify_token)])
-def post_subsidiarie_scale_to_print(id: int, scales_print_input: ScalesPrintInput):
-    return handle_post_subsidiarie_scale_to_print(id, scales_print_input)
-
 
 # cost center
 
@@ -2134,3 +1987,54 @@ def post_send_email_to_coordinators(body: NrBodyProps):
                 smtp.send_message(msg)
 
     return {"message": "E-mails enviados com sucesso"}
+
+
+@app.post("/workers/{id}/send-ficha-contabilidade-to-mabecon")
+def send_ficha_contabilidade(id: int):
+    with Session(engine) as session:
+        db_worker_doc = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == id)
+            .where(WorkersDocs.doc_title == "Ficha da contabilidade")
+        ).first()
+
+        if not db_worker_doc:
+            raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+        MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+
+        SENHA = os.environ.get("SENHA")
+
+        BCC = os.environ.get("BCC")
+
+        filename = "ficha_contabilidade.xls"
+
+        maintype = "application"
+
+        subtype = "vnd.ms-excel"
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            msg = EmailMessage()
+
+            msg["Subject"] = "Encaminhamento ficha da contabilidade"
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = MABECON_EMAIL
+
+            if BCC:
+                msg["Bcc"] = BCC
+
+            msg.set_content("Encaminhamento de ficha da contabilidade")
+
+            msg.add_attachment(
+                db_worker_doc.doc, maintype=maintype, subtype=subtype, filename=filename
+            )
+
+            smtp.send_message(msg)
+
+        return {"message": "E-mail enviado com sucesso"}

@@ -685,6 +685,7 @@ def handle_get_month_birthdays(id: int) -> List[Dict[str, str]]:
             select(Workers)
             .where(Workers.subsidiarie_id == id)
             .where(Workers.birthdate != None)
+            .where(Workers.is_active == True)
         ).all()
 
         result = []

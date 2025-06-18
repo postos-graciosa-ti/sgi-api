@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
@@ -163,3 +163,8 @@ class PatchWorkersTurnBody(BaseModel):
 class GetWorkersVtReportBody(BaseModel):
     start_date: str
     end_date: str
+
+
+class RequestBadgesBody(BaseModel):
+    workers_ids: List[int]
+    recipient_email: str

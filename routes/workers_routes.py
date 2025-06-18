@@ -18,6 +18,7 @@ from controllers.workers import (
     handle_get_workers_need_vt,
     handle_patch_worker_subsidiarie,
     handle_patch_workers_turn,
+    handle_post_request_workers_badges,
     handle_post_worker,
     handle_post_worker_notation,
     handle_put_worker,
@@ -32,6 +33,7 @@ from functions.auth import AuthUser, verify_token
 from models.workers import (
     GetWorkersVtReportBody,
     PatchWorkersTurnBody,
+    RequestBadgesBody,
     WorkerDeactivateInput,
     Workers,
 )
@@ -187,6 +189,11 @@ def post_worker_notation(id: int, data: PostWorkerNotationInput):
 @workers_routes.delete("/workers-notations/{id}", dependencies=[Depends(verify_token)])
 def delete_worker_notation(id: int):
     return handle_delete_worker_notation(id)
+
+
+@workers_routes.post("/workers/request-badges")
+def post_request_workers_badges(body: RequestBadgesBody):
+    return handle_post_request_workers_badges(body)
 
 
 @workers_routes.get("/workers-pictures/{worker_id}")

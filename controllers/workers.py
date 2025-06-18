@@ -1,12 +1,18 @@
+import os
+import smtplib
 import tempfile
+import threading
 from datetime import date, datetime, timedelta
+from email.message import EmailMessage
 from functools import wraps
+from io import BytesIO
 from typing import Annotated, Any, Callable, Dict, List, Optional, Set
 
 from cachetools import TTLCache, cached
 from dateutil.relativedelta import relativedelta
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from openpyxl import Workbook
+from pydantic import BaseModel
 from sqlalchemy import and_, create_engine, event, inspect, text
 from sqlmodel import Session, select, update
 
@@ -30,6 +36,7 @@ from models.resignable_reasons import ResignableReasons
 from models.scale import Scale
 from models.school_levels import SchoolLevels
 from models.states import States
+from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.wage_payment_method import WagePaymentMethod
 from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
@@ -1107,3 +1114,89 @@ def handle_get_workers_need_open_account(body: GetWorkersVtReportBody):
                 result.append(worker)
 
         return result
+
+
+class RequestBadgesBody(BaseModel):
+    workers_ids: List[int]
+    recipient_email: str
+
+
+def handle_post_request_workers_badges(body: RequestBadgesBody):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    workers_ids = body.workers_ids
+
+    with Session(engine) as session:
+        wb = Workbook()
+
+        ws = wb.active
+
+        ws.title = "Crachás"
+
+        ws.append(
+            ["Função", "Código de Vendas", "Matrícula", "Frente", "Verso", "Filial"]
+        )
+
+        for worker_id in workers_ids:
+            worker = session.get(Workers, worker_id)
+
+            if not worker:
+                continue
+
+            worker_function = session.get(Function, worker.function_id)
+
+            worker_subsidiarie = session.get(Subsidiarie, worker.subsidiarie_id)
+
+            funcao = worker_function.name if worker_function else ""
+
+            codigo_vendas = worker.sales_code or ""
+
+            matricula = worker.esocial or ""
+
+            frente = worker.name.split()[0] if worker.name else ""
+
+            verso = worker.name or ""
+
+            filial = worker_subsidiarie.name if worker_subsidiarie else ""
+
+            ws.append([funcao, codigo_vendas, matricula, frente, verso, filial])
+
+        output = BytesIO()
+
+        wb.save(output)
+
+        output.seek(0)
+
+        try:
+            msg = EmailMessage()
+
+            msg["Subject"] = "Planilha de Crachás"
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = body.recipient_email
+
+            msg.set_content("Segue em anexo a planilha de crachás solicitada.")
+
+            msg.add_attachment(
+                output.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename="badges.xlsx",
+            )
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
+
+                smtp.send_message(msg)
+
+            return JSONResponse(
+                content={"detail": "E-mail enviado com sucesso."}, status_code=200
+            )
+
+        except Exception as e:
+            return JSONResponse(
+                content={"detail": f"Erro ao enviar e-mail: {str(e)}"}, status_code=500
+            )

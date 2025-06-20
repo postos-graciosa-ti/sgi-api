@@ -2038,3 +2038,69 @@ def send_ficha_contabilidade(id: int):
             smtp.send_message(msg)
 
         return {"message": "E-mail enviado com sucesso"}
+
+
+@app.post("/workers/{id}/send-docs-to-mabecon")
+def send_all_docs_to_mabecon(id: int):
+    EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
+
+    SENHA = os.environ["SENHA"]
+
+    MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+
+    BCC = os.environ.get("BCC")
+
+    with Session(engine) as session:
+        docs_with_worker = session.exec(
+            select(WorkersDocs, Workers)
+            .join(Workers, Workers.id == WorkersDocs.worker_id)
+            .where(Workers.id == id)
+        ).all()
+
+        if not docs_with_worker:
+            raise HTTPException(status_code=404, detail="Nenhum documento encontrado.")
+
+        worker_name = docs_with_worker[0][1].name
+
+        docs = [d[0] for d in docs_with_worker]
+
+        msg = EmailMessage()
+
+        msg["Subject"] = (
+            f"Encaminhamento de documentos do colaborador {worker_name} para admissão"
+        )
+
+        msg["From"] = EMAIL_REMETENTE
+
+        msg["To"] = MABECON_EMAIL
+
+        if BCC:
+            msg["Bcc"] = BCC
+
+        msg.set_content(
+            f"Segue em anexo os documentos do colaborador {worker_name} para admissão"
+        )
+
+        ext_map = {
+            "Ficha da contabilidade": (
+                "ficha_da_contabilidade.xls",
+                "application",
+                "vnd.ms-excel",
+            )
+        }
+
+        for doc in docs:
+            filename, maintype, subtype = ext_map.get(
+                doc.doc_title, (f"{doc.doc_title}.pdf", "application", "pdf")
+            )
+
+            msg.add_attachment(
+                doc.doc, maintype=maintype, subtype=subtype, filename=filename
+            )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            smtp.send_message(msg)
+
+    return {"message": "E-mail enviado com sucesso com todos os documentos."}

@@ -1,5 +1,7 @@
 from routes.applicants_routes import routes as applicants_routes
 from routes.cities_routes import cities_routes
+from routes.cost_center_routes import cost_center_routes
+from routes.department_routes import department_routes
 from routes.functions_routes import functions_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
 from routes.nationalities_routes import nationalities_routes
@@ -23,6 +25,8 @@ private_routes = [
     functions_routes,
     roles_routes,
     scales_routes,
+    cost_center_routes,
+    department_routes,
 
 
     hollidays_schedule_routes,

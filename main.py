@@ -19,6 +19,7 @@ from typing import Annotated, Any, Callable, Dict, List, Optional, Set
 import httpx
 import numpy as np
 import pandas as pd
+import pdfplumber
 import PyPDF2
 import requests
 from cachetools import TTLCache
@@ -1281,7 +1282,6 @@ def get_pdf(doc_id: int):
         )
 
 
-# Upload de documento
 @app.post("/upload-pdf/{worker_id}")
 async def upload_pdf(
     worker_id: int,
@@ -1292,20 +1292,20 @@ async def upload_pdf(
         file_bytes = await file.read()
 
         if doc_title == "Ficha da contabilidade":
-            if (
-                file.content_type
-                not in [
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
-                    "application/vnd.ms-excel",  # .xls
-                ]
-            ):
+            if file.content_type not in [
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+            ]:
                 raise HTTPException(
                     status_code=400,
                     detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
                 )
         else:
             if file.content_type != "application/pdf":
-                raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF")
+                raise HTTPException(
+                    status_code=400,
+                    detail="O arquivo deve ser um PDF",
+                )
 
         with Session(engine) as session:
             db_doc = WorkersDocs(
@@ -1313,12 +1313,108 @@ async def upload_pdf(
                 doc=file_bytes,
                 doc_title=doc_title,
             )
-
             session.add(db_doc)
             session.commit()
             session.refresh(db_doc)
 
-            if db_doc.doc_title == "Contrato de trabalho":
+            if doc_title == "Contrato de trabalho":
+                with pdfplumber.open(BytesIO(file_bytes)) as pdf:
+                    if len(pdf.pages) < 10:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="O PDF não possui 10 páginas.",
+                        )
+
+                    page = pdf.pages[9]
+                    text = page.extract_text()
+
+                    # Regex para extrair os dados
+                    nome = re.search(r"Nome:\s*(.*)", text)
+                    pai = re.search(r"Pai:\s*(.*)", text)
+                    mae = re.search(r"Mãe:\s*(.*)", text)
+                    nascimento = re.search(r"Nascimento:\s*(\d{2}/\d{2}/\d{4})", text)
+                    sexo = re.search(r"Sexo:\s*(\w+)", text)
+                    estado_civil = re.search(r"Est\. Civil:\s*(\w+)", text)
+                    raca = re.search(r"Ra[çc]a/Cor:\s*(\w+)", text)
+                    nacionalidade = re.search(r"Nacionalidade:\s*(\w+)", text)
+                    endereco = re.search(r"Endereço:\s*(.*)", text)
+                    bairro = re.search(r"Bairro:\s*(.*)", text)
+                    municipio = re.search(r"Município:\s*(.*)", text)
+                    cep = re.search(r"CEP:\s*([\d\.-]+)", text)
+                    cpf = re.search(r"CPF:\s*([\d\.-]+)", text)
+                    rg = re.search(r"RG:\s*(\S+)", text)
+                    orgao = re.search(r"Órgão:\s*(\w+)", text)
+                    ctps_numero = re.search(r"Número CTPS:\s*(\d+)", text)
+                    ctps_serie = re.search(r"Série CTPS:\s*(\d+)", text)
+                    ctps_estado = re.search(r"Estado CTPS:\s*(\w+)", text)
+                    pis = re.search(r"PIS:\s*([\d\.]+-\d+)", text)
+                    instrucao = re.search(r"Instrução:\s*(.*)", text)
+                    banco = re.search(r"Banco:\s*(.*)", text)
+                    conta = re.search(r"Conta:\s*(\d+)", text)
+                    agencia = re.search(r"Agência:\s*(\d+)", text)
+
+                    db_worker = session.get(Workers, worker_id)
+                    if db_worker:
+                        if nome:
+                            db_worker.name = nome.group(1).strip()
+                        if pai:
+                            db_worker.fathername = pai.group(1).strip()
+                        if mae:
+                            db_worker.mothername = mae.group(1).strip()
+                        if nascimento:
+                            db_worker.birthdate = nascimento.group(1).strip()
+                        if sexo:
+                            db_worker.gender_id = (
+                                1 if sexo.group(1).lower() == "masculino" else 2
+                            )  # ajuste conforme IDs no banco
+                        if estado_civil:
+                            # mapear: exemplo "Solteiro" = 1, "Casado" = 2, etc.
+                            estado = estado_civil.group(1).lower()
+                            db_worker.civil_status_id = 1 if estado == "solteiro" else 2
+                        if raca:
+                            cor = raca.group(1).lower()
+                            db_worker.ethnicity_id = 1 if cor == "branca" else 2
+                        if nacionalidade:
+                            db_worker.nationality = nacionalidade.group(1).strip()
+                        if endereco:
+                            db_worker.street = endereco.group(1).strip()
+                        if bairro:
+                            db_worker.neighborhood_id = 1  # mapeamento manual aqui
+                        if municipio:
+                            db_worker.city = (
+                                1  # ajustar com ID da cidade Joinville, por ex.
+                            )
+                        if cep:
+                            db_worker.cep = cep.group(1).strip()
+                        if cpf:
+                            db_worker.cpf = cpf.group(1).strip()
+                        if rg:
+                            db_worker.rg = rg.group(1).strip()
+                        if orgao:
+                            db_worker.rg_issuing_agency = orgao.group(1).strip()
+                        if ctps_numero:
+                            db_worker.ctps = ctps_numero.group(1).strip()
+                        if ctps_serie:
+                            db_worker.ctps_serie = ctps_serie.group(1).strip()
+                        if ctps_estado:
+                            db_worker.ctps_state = 24  # por exemplo: SC = 24
+                        if pis:
+                            db_worker.pis = pis.group(1).strip()
+                        if instrucao:
+                            db_worker.school_level = (
+                                3  # Ensino médio completo, ajuste conforme IDs
+                            )
+                        if banco:
+                            db_worker.bank = 1  # Banco do Brasil = 1, por exemplo
+                        if conta:
+                            db_worker.bank_account = conta.group(1).strip()
+                        if agencia:
+                            db_worker.bank_agency = agencia.group(1).strip()
+
+                        session.add(db_worker)
+                        session.commit()
+
+                # Envia notificação por e-mail
                 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
                 SENHA = os.environ.get("SENHA")
                 BCC = os.environ.get("BCC")

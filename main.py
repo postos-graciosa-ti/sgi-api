@@ -1233,7 +1233,7 @@ async def upload_pdf(
 
                     raca = re.search(r"Ra[çc]a\s*/\s*Cor\s*:\s*(.+?)(?=\n|$)", text)
 
-                    # nacionalidade = re.search(r"Nacionalidade:\s*(.+?)(?=\n|$)", text)
+                    nacionalidade = re.search(r"Nacionalidade:\s*(.+?)(?=\n|$)", text)
 
                     enderecos = re.findall(
                         r"Endere[cç]o:\s*(.*?)\s*(?=Bairro:|CEP:|Munic[ií]pio:)", text
@@ -1345,17 +1345,17 @@ async def upload_pdf(
                                     if raca_db:
                                         db_worker.ethnicity_id = raca_db.id
 
-                        # if nacionalidade:
-                        #     nacionalidade_nome = nacionalidade.group(1).strip().lower()
+                        if nacionalidade:
+                            nacionalidade_nome = nacionalidade.group(1).strip().lower()
 
-                            # nacionalidade_db = session.exec(
-                            #     select(Nationalities).where(
-                            #         Nationalities.name.ilike(f"%{nacionalidade_nome}%")
-                            #     )
-                            # ).first()
+                            nacionalidade_db = session.exec(
+                                select(Nationalities).where(
+                                    Nationalities.name.ilike(f"%{nacionalidade_nome}%")
+                                )
+                            ).first()
 
-                            # if nacionalidade_db:
-                            #     db_worker.nationality = nacionalidade_db.name
+                            if nacionalidade_db:
+                                db_worker.nationality = nacionalidade_db.id
 
                         if enderecos:
                             endereco_final = enderecos[

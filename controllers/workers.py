@@ -1200,3 +1200,32 @@ def handle_post_request_workers_badges(body: RequestBadgesBody):
             return JSONResponse(
                 content={"detail": f"Erro ao enviar e-mail: {str(e)}"}, status_code=500
             )
+
+def handle_list_active_workers_by_function_and_turn(
+    subsidiarie_id: int, function_id: int, turn_id: int
+):
+    with Session(engine) as session:
+        workers_by_function = session.exec(
+            select(
+                Workers.enrolment.label("enrolment"),
+                Workers.name.label("name"),
+                CostCenter.name.label("cost_center"),
+                Department.name.label("department"),
+            )
+            .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+            .join(Department, Workers.department_id == Department.id)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+            .where(Workers.is_active == True)  # noqa: E712
+            .where(Workers.function_id == function_id)
+            .where(Workers.turn_id == turn_id)
+        ).all()
+
+        return [
+            {
+                "enrolment": worker.enrolment,
+                "name": worker.name,
+                "cost_center": worker.cost_center,
+                "department": worker.department,
+            }
+            for worker in workers_by_function
+        ]

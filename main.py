@@ -351,26 +351,6 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
-# resignable reasons
-
-
-@app.get("/resignable-reasons", dependencies=[Depends(verify_token)])
-@error_handler
-def get_resignable_reasons():
-    return handle_get_resignable_reasons()
-
-
-# resignable reasons reports
-
-
-@app.post(
-    "/subsidiaries/{id}/resignable-reasons/report", dependencies=[Depends(verify_token)]
-)
-@error_handler
-def get_resignable_reasons_report(id: int, input: StatusResignableReasonsInput):
-    return handle_resignable_reasons_report(id, input)
-
-
 # worker first review
 
 

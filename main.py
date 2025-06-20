@@ -1184,6 +1184,7 @@ async def upload_pdf(
                     status_code=400,
                     detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
                 )
+
         else:
             if file.content_type != "application/pdf":
                 raise HTTPException(
@@ -1197,8 +1198,11 @@ async def upload_pdf(
                 doc=file_bytes,
                 doc_title=doc_title,
             )
+
             session.add(db_doc)
+
             session.commit()
+
             session.refresh(db_doc)
 
             if doc_title == "Contrato de trabalho":
@@ -1210,109 +1214,247 @@ async def upload_pdf(
                         )
 
                     page = pdf.pages[9]
+
                     text = page.extract_text()
 
-                    # Regex para extrair os dados
-                    nome = re.search(r"Nome:\s*(.*)", text)
-                    pai = re.search(r"Pai:\s*(.*)", text)
+                    nome = re.search(
+                        r"Nome:\s*(.*?)\s*(?=Código:|Pai:|Mãe:|Nascimento:)", text
+                    )
+
+                    pai = re.search(r"Pai:\s*(.*?)\s*(?=Nr\.)", text)
+
                     mae = re.search(r"Mãe:\s*(.*)", text)
+
                     nascimento = re.search(r"Nascimento:\s*(\d{2}/\d{2}/\d{4})", text)
+
                     sexo = re.search(r"Sexo:\s*(\w+)", text)
-                    estado_civil = re.search(r"Est\. Civil:\s*(\w+)", text)
-                    raca = re.search(r"Ra[çc]a/Cor:\s*(\w+)", text)
-                    nacionalidade = re.search(r"Nacionalidade:\s*(\w+)", text)
-                    endereco = re.search(r"Endereço:\s*(.*)", text)
-                    bairro = re.search(r"Bairro:\s*(.*)", text)
-                    municipio = re.search(r"Município:\s*(.*)", text)
+
+                    estado_civil = re.search(r"Est\.? Civil:\s*(\w+)", text)
+
+                    raca = re.search(r"Ra[çc]a\s*/\s*Cor\s*:\s*(.+?)(?=\n|$)", text)
+
+                    nacionalidade = re.search(r"Nacionalidade:\s*(.+?)(?=\n|$)", text)
+
+                    enderecos = re.findall(
+                        r"Endere[cç]o:\s*(.*?)\s*(?=Bairro:|CEP:|Munic[ií]pio:)", text
+                    )
+
+                    bairros = re.findall(
+                        r"Bairro:\s*(.*?)\s*(?=CEP:|Munic[ií]pio:|Endere[cç]o:)", text
+                    )
+
+                    # municipio = re.search(r"Município:\s*(.*)", text)
+
                     cep = re.search(r"CEP:\s*([\d\.-]+)", text)
+
                     cpf = re.search(r"CPF:\s*([\d\.-]+)", text)
+
                     rg = re.search(r"RG:\s*(\S+)", text)
-                    orgao = re.search(r"Órgão:\s*(\w+)", text)
+
+                    # orgao = re.search(r"Órgão:\s*(.+?)(?=\s*Estado:|\n|$)", text)
+
                     ctps_numero = re.search(r"Número CTPS:\s*(\d+)", text)
+
                     ctps_serie = re.search(r"Série CTPS:\s*(\d+)", text)
-                    ctps_estado = re.search(r"Estado CTPS:\s*(\w+)", text)
-                    pis = re.search(r"PIS:\s*([\d\.]+-\d+)", text)
-                    instrucao = re.search(r"Instrução:\s*(.*)", text)
+
+                    ctps_estado = re.search(r"Estado CTPS:\s*([A-Z]{2})", text)
+
+                    pis = re.search(r"PIS:\s*([\d\.\-]+)", text)
+
+                    instrucao = re.search(r"Instru[cç][aã]o:\s*(.+?)(?=\n|$)", text)
+
                     banco = re.search(r"Banco:\s*(.*)", text)
+
                     conta = re.search(r"Conta:\s*(\d+)", text)
+
                     agencia = re.search(r"Agência:\s*(\d+)", text)
 
                     db_worker = session.get(Workers, worker_id)
+
                     if db_worker:
                         if nome:
                             db_worker.name = nome.group(1).strip()
+
                         if pai:
                             db_worker.fathername = pai.group(1).strip()
+
                         if mae:
                             db_worker.mothername = mae.group(1).strip()
+
                         if nascimento:
-                            db_worker.birthdate = nascimento.group(1).strip()
+                            try:
+                                nascimento_formatada = datetime.strptime(
+                                    nascimento.group(1), "%d/%m/%Y"
+                                ).strftime("%Y-%m-%d")
+
+                                db_worker.birthdate = nascimento_formatada
+
+                            except ValueError:
+                                raise HTTPException(
+                                    status_code=400,
+                                    detail="Data de nascimento inválida",
+                                )
+
                         if sexo:
-                            db_worker.gender_id = (
-                                1 if sexo.group(1).lower() == "masculino" else 2
-                            )  # ajuste conforme IDs no banco
-                        if estado_civil:
-                            # mapear: exemplo "Solteiro" = 1, "Casado" = 2, etc.
-                            estado = estado_civil.group(1).lower()
-                            db_worker.civil_status_id = 1 if estado == "solteiro" else 2
-                        if raca:
-                            cor = raca.group(1).lower()
-                            db_worker.ethnicity_id = 1 if cor == "branca" else 2
+                            sexo_nome = sexo.group(1).strip().lower()
+
+                            sexo_db = session.exec(
+                                select(Genders).where(
+                                    Genders.name.ilike(f"%{sexo_nome}%")
+                                )
+                            ).first()
+
+                            if sexo_db:
+                                db_worker.gender_id = sexo_db.id
+
+                            if estado_civil:
+                                estado_nome = estado_civil.group(1).strip().lower()
+
+                                estado_db = session.exec(
+                                    select(CivilStatus).where(
+                                        CivilStatus.name.ilike(f"%{estado_nome}%")
+                                    )
+                                ).first()
+
+                                if estado_db:
+                                    db_worker.civil_status_id = estado_db.id
+
+                                if raca:
+                                    raca_nome = raca.group(1).strip().lower()
+
+                                    feminino_para_masculino = {
+                                        "branca": "branco",
+                                        "preta": "preto",
+                                        "parda": "pardo",
+                                        "amarela": "amarelo",
+                                        "indígena": "indígena",
+                                    }
+
+                                    raca_normalizada = feminino_para_masculino.get(
+                                        raca_nome, raca_nome
+                                    )
+
+                                    raca_db = session.exec(
+                                        select(Ethnicity).where(
+                                            Ethnicity.name.ilike(
+                                                f"%{raca_normalizada}%"
+                                            )
+                                        )
+                                    ).first()
+
+                                    if raca_db:
+                                        db_worker.ethnicity_id = raca_db.id
+
                         if nacionalidade:
-                            db_worker.nationality = nacionalidade.group(1).strip()
-                        if endereco:
-                            db_worker.street = endereco.group(1).strip()
-                        if bairro:
-                            db_worker.neighborhood_id = 1  # mapeamento manual aqui
-                        if municipio:
-                            db_worker.city = (
-                                1  # ajustar com ID da cidade Joinville, por ex.
-                            )
+                            nacionalidade_nome = nacionalidade.group(1).strip().lower()
+
+                            nacionalidade_db = session.exec(
+                                select(Nationalities).where(
+                                    Nationalities.name.ilike(f"%{nacionalidade_nome}%")
+                                )
+                            ).first()
+
+                            if nacionalidade_db:
+                                db_worker.nationality = nacionalidade_db.name
+
+                        if enderecos:
+                            endereco_final = enderecos[
+                                -1
+                            ].strip()  # pega o último endereço encontrado
+                            db_worker.street = endereco_final
+
+                        if bairros:
+                            bairro_nome = bairros[-1].strip()
+
+                            bairro_db = session.exec(
+                                select(Neighborhoods).where(
+                                    Neighborhoods.name.ilike(f"%{bairro_nome}%")
+                                )
+                            ).first()
+
+                            if bairro_db:
+                                db_worker.neighborhood_id = bairro_db.id
+
+                        # if municipio:
+                        #     db_worker.city = 1
+
                         if cep:
                             db_worker.cep = cep.group(1).strip()
+
                         if cpf:
                             db_worker.cpf = cpf.group(1).strip()
+
                         if rg:
                             db_worker.rg = rg.group(1).strip()
-                        if orgao:
-                            db_worker.rg_issuing_agency = orgao.group(1).strip()
+
+                        # if orgao:
+                        #     db_worker.rg_issuing_agency = orgao.group(1).strip()
+
                         if ctps_numero:
                             db_worker.ctps = ctps_numero.group(1).strip()
+
                         if ctps_serie:
                             db_worker.ctps_serie = ctps_serie.group(1).strip()
+
                         if ctps_estado:
-                            db_worker.ctps_state = 24  # por exemplo: SC = 24
+                            uf = ctps_estado.group(1).strip().upper()
+
+                            estado_db = session.exec(
+                                select(States).where(States.sail == uf)
+                            ).first()
+
+                            if estado_db:
+                                db_worker.ctps_state = estado_db.id
+
                         if pis:
                             db_worker.pis = pis.group(1).strip()
+
                         if instrucao:
-                            db_worker.school_level = (
-                                3  # Ensino médio completo, ajuste conforme IDs
-                            )
+                            instrucao_nome = instrucao.group(1).strip().lower()
+
+                            instrucao_db = session.exec(
+                                select(SchoolLevels).where(
+                                    SchoolLevels.name.ilike(f"%{instrucao_nome}%")
+                                )
+                            ).first()
+
+                            if instrucao_db:
+                                db_worker.school_level = instrucao_db.id
+
                         if banco:
-                            db_worker.bank = 1  # Banco do Brasil = 1, por exemplo
+                            db_worker.bank = 1
+
                         if conta:
                             db_worker.bank_account = conta.group(1).strip()
+
                         if agencia:
                             db_worker.bank_agency = agencia.group(1).strip()
 
                         session.add(db_worker)
+
                         session.commit()
 
-                # Envia notificação por e-mail
                 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
                 SENHA = os.environ.get("SENHA")
+
                 BCC = os.environ.get("BCC")
 
                 msg = EmailMessage()
+
                 msg["Subject"] = "Novo contrato de trabalho"
+
                 msg["From"] = EMAIL_REMETENTE
+
                 msg["To"] = BCC
+
                 msg.set_content(
                     "Um novo contrato de trabalho foi anexado ao SGI, confira já!"
                 )
 
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
                     smtp.login(EMAIL_REMETENTE, SENHA)
+
                     smtp.send_message(msg)
 
             return {
@@ -1361,7 +1503,7 @@ def send_email(request: EmailRequest):
 
             writer = PdfWriter()
 
-            for page_num in [2, 8]:
+            for page_num in range(2, 9):
                 if page_num < len(original_pdf.pages):
                     writer.add_page(original_pdf.pages[page_num])
 
@@ -1385,7 +1527,7 @@ def send_email(request: EmailRequest):
                 new_pdf_stream.read(),
                 maintype="application",
                 subtype="pdf",
-                filename="Contrato_paginas_3_e_9.pdf",
+                filename="Contrato_paginas_3_a_9.pdf",
             )
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:

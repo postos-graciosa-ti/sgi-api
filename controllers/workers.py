@@ -10,6 +10,7 @@ from typing import Annotated, Any, Callable, Dict, List, Optional, Set
 
 from cachetools import TTLCache, cached
 from dateutil.relativedelta import relativedelta
+from fastapi import HTTPException
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from openpyxl import Workbook
 from pydantic import BaseModel
@@ -43,6 +44,7 @@ from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
+from repositories.patch_record import patch_record
 
 # cache = TTLCache(maxsize=100, ttl=600)
 
@@ -1000,37 +1002,59 @@ def handle_reactivate_worker(request, id: int, user):
 
 
 def handle_deactivate_worker(request, id: int, worker: WorkerDeactivateInput, user):
-    with Session(engine) as session:
-        db_worker = session.get(Workers, id)
+    updates = {
+        "is_active": worker.is_active,
+        "resignation_reason_id": worker.resignation_reason,
+        "resignation_date": worker.resignation_date,
+    }
 
-        before_state = db_worker.dict()
+    result = patch_record(
+        model=Workers,
+        pk_column="id",
+        pk_column_value=id,
+        updates=updates,
+        request=request,
+        user=user,
+    )
 
-        if worker.is_active is not None:
-            db_worker.is_active = worker.is_active
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
 
-        if worker.resignation_reason is not None:
-            db_worker.resignation_reason_id = worker.resignation_reason
+    try:
+        EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
 
-        if worker.resignation_date is not None:
-            db_worker.resignation_date = worker.resignation_date
+        SENHA = os.environ["SENHA"]
 
-        session.commit()
+        BCC = os.environ.get("BCC")
 
-        session.refresh(db_worker)
+        MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
 
-        log_action(
-            action="put",
-            table_name="workers",
-            record_id=db_worker.id,
-            user_id=user["id"],
-            details={
-                "before": before_state,
-                "after": db_worker.dict(),
-            },
-            endpoint=str(request.url.path),
+        msg = EmailMessage()
+
+        msg["Subject"] = "Solicitação de demissão de colaborador"
+
+        msg["From"] = EMAIL_REMETENTE
+
+        msg["To"] = MABECON_EMAIL
+
+        msg["Bcc"] = BCC
+
+        msg.set_content(f"Solicitamos o desligamento do colaborador {result.name}")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            smtp.send_message(msg)
+
+    except KeyError as e:
+        raise HTTPException(
+            status_code=500, detail=f"Variável de ambiente ausente: {e}"
         )
 
-        return db_worker
+    except smtplib.SMTPException as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {str(e)}")
+
+    return {"success": True}
 
 
 def handle_patch_worker_subsidiarie(worker_id: int, subsidiarie_id: int):

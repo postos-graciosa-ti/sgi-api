@@ -317,7 +317,9 @@ from pyhints.workers import (
     WorkerLogDeleteInput,
     WorkerLogUpdateInput,
 )
+from repositories.delete_record import delete_record
 from repositories.get_all_records import get_all_records
+from repositories.patch_record import patch_record
 from repositories.post_record import post_record
 from routes.applicants_routes import routes as applicants_routes
 from routes.auth_routes import auth_routes

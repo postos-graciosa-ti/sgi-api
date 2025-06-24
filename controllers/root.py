@@ -33,6 +33,7 @@ from models.user import User
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from seeds.seed_all import seed_database
+from models.goals import Goals
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,6 +64,8 @@ def handle_watch_models():
     watch(Indicators)
 
     watch(DocsChecklist)
+
+    watch(Goals)
 
 
 def handle_on_startup():

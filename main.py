@@ -34,6 +34,7 @@ from fastapi import (
     HTTPException,
     Request,
     UploadFile,
+    status,
 )
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from openpyxl import Workbook
@@ -247,6 +248,7 @@ from models.applicants_exams import ApplicantsExams
 from models.away_reasons import AwayReasons
 from models.banks import Banks
 from models.candidate import Candidate
+from models.checklist import Checklist, ChecklistCreate, ChecklistUpdate
 from models.cities import Cities
 from models.civil_status import CivilStatus
 from models.cnh_categories import CnhCategories
@@ -255,12 +257,15 @@ from models.cost_center_logs import CostCenterLogs
 from models.dates_events import DatesEvents
 from models.department import Department
 from models.department_logs import DepartmentsLogs
+from models.docs_checklist import DocsChecklist
 from models.ethnicity import Ethnicity
 from models.function import Function
 from models.function_logs import FunctionLogs
 from models.genders import Genders
 from models.hierarchy_structure import HierarchyStructure
 from models.hollidays_scale import HollidaysScale
+from models.indicators import Indicators
+from models.indicators_criteria import IndicatorsCriteria
 from models.jobs import Jobs
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
@@ -312,6 +317,8 @@ from pyhints.workers import (
     WorkerLogDeleteInput,
     WorkerLogUpdateInput,
 )
+from repositories.get_all_records import get_all_records
+from repositories.post_record import post_record
 from routes.applicants_routes import routes as applicants_routes
 from routes.auth_routes import auth_routes
 from routes.cities_routes import cities_routes

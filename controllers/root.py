@@ -22,7 +22,10 @@ from migrations.lib.watchmen.watch import watch
 from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
+from models.docs_checklist import DocsChecklist
 from models.hollidays_scale import HollidaysScale
+from models.indicators import Indicators
+from models.indicators_criteria import IndicatorsCriteria
 from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
 from models.system_log import SystemLog
@@ -54,6 +57,12 @@ def handle_watch_models():
     watch(ApplicantProcess)
 
     watch(HollidaysScale)
+
+    watch(IndicatorsCriteria)
+
+    watch(Indicators)
+
+    watch(DocsChecklist)
 
 
 def handle_on_startup():

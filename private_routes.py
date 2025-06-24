@@ -4,6 +4,8 @@ from routes.cost_center_routes import cost_center_routes
 from routes.department_routes import department_routes
 from routes.functions_routes import functions_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
+from routes.indicators_criteria_routes import indicators_criteria_routes
+from routes.indicators_routes import indicators_routes
 from routes.nationalities_routes import nationalities_routes
 from routes.neighborhoods_routes import neighborhoods_routes
 from routes.open_positions_routes import routes as open_positions_routes
@@ -41,4 +43,6 @@ private_routes = [
     states_routes,
     cities_routes,
     neighborhoods_routes,
+    indicators_criteria_routes,
+    indicators_routes,
 ]

@@ -410,13 +410,14 @@ def handle_post_hire_applicants(recruit: RecruitProps) -> Optional[Workers]:
 
         session.refresh(new_worker)
 
-        new_worker_picture = WorkersPictures(
-            worker_id=new_worker.id, picture_url=db_applicant.picture_url
-        )
+        if db_applicant.picture_url:
+            new_worker_picture = WorkersPictures(
+                worker_id=new_worker.id, picture_url=db_applicant.picture_url
+            )
 
-        session.add(new_worker_picture)
+            session.add(new_worker_picture)
 
-        session.commit()
+            session.commit()
 
         session.delete(db_applicant)
 

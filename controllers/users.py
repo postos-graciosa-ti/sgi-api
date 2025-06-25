@@ -65,21 +65,20 @@ def handle_user_login(user: User):
                     {"label": user_subsidiarie.name, "value": user_subsidiarie.id}
                 )
 
-        return JSONResponse(
-            {
-                "data": {
-                    "id": db_user.id,
-                    "email": db_user.email,
-                    "name": db_user.name,
-                    "role_id": db_user.role_id,
-                    "subsidiaries_id": db_user.subsidiaries_id,
-                    "user_subsidiaries": user_subsidiaries,
-                    "function_id": db_user.function_id,
-                    "is_active": db_user.is_active,
-                },
-                "token": token,
-            }
-        )
+        return {
+            "data": {
+                "id": db_user.id,
+                "email": db_user.email,
+                "name": db_user.name,
+                "role_id": db_user.role_id,
+                "subsidiaries_id": db_user.subsidiaries_id,
+                "user_subsidiaries": user_subsidiaries,
+                "function_id": db_user.function_id,
+                "is_active": db_user.is_active,
+                "function": session.get(Function, db_user.function_id),
+            },
+            "token": token,
+        }
 
 
 def handle_post_user(request, user: User, loged_user: AuthUser = Depends(verify_token)):
@@ -271,6 +270,7 @@ def handle_get_users():
                     "role_name": role.name,
                     "user_phone": user.phone,
                     "user_is_active": user.is_active,
+                    "user_function": session.get(Function, user.function_id),
                 }
             )
 

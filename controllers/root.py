@@ -22,7 +22,9 @@ from migrations.lib.watchmen.watch import watch
 from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
+from models.CustomNotification import CustomNotification
 from models.docs_checklist import DocsChecklist
+from models.goals import Goals
 from models.hollidays_scale import HollidaysScale
 from models.indicators import Indicators
 from models.indicators_criteria import IndicatorsCriteria
@@ -33,7 +35,6 @@ from models.user import User
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from seeds.seed_all import seed_database
-from models.goals import Goals
 
 logging.basicConfig(level=logging.INFO)
 
@@ -66,6 +67,8 @@ def handle_watch_models():
     watch(DocsChecklist)
 
     watch(Goals)
+
+    watch(CustomNotification)
 
 
 def handle_on_startup():

@@ -9,6 +9,7 @@ from controllers.workers import (
     handle_get_month_birthdays,
     handle_get_worker_by_id,
     handle_get_worker_notations,
+    handle_get_workers_approaching_two_years,
     handle_get_workers_by_subsidiarie,
     handle_get_workers_by_subsidiaries_functions_and_turns,
     handle_get_workers_by_turn,
@@ -121,6 +122,13 @@ def get_month_birthdays(id: int):
 @workers_routes.get("/export/worker/{worker_id}")
 def export_single_worker_excel(worker_id: int):
     return handle_export_single_worker_excel(worker_id)
+
+
+@workers_routes.get(
+    "/user-subsidiaries/{user_id}/workers/enterprise-two-year-anniversary"
+)
+def get_workers_approaching_two_years(user_id: int):
+    handle_get_workers_approaching_two_years(user_id)
 
 
 @workers_routes.post("/workers")

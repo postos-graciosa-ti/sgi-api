@@ -10,6 +10,7 @@ import re
 import smtplib
 import tempfile
 import threading
+import time
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
@@ -254,6 +255,7 @@ from models.civil_status import CivilStatus
 from models.cnh_categories import CnhCategories
 from models.cost_center import CostCenter
 from models.cost_center_logs import CostCenterLogs
+from models.CustomNotification import CustomNotification
 from models.dates_events import DatesEvents
 from models.department import Department
 from models.department_logs import DepartmentsLogs
@@ -343,9 +345,69 @@ app = FastAPI()
 add_cors_middleware(app)
 
 
+def verify_notifications():
+    with Session(engine) as session:
+        today = datetime.today().date()
+
+        db_custom_notifications = session.exec(select(CustomNotification)).all()
+        notifications_for_today = []
+
+        for custom_notification in db_custom_notifications:
+            # Garante que a comparação seja apenas entre datas, ignorando hora
+            if custom_notification.date == today:
+                notifications_for_today.append(custom_notification)
+
+        for notification in notifications_for_today:
+            user_with_notification = session.get(User, notification.user_id)
+            if not user_with_notification:
+                continue
+
+            EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+            SENHA = os.environ.get("SENHA")
+            BCC = os.environ.get("BCC")
+
+            msg = EmailMessage()
+            msg["Subject"] = "Nova Notificação do SGI"
+            msg["From"] = EMAIL_REMETENTE
+            msg["To"] = user_with_notification.email
+            if BCC:
+                msg["Bcc"] = BCC
+            msg.set_content(f"{notification.title}: {notification.description}")
+
+            try:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                    smtp.login(EMAIL_REMETENTE, SENHA)
+                    smtp.send_message(msg)
+            except Exception as e:
+                print(f"Erro ao enviar email para {user_with_notification.email}: {e}")
+
+
+def daily_task_scheduler():
+    already_ran_today = False
+
+    while True:
+        now = datetime.now()
+
+        if now.hour == 6 and not already_ran_today:
+            print("Executando tarefa diária às 6h")
+            try:
+                verify_notifications()
+            except Exception as e:
+                print("Erro na tarefa diária:", e)
+
+            already_ran_today = True
+
+        if now.hour == 0:
+            already_ran_today = False
+
+        time.sleep(60)
+
+
 @app.on_event("startup")
 def on_startup():
     threading.Thread(target=keep_alive_function, daemon=True).start()
+
+    threading.Thread(target=daily_task_scheduler, daemon=True).start()
 
     handle_on_startup()
 

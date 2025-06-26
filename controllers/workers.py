@@ -39,6 +39,7 @@ from models.school_levels import SchoolLevels
 from models.states import States
 from models.subsidiarie import Subsidiarie
 from models.turn import Turn
+from models.user import User
 from models.wage_payment_method import WagePaymentMethod
 from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
 from models.workers_notations import WorkersNotations
@@ -859,6 +860,47 @@ def handle_export_single_worker_excel(worker_id: int):
         filename=f"colaborador_{worker_id}.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+def handle_get_workers_approaching_two_years(user_id: int):
+    with Session(engine) as session:
+        user_data = session.get(User, user_id)
+
+        user_subsidiaries = eval(user_data.subsidiaries_id)
+
+        query = select(Workers).where(Workers.subsidiarie_id.in_(user_subsidiaries))
+
+        workers = session.exec(query).all()
+
+        today = datetime.now()
+
+        three_months_later = today + relativedelta(months=3)
+
+        result = []
+
+        for worker in workers:
+            try:
+                admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+
+                two_year_anniversary = admission_date + relativedelta(years=2)
+
+                if today <= two_year_anniversary <= three_months_later:
+                    days_until_anniversary = (two_year_anniversary - today).days
+
+                    worker_data = worker.dict()
+
+                    worker_data["two_year_anniversary_date"] = (
+                        two_year_anniversary.strftime("%Y-%m-%d")
+                    )
+
+                    worker_data["days_until_anniversary"] = days_until_anniversary
+
+                    result.append(worker_data)
+
+            except Exception as e:
+                print(f"Erro ao processar trabalhador {worker.id}: {e}")
+
+        return result
 
 
 def handle_post_worker(request, worker: Workers, user):

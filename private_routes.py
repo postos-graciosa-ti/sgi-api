@@ -1,6 +1,7 @@
 from routes.applicants_routes import routes as applicants_routes
 from routes.cities_routes import cities_routes
 from routes.cost_center_routes import cost_center_routes
+from routes.custom_notifications_routes import custom_notifications_routes
 from routes.department_routes import department_routes
 from routes.functions_routes import functions_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
@@ -45,4 +46,5 @@ private_routes = [
     neighborhoods_routes,
     indicators_criteria_routes,
     indicators_routes,
+    custom_notifications_routes,
 ]

@@ -424,8 +424,9 @@ for private_route in private_routes:
 
 ###
 
-ONESIGNAL_APP_ID = "a884fea7-2f84-4b09-9815-7de82198616e"
-ONESIGNAL_API_KEY = "os_v2_app_vccp5jzpqrfqtgavpxucdgdbn37r227luzzusxur4hdwou3hzs54sh232zgmr6nfiv663t5yfzufqsw3lmt3d3puxtbdxkuqvkaa4xa"
+ONESIGNAL_APP_ID = os.environ.get("ONESIGNAL_APP_ID")
+
+ONESIGNAL_API_KEY = os.environ.get("ONESIGNAL_API_KEY")
 
 
 def send_push_to_player(player_id: str, message: str):

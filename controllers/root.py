@@ -70,6 +70,8 @@ def handle_watch_models():
 
     watch(CustomNotification)
 
+    watch(User)
+
 
 def handle_on_startup():
     try:

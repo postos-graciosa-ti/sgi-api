@@ -76,6 +76,7 @@ def handle_user_login(user: User):
                 "function_id": db_user.function_id,
                 "is_active": db_user.is_active,
                 "function": session.get(Function, db_user.function_id),
+                "one_signal_id": db_user.one_signal_id,
             },
             "token": token,
         }

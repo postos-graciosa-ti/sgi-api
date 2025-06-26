@@ -13,3 +13,4 @@ class User(SQLModel, table=True):
     function_id: Optional[int] = Field(default=None, foreign_key="function.id")
     is_active: bool = Field(default=True)
     phone: str = Field(nullable=True)
+    one_signal_id: Optional[str] = Field(default=None)

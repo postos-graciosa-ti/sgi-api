@@ -422,6 +422,59 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
+###
+
+ONESIGNAL_APP_ID = "a884fea7-2f84-4b09-9815-7de82198616e"
+ONESIGNAL_API_KEY = "os_v2_app_vccp5jzpqrfqtgavpxucdgdbn37r227luzzusxur4hdwou3hzs54sh232zgmr6nfiv663t5yfzufqsw3lmt3d3puxtbdxkuqvkaa4xa"
+
+
+def send_push_to_player(player_id: str, message: str):
+    headers = {
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "app_id": ONESIGNAL_APP_ID,
+        "include_player_ids": [player_id],
+        "contents": {"en": message},
+    }
+
+    response = httpx.post(
+        "https://onesignal.com/api/v1/notifications", json=payload, headers=headers
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=response.status_code, detail="Erro ao enviar notificação"
+        )
+
+    return response.json()
+
+
+@app.post("/send-notification/{player_id}/{message}")
+def send_notification(player_id: str, message: str):
+    return send_push_to_player(player_id, message)
+
+
+@app.patch("/users/{user_id}/{one_signal_id}/activate-notifications")
+def patch_activate_notifications(user_id: int, one_signal_id: str):
+    with Session(engine) as session:
+        db_user = session.get(User, user_id)
+
+        db_user.one_signal_id = one_signal_id
+
+        session.add(db_user)
+
+        session.commit()
+
+        session.refresh(db_user)
+
+        return db_user
+
+
+###
+
+
 # worker first review
 
 

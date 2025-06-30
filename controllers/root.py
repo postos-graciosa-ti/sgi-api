@@ -28,10 +28,12 @@ from models.goals import Goals
 from models.hollidays_scale import HollidaysScale
 from models.indicators import Indicators
 from models.indicators_criteria import IndicatorsCriteria
+from models.metrics import Metrics
 from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
 from models.system_log import SystemLog
 from models.user import User
+from models.workers_metrics import WorkersMetrics
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
 from seeds.seed_all import seed_database
@@ -71,6 +73,10 @@ def handle_watch_models():
     watch(CustomNotification)
 
     watch(User)
+
+    watch(Metrics)
+
+    watch(WorkersMetrics)
 
 
 def handle_on_startup():

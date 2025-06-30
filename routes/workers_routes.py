@@ -10,6 +10,7 @@ from controllers.workers import (
     handle_get_worker_by_id,
     handle_get_worker_notations,
     handle_get_workers_approaching_two_years,
+    handle_get_workers_by_functions,
     handle_get_workers_by_subsidiarie,
     handle_get_workers_by_subsidiaries_functions_and_turns,
     handle_get_workers_by_turn,
@@ -25,10 +26,26 @@ from controllers.workers import (
     handle_put_worker,
     handle_reactivate_worker,
 )
+from controllers.workers_first_review import (
+    handle_get_worker_first_review,
+    handle_get_workers_first_review,
+    handle_get_workers_without_first_review_in_range,
+    handle_post_worker_first_review,
+)
+from controllers.workers_metrics import (
+    handle_get_workers_metrics_by_id,
+    handle_post_workers_metrics,
+)
 from controllers.workers_pictures import (
     handle_delete_workers_pictures,
     handle_get_workers_pictures,
     handle_post_workers_pictures,
+)
+from controllers.workers_second_review import (
+    handle_get_worker_second_review,
+    handle_get_workers_second_review,
+    handle_get_workers_without_second_review_in_range,
+    handle_post_worker_second_review,
 )
 from functions.auth import AuthUser, verify_token
 from models.workers import (
@@ -38,7 +55,10 @@ from models.workers import (
     WorkerDeactivateInput,
     Workers,
 )
+from models.workers_first_review import WorkersFirstReview
+from models.workers_metrics import WorkersMetrics
 from models.workers_pictures import WorkersPictures
+from models.workers_second_review import WorkersSecondReview
 from pyhints.workers import PostWorkerNotationInput
 
 workers_routes = APIRouter()
@@ -131,6 +151,13 @@ def get_workers_approaching_two_years(user_id: int):
     handle_get_workers_approaching_two_years(user_id)
 
 
+@workers_routes.get(
+    "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
+)
+def get_workers_by_functions(subsidiarie_id: int, function_id: int, turn_id: int):
+    return handle_get_workers_by_functions(subsidiarie_id, function_id, turn_id)
+
+
 @workers_routes.post("/workers")
 def post_worker(
     request: Request, worker: Workers, user: AuthUser = Depends(verify_token)
@@ -217,3 +244,57 @@ def post_workers_pictures(body: WorkersPictures):
 @workers_routes.delete("/workers-pictures/{worker_id}")
 def delete_workers_pictures(worker_id: int):
     return handle_delete_workers_pictures(worker_id)
+
+
+@workers_routes.get(
+    "/subsidiaries/{subsidiarie_id}/workers/experience-time-no-first-review"
+)
+def get_workers_without_first_review_in_range(subsidiarie_id: int):
+    return handle_get_workers_without_first_review_in_range(subsidiarie_id)
+
+
+@workers_routes.get("/workers/{id}/first-review")
+def get_worker_first_review(id: int):
+    return handle_get_worker_first_review(id)
+
+
+@workers_routes.post("/workers/{id}/first-review")
+def post_worker_first_review(id: int, worker_first_review: WorkersFirstReview):
+    return handle_post_worker_first_review(id, worker_first_review)
+
+
+@workers_routes.get("/subsidiaries/{subsidiarie_id}/workers/first-review/notification")
+def get_workers_first_review(subsidiarie_id: int):
+    return handle_get_workers_first_review(subsidiarie_id)
+
+
+@workers_routes.get(
+    "/subsidiaries/{subsidiarie_id}/workers/experience-time-no-second-review"
+)
+def get_workers_without_second_review_in_range(subsidiarie_id: int):
+    return handle_get_workers_without_second_review_in_range(subsidiarie_id)
+
+
+@workers_routes.get("/workers/{id}/second-review")
+def get_worker_second_review(id: int):
+    return handle_get_worker_second_review(id)
+
+
+@workers_routes.post("/workers/{id}/second-review")
+def post_worker_second_review(id: int, worker_second_review: WorkersSecondReview):
+    return handle_post_worker_second_review(id, worker_second_review)
+
+
+@workers_routes.get("/subsidiaries/{subsidiarie_id}/workers/second-review/notification")
+def get_workers_second_review(subsidiarie_id: int):
+    return handle_get_workers_second_review(subsidiarie_id)
+
+
+@workers_routes.get("/workers-metrics/{id}")
+def get_workers_metrics_by_id(id: int):
+    return handle_get_workers_metrics_by_id(id)
+
+
+@workers_routes.post("/workers-metrics")
+def post_workers_metrics(workers_metrics: WorkersMetrics):
+    return handle_post_workers_metrics(workers_metrics)

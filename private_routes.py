@@ -2,8 +2,10 @@ from routes.applicants_routes import routes as applicants_routes
 from routes.cities_routes import cities_routes
 from routes.cost_center_routes import cost_center_routes
 from routes.custom_notifications_routes import custom_notifications_routes
+from routes.dates_events_routes import dates_events_routes
 from routes.department_routes import department_routes
 from routes.functions_routes import functions_routes
+from routes.genders_routes import genders_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
 from routes.indicators_criteria_routes import indicators_criteria_routes
 from routes.indicators_routes import indicators_routes
@@ -32,6 +34,8 @@ private_routes = [
     cost_center_routes,
     department_routes,
     resignable_reasons_routes,
+    dates_events_routes,
+    genders_routes,
 
 
     hollidays_schedule_routes,

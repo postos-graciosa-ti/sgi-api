@@ -352,7 +352,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    # threading.Thread(target=keep_alive_function, daemon=True).start()
+    threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 
@@ -490,48 +490,6 @@ for private_route in private_routes:
 #         ).all()
 
 #         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
-
-
-# dates events
-
-
-@app.get(
-    "/subsidiaries/{subsidiarie_id}/dates-events", dependencies=[Depends(verify_token)]
-)
-def get_dates_events(subsidiarie_id: int):
-    return handle_get_dates_events(subsidiarie_id)
-
-
-@app.get(
-    "/subsidiaries/{subsidiarie_id}/dates/{date}/dates-events",
-    dependencies=[Depends(verify_token)],
-)
-def get_events_by_date(subsidiarie_id: int, date: str):
-    return handle_get_events_by_date(subsidiarie_id, date)
-
-
-@app.post("/subsidiaries/{id}/dates-events", dependencies=[Depends(verify_token)])
-def post_date_event(id: int, date_event: DatesEvents):
-    return handle_post_dates_events(id, date_event)
-
-
-@app.delete(
-    "/subsidiaries/{subsidiarie_id}/dates-events/{event_id}",
-    dependencies=[Depends(verify_token)],
-)
-def delete_date_event(subsidiarie_id: int, event_id: int):
-    return handle_delete_dates_events(subsidiarie_id, event_id)
-
-
-# genders
-
-
-@app.get("/genders")
-def get_genders():
-    with Session(engine) as session:
-        genders = session.exec(select(Genders)).all()
-
-        return genders
 
 
 # civil status

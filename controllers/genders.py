@@ -1,11 +1,6 @@
-from sqlmodel import Session, select
-
-from database.sqlite import engine
 from models.genders import Genders
+from repositories.get_all_records import get_all_records
 
 
 def handle_get_genders():
-    with Session(engine) as session:
-        genders = session.exec(select(Genders)).all()
-
-        return genders
+    return get_all_records(Genders)

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 def add_cors_middleware(app):
     load_dotenv()
 
-    origins = [os.environ.get("FRONT_URL")]
+    origins = [os.environ.get("FRONT_URL"), "http://localhost:5174"]
 
     app.add_middleware(
         CORSMiddleware,

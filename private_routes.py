@@ -1,9 +1,13 @@
 from routes.applicants_routes import routes as applicants_routes
+from routes.away_reasons_routes import away_reasons_routes
 from routes.cities_routes import cities_routes
+from routes.civil_status_routes import civil_status_routes
 from routes.cost_center_routes import cost_center_routes
 from routes.custom_notifications_routes import custom_notifications_routes
 from routes.dates_events_routes import dates_events_routes
 from routes.department_routes import department_routes
+from routes.discount_reasons_routes import discount_reasons_routes
+from routes.ethnicities_routes import ethnicities_routes
 from routes.functions_routes import functions_routes
 from routes.genders_routes import genders_routes
 from routes.hollidays_schedule_routes import hollidays_schedule_routes
@@ -20,6 +24,7 @@ from routes.subsidiaries_routes import subsidiaries_routes
 from routes.system_log_routes import system_log_routes
 from routes.turns_routes import turns_routes
 from routes.users_routes import users_routes
+from routes.workers_discounts_routes import workers_discounts_routes
 from routes.workers_routes import workers_routes
 
 private_routes = [
@@ -36,7 +41,9 @@ private_routes = [
     resignable_reasons_routes,
     dates_events_routes,
     genders_routes,
-
+    civil_status_routes,
+    ethnicities_routes,
+    away_reasons_routes,
 
     hollidays_schedule_routes,
 
@@ -51,4 +58,6 @@ private_routes = [
     indicators_criteria_routes,
     indicators_routes,
     custom_notifications_routes,
+    discount_reasons_routes,
+    workers_discounts_routes,
 ]

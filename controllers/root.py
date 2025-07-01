@@ -23,6 +23,7 @@ from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
 from models.CustomNotification import CustomNotification
+from models.discount_reasons import DiscountReasons
 from models.docs_checklist import DocsChecklist
 from models.goals import Goals
 from models.hollidays_scale import HollidaysScale
@@ -33,6 +34,7 @@ from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
 from models.system_log import SystemLog
 from models.user import User
+from models.workers_discounts import WorkersDiscounts
 from models.workers_metrics import WorkersMetrics
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from models.workers_pictures import WorkersPictures
@@ -77,6 +79,10 @@ def handle_watch_models():
     watch(Metrics)
 
     watch(WorkersMetrics)
+
+    watch(DiscountReasons)
+
+    watch(WorkersDiscounts)
 
 
 def handle_on_startup():
@@ -124,6 +130,8 @@ def handle_on_startup():
                 handle_watch_models()
 
                 apply_migrations()
+
+                seed_database()
 
     except OperationalError as e:
         print(f"Erro crítico ao conectar ao banco de dados: {e}")

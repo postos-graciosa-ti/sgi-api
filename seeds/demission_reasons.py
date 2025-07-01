@@ -1,4 +1,4 @@
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.resignable_reasons import ResignableReasons
@@ -33,12 +33,15 @@ def demission_reasons():
     ]
 
     with Session(engine) as session:
-        for resignable_reason in resignable_reasons:
-            reason = ResignableReasons(
-                name=resignable_reason["name"],
-                description=resignable_reason["description"],
-            )
+        exist_resignable_reason = session.exec(select(ResignableReasons)).all()
 
-            session.add(reason)
+        if not exist_resignable_reason:
+            for resignable_reason in resignable_reasons:
+                reason = ResignableReasons(
+                    name=resignable_reason["name"],
+                    description=resignable_reason["description"],
+                )
 
-        session.commit()
+                session.add(reason)
+
+            session.commit()

@@ -261,6 +261,7 @@ from models.CustomNotification import CustomNotification
 from models.dates_events import DatesEvents
 from models.department import Department
 from models.department_logs import DepartmentsLogs
+from models.discount_reasons import DiscountReasons
 from models.docs_checklist import DocsChecklist
 from models.ethnicity import Ethnicity
 from models.function import Function
@@ -292,6 +293,7 @@ from models.user import User
 from models.users_logs import UsersLogs
 from models.wage_payment_method import WagePaymentMethod
 from models.workers import Workers
+from models.workers_discounts import WorkersDiscounts
 from models.workers_first_review import WorkersFirstReview
 from models.workers_logs import WorkersLogs
 from models.workers_metrics import WorkersMetrics
@@ -366,169 +368,6 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
-
-# @app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
-# def sla(subsidiarie_id: int, worker_id: int):
-#     today = datetime.today().date()
-
-#     with Session(engine) as session:
-#         first_review = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.id == worker_id)
-#             .where(Workers.first_review_date >= today)
-#         ).first()
-
-#         can_open_first_review_modal = (
-#             True
-#             if session.exec(
-#                 select(Workers)
-#                 .where(Workers.subsidiarie_id == subsidiarie_id)
-#                 .where(Workers.id == worker_id)
-#                 .where(Workers.first_review_date >= today)
-#             ).first()
-#             else False
-#         )
-
-#         second_review = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.id == worker_id)
-#             .where(Workers.second_review_date >= today)
-#         ).first()
-
-#         can_open_second_review_modal = (
-#             True
-#             if session.exec(
-#                 select(Workers)
-#                 .where(Workers.subsidiarie_id == subsidiarie_id)
-#                 .where(Workers.id == worker_id)
-#                 .where(Workers.second_review_date >= today)
-#             ).first()
-#             else False
-#         )
-
-#         return {
-#             "first_review": first_review,
-#             "second_review": second_review,
-#             "can_open_first_review_modal": can_open_first_review_modal,
-#             "can_open_second_review_modal": can_open_second_review_modal,
-#         }
-
-
-# class WorkersFieldsByTurnAndFunctionInput(BaseModel):
-#     fields: list
-
-
-# @app.post(
-#     "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
-# )
-# def workers_fields_by_turn_and_function(
-#     subsidiarie_id: int,
-#     function_id: int,
-#     turn_id: int,
-#     input: WorkersFieldsByTurnAndFunctionInput,
-# ):
-#     with Session(engine) as session:
-#         workers = session.exec(
-#             select(Workers, Function, Turn, CostCenter, Department)
-#             .join(Function, Workers.function_id == Function.id)
-#             .join(Turn, Workers.turn_id == Turn.id)
-#             .join(CostCenter, Workers.cost_center_id == CostCenter.id)
-#             .join(Department, Workers.department_id == Department.id)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.function_id == function_id)
-#             .where(Workers.turn_id == turn_id)
-#         ).all()
-
-#         result = [
-#             {
-#                 "esocial": worker.esocial,
-#                 "enrolment": worker.enrolment,
-#                 "sales_code": worker.sales_code,
-#                 "timecode": worker.timecode,
-#                 "worker_name": worker.name,
-#                 "function_name": function.name,
-#                 "turn_name": turn.name,
-#                 "cost_center_name": cost_center.name,
-#                 "department_name": department.name,
-#                 "admission_date": worker.admission_date,
-#             }
-#             for worker, function, turn, cost_center, department in workers
-#         ]
-
-#         return result
-
-# if not workers:
-#     return []
-
-# valid_fields = {column.name for column in Workers.__table__.columns}
-
-# requested_fields = [field for field in input.fields if field in valid_fields]
-
-# result = [
-#     {field: getattr(worker, field) for field in requested_fields}
-#     for worker in workers
-# ]
-
-# return workers
-
-
-# @app.get("/subsidiaries/{id}/get-nr20-list")
-# def get_nr_list_by_subsidiarie(id: int):
-#     today = date.today()
-
-#     first_day = today.replace(day=1)
-
-#     last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(days=1)
-
-#     with Session(engine) as session:
-#         nr_list = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == id)
-#             .where(Workers.second_review_date.between(first_day, last_day))
-#         ).all()
-
-#         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
-
-
-# civil status
-
-
-@app.get("/civil-status")
-def get_civil_status():
-    with Session(engine) as session:
-        civil_status = session.exec(select(CivilStatus)).all()
-
-        return civil_status
-
-
-@app.get("/ethnicities")
-def get_ethnicities():
-    with Session(engine) as session:
-        ethnicities = session.exec(select(Ethnicity)).all()
-
-        return ethnicities
-
-
-@app.get("/get-nr-workers")
-def get_nr_workers():
-    with Session(engine) as session:
-        nr_workers = session.exec(select(Workers).where(Workers.second_review_date))
-
-
-# away reasons
-
-
-@app.get("/away-reasons")
-def get_away_reasons():
-    with Session(engine) as session:
-        get_away_reasons = select(AwayReasons)
-
-        away_reasons = session.exec(get_away_reasons).all()
-
-        return away_reasons
-
 
 # workers
 
@@ -1980,3 +1819,128 @@ def send_all_docs_to_mabecon(id: int):
             smtp.send_message(msg)
 
     return {"message": "E-mail enviado com sucesso com todos os documentos."}
+
+
+# @app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
+# def sla(subsidiarie_id: int, worker_id: int):
+#     today = datetime.today().date()
+
+#     with Session(engine) as session:
+#         first_review = session.exec(
+#             select(Workers)
+#             .where(Workers.subsidiarie_id == subsidiarie_id)
+#             .where(Workers.id == worker_id)
+#             .where(Workers.first_review_date >= today)
+#         ).first()
+
+#         can_open_first_review_modal = (
+#             True
+#             if session.exec(
+#                 select(Workers)
+#                 .where(Workers.subsidiarie_id == subsidiarie_id)
+#                 .where(Workers.id == worker_id)
+#                 .where(Workers.first_review_date >= today)
+#             ).first()
+#             else False
+#         )
+
+#         second_review = session.exec(
+#             select(Workers)
+#             .where(Workers.subsidiarie_id == subsidiarie_id)
+#             .where(Workers.id == worker_id)
+#             .where(Workers.second_review_date >= today)
+#         ).first()
+
+#         can_open_second_review_modal = (
+#             True
+#             if session.exec(
+#                 select(Workers)
+#                 .where(Workers.subsidiarie_id == subsidiarie_id)
+#                 .where(Workers.id == worker_id)
+#                 .where(Workers.second_review_date >= today)
+#             ).first()
+#             else False
+#         )
+
+#         return {
+#             "first_review": first_review,
+#             "second_review": second_review,
+#             "can_open_first_review_modal": can_open_first_review_modal,
+#             "can_open_second_review_modal": can_open_second_review_modal,
+#         }
+
+
+# class WorkersFieldsByTurnAndFunctionInput(BaseModel):
+#     fields: list
+
+
+# @app.post(
+#     "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
+# )
+# def workers_fields_by_turn_and_function(
+#     subsidiarie_id: int,
+#     function_id: int,
+#     turn_id: int,
+#     input: WorkersFieldsByTurnAndFunctionInput,
+# ):
+#     with Session(engine) as session:
+#         workers = session.exec(
+#             select(Workers, Function, Turn, CostCenter, Department)
+#             .join(Function, Workers.function_id == Function.id)
+#             .join(Turn, Workers.turn_id == Turn.id)
+#             .join(CostCenter, Workers.cost_center_id == CostCenter.id)
+#             .join(Department, Workers.department_id == Department.id)
+#             .where(Workers.subsidiarie_id == subsidiarie_id)
+#             .where(Workers.function_id == function_id)
+#             .where(Workers.turn_id == turn_id)
+#         ).all()
+
+#         result = [
+#             {
+#                 "esocial": worker.esocial,
+#                 "enrolment": worker.enrolment,
+#                 "sales_code": worker.sales_code,
+#                 "timecode": worker.timecode,
+#                 "worker_name": worker.name,
+#                 "function_name": function.name,
+#                 "turn_name": turn.name,
+#                 "cost_center_name": cost_center.name,
+#                 "department_name": department.name,
+#                 "admission_date": worker.admission_date,
+#             }
+#             for worker, function, turn, cost_center, department in workers
+#         ]
+
+#         return result
+
+# if not workers:
+#     return []
+
+# valid_fields = {column.name for column in Workers.__table__.columns}
+
+# requested_fields = [field for field in input.fields if field in valid_fields]
+
+# result = [
+#     {field: getattr(worker, field) for field in requested_fields}
+#     for worker in workers
+# ]
+
+# return workers
+
+
+# @app.get("/subsidiaries/{id}/get-nr20-list")
+# def get_nr_list_by_subsidiarie(id: int):
+#     today = date.today()
+
+#     first_day = today.replace(day=1)
+
+#     last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(days=1)
+
+#     with Session(engine) as session:
+#         nr_list = session.exec(
+#             select(Workers)
+#             .where(Workers.subsidiarie_id == id)
+#             .where(Workers.second_review_date.between(first_day, last_day))
+#         ).all()
+
+#         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}

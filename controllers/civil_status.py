@@ -1,11 +1,6 @@
-from sqlmodel import Session, select
-
-from database.sqlite import engine
 from models.civil_status import CivilStatus
+from repositories.get_all_records import get_all_records
 
 
 def handle_get_civil_status():
-    with Session(engine) as session:
-        civil_status = session.exec(select(CivilStatus)).all()
-
-        return civil_status
+    return get_all_records(CivilStatus)

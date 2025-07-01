@@ -148,6 +148,9 @@ class Workers(SQLModel, table=True):
     cc: str = Field(default=None, nullable=True)
     early_payment_discount: str = Field(default=None, nullable=True)
 
+    app_login: str
+    app_password: str
+
 
 class WorkerDeactivateInput(BaseModel):
     is_active: bool

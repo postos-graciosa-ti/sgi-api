@@ -369,6 +369,25 @@ for public_route in public_routes:
 for private_route in private_routes:
     app.include_router(private_route)
 
+
+@app.post("/workers/{worker_id}/autorize-app", dependencies=[Depends(verify_token)])
+def post_workers_autorize_app(worker_id: int):
+    with Session(engine) as session:
+        db_worker = session.get(Workers, worker_id)
+
+        db_worker.app_login = db_worker.cpf
+
+        db_worker.app_password = db_worker.cpf
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
 # workers
 
 

@@ -553,6 +553,7 @@ def handle_get_workers_by_subsidiarie(subsidiarie_id: int):
                     "ag": worker.ag,
                     "cc": worker.cc,
                     "early_payment_discount": worker.early_payment_discount,
+                    "app_login": worker.app_login,
                 }
             )
 

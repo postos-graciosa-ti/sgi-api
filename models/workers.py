@@ -161,6 +161,7 @@ class WorkerDeactivateInput(BaseModel):
 class PatchWorkersTurnBody(BaseModel):
     worker_id: int
     turn_id: int
+    function_id: int
 
 
 class GetWorkersVtReportBody(BaseModel):

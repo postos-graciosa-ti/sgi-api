@@ -446,7 +446,7 @@ def post_workers_autorize_app(worker_id: int):
 
         db_worker.app_login = db_worker.cpf
 
-        db_worker.app_password = db_worker.cpf
+        db_worker.app_password = pbkdf2_sha256.hash(db_worker.cpf)
 
         session.add(db_worker)
 

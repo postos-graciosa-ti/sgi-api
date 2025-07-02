@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
@@ -368,6 +369,74 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+
+@app.get("/workers-status", dependencies=[Depends(verify_token)])
+def get_workers_status():
+    with Session(engine) as session:
+        subsidiaries = session.exec(select(Subsidiarie)).all()
+
+        functions = session.exec(select(Function)).all()
+
+        turns = session.exec(select(Turn)).all()
+
+        workers = session.exec(
+            select(Workers)
+            .where(Workers.is_active == True)  # noqa: E712
+            .where(Workers.is_away == False)  # noqa: E712
+        ).all()
+
+        func_map = {f.id: f.name for f in functions}
+
+        turn_map = {t.id: t.name for t in turns}
+
+        sub_map = {s.id: s.name for s in subsidiaries}
+
+        grouped = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+        count_by_sub = defaultdict(int)
+
+        total_count = 0
+
+        for worker in workers:
+            if worker.subsidiarie_id and worker.function_id and worker.turn_id:
+                sub_name = sub_map.get(worker.subsidiarie_id, "Desconhecida")
+
+                turn_name = turn_map.get(worker.turn_id, "Sem Turno")
+
+                func_name = func_map.get(worker.function_id, "Sem Função")
+
+                grouped[sub_name][turn_name][func_name].append(worker.name)
+
+                count_by_sub[sub_name] += 1
+
+                total_count += 1
+
+        result = {
+            "total_geral": total_count,
+            "por_subsidiaria": [],
+        }
+
+        for sub_name, turns in grouped.items():
+            sub_entry = {
+                "subsidiaria": sub_name,
+                "total": count_by_sub[sub_name],
+                "turnos": [],
+            }
+
+            for turn_name, funcs in turns.items():
+                turn_entry = {"turno": turn_name, "funções": []}
+
+                for func_name, names in funcs.items():
+                    turn_entry["funções"].append(
+                        {"função": func_name, "funcionários": names}
+                    )
+
+                sub_entry["turnos"].append(turn_entry)
+
+            result["por_subsidiaria"].append(sub_entry)
+
+        return result
 
 
 @app.post("/workers/{worker_id}/autorize-app", dependencies=[Depends(verify_token)])

@@ -1164,6 +1164,8 @@ def handle_patch_workers_turn(body: PatchWorkersTurnBody):
 
         db_worker.turn_id = body.turn_id
 
+        db_worker.function_id = body.function_id
+
         session.add(db_worker)
 
         session.commit()

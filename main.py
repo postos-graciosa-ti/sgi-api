@@ -45,7 +45,7 @@ from openpyxl import Workbook, load_workbook
 from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
-from sqlalchemy import and_, create_engine, event, extract, func, inspect, text
+from sqlalchemy import and_, create_engine, event, extract, func, inspect, or_, text
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 from starlette.status import HTTP_404_NOT_FOUND
@@ -455,133 +455,6 @@ def post_workers_autorize_app(worker_id: int):
         session.refresh(db_worker)
 
         return {"success": True}
-
-
-# workers
-
-
-class WorkersAway(BaseModel):
-    away_start_date: str
-    away_end_date: str
-    away_reason_id: int
-
-
-@app.put("/subsidiaries/{subsidiarie_id}/workers/{worker_id}/away")
-def worker_away(subsidiarie_id: int, worker_id: int, worker: WorkersAway):
-    with Session(engine) as session:
-        get_db_worker = (
-            select(Workers)
-            .where(Workers.id == worker_id)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-        )
-
-        db_worker = session.exec(get_db_worker).first()
-
-        db_worker.is_away = True
-
-        db_worker.away_start_date = (
-            worker.away_start_date
-            if worker.away_start_date
-            else db_worker.away_start_date
-        )
-
-        db_worker.away_end_date = (
-            worker.away_end_date if worker.away_end_date else db_worker.away_end_date
-        )
-
-        db_worker.away_reason_id = (
-            worker.away_reason_id if worker.away_reason_id else db_worker.away_reason_id
-        )
-
-        start_date = datetime.strptime(worker.away_start_date, "%Y-%m-%d").date()
-
-        end_date = datetime.strptime(worker.away_end_date, "%Y-%m-%d").date()
-
-        away_days = (end_date - start_date).days + 1
-
-        db_worker.time_away = away_days
-
-        session.add(db_worker)
-
-        session.commit()
-
-        session.refresh(db_worker)
-
-        return db_worker
-
-
-@app.put("/subsidiaries/{subsidiarie_id}/workers/{worker_id}/away-return")
-def sla(subsidiarie_id: int, worker_id: int):
-    with Session(engine) as session:
-        get_db_worker = (
-            select(Workers)
-            .where(Workers.id == worker_id)
-            .where(Workers.subsidiarie_id == subsidiarie_id)
-        )
-
-        db_worker = session.exec(get_db_worker).first()
-
-        db_worker.is_away = False
-
-        session.add(db_worker)
-
-        session.commit()
-
-        return db_worker
-
-
-# school levels
-
-
-@app.get("/school-levels")
-def get_school_levels():
-    return handle_get_school_levels()
-
-
-# banks
-
-
-@app.get("/banks")
-def get_banks():
-    return handle_get_banks()
-
-
-class WorkersByTurnAndFunctionModel(BaseModel):
-    turns: list
-    functions: list
-
-
-@app.post("/subsidiaries/{subsidiarie_id}/workers-by-turn-and-function")
-def get_workers_by_turn_and_function(
-    subsidiarie_id: int, data: WorkersByTurnAndFunctionModel
-):
-    with Session(engine) as session:
-        result = []
-
-        turns = data.turns
-
-        functions = data.functions
-
-        for turn in turns:
-            for function in functions:
-                workers = session.exec(
-                    select(Workers)
-                    .where(Workers.subsidiarie_id == subsidiarie_id)
-                    .where(Workers.turn_id == turn)
-                    .where(Workers.function_id == function)
-                ).all()
-
-                result.extend(workers)
-
-        return result
-
-
-# parents type
-
-
-@app.get("/parents-type")
-def get_parents_type():
-    return handle_get_parents_type()
 
 
 # workers parents
@@ -2032,3 +1905,32 @@ def send_all_docs_to_mabecon(id: int):
 #         ).all()
 
 #         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
+
+# class WorkersByTurnAndFunctionModel(BaseModel):
+#     turns: list
+#     functions: list
+
+
+# @app.post("/subsidiaries/{subsidiarie_id}/workers-by-turn-and-function")
+# def get_workers_by_turn_and_function(
+#     subsidiarie_id: int, data: WorkersByTurnAndFunctionModel
+# ):
+#     with Session(engine) as session:
+#         result = []
+
+#         turns = data.turns
+
+#         functions = data.functions
+
+#         for turn in turns:
+#             for function in functions:
+#                 workers = session.exec(
+#                     select(Workers)
+#                     .where(Workers.subsidiarie_id == subsidiarie_id)
+#                     .where(Workers.turn_id == turn)
+#                     .where(Workers.function_id == function)
+#                 ).all()
+
+#                 result.extend(workers)
+
+#         return result

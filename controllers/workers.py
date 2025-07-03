@@ -41,7 +41,12 @@ from models.subsidiarie import Subsidiarie
 from models.turn import Turn
 from models.user import User
 from models.wage_payment_method import WagePaymentMethod
-from models.workers import GetWorkersVtReportBody, PatchWorkersTurnBody, Workers
+from models.workers import (
+    GetWorkersVtReportBody,
+    PatchWorkersTurnBody,
+    Workers,
+    WorkersAway,
+)
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
@@ -1072,6 +1077,68 @@ def handle_reactivate_worker(request, id: int, user):
         )
 
         return worker
+
+
+def handle_worker_away(subsidiarie_id: int, worker_id: int, worker: WorkersAway):
+    with Session(engine) as session:
+        get_db_worker = (
+            select(Workers)
+            .where(Workers.id == worker_id)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+        )
+
+        db_worker = session.exec(get_db_worker).first()
+
+        db_worker.is_away = True
+
+        db_worker.away_start_date = (
+            worker.away_start_date
+            if worker.away_start_date
+            else db_worker.away_start_date
+        )
+
+        db_worker.away_end_date = (
+            worker.away_end_date if worker.away_end_date else db_worker.away_end_date
+        )
+
+        db_worker.away_reason_id = (
+            worker.away_reason_id if worker.away_reason_id else db_worker.away_reason_id
+        )
+
+        start_date = datetime.strptime(worker.away_start_date, "%Y-%m-%d").date()
+
+        end_date = datetime.strptime(worker.away_end_date, "%Y-%m-%d").date()
+
+        away_days = (end_date - start_date).days + 1
+
+        db_worker.time_away = away_days
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return db_worker
+
+
+def handle_away_return(subsidiarie_id: int, worker_id: int):
+    with Session(engine) as session:
+        get_db_worker = (
+            select(Workers)
+            .where(Workers.id == worker_id)
+            .where(Workers.subsidiarie_id == subsidiarie_id)
+        )
+
+        db_worker = session.exec(get_db_worker).first()
+
+        db_worker.is_away = False
+
+        session.add(db_worker)
+
+        session.commit()
+
+        return db_worker
 
 
 def handle_deactivate_worker(request, id: int, worker: WorkerDeactivateInput, user):

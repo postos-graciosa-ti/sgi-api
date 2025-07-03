@@ -1,19 +1,18 @@
 import os
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.message import EmailMessage
 from typing import Optional
 
 from dateutil.relativedelta import relativedelta
 from fastapi import HTTPException
-from sqlalchemy import and_, create_engine, event, text
+from sqlalchemy import and_, or_, text
 from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
 from models.applicants_exams import ApplicantsExams
-from models.function import Function
 from models.redirected_to import RedirectedTo
 from models.workers import Workers
 from models.workers_pictures import WorkersPictures
@@ -26,11 +25,67 @@ def handle_get_applicants():
     with Session(engine) as session:
         applicants = session.exec(
             select(Applicants)
-            .where(Applicants.is_active == True)
+            .where(Applicants.is_active == True)  # noqa: E712
             .order_by(Applicants.id.desc())
         ).all()
 
         return applicants
+
+
+def handle_get_applicants_in_process():
+    with Session(engine) as session:
+        applicants_in_process = session.exec(
+            select(Applicants)
+            .where(
+                and_(
+                    Applicants.rh_opinion == None,  # noqa: E711
+                    Applicants.coordinator_opinion == None,  # noqa: E711
+                    Applicants.is_active == True,  # noqa: E712
+                )
+            )
+            .order_by(Applicants.id.desc())
+        ).all()
+
+        return applicants_in_process
+
+
+def handle_get_applicants_approved():
+    with Session(engine) as session:
+        applicants_approved = session.exec(
+            select(Applicants)
+            .where(
+                and_(
+                    Applicants.rh_opinion == "aprovado",
+                    Applicants.coordinator_opinion == "aprovado",
+                    Applicants.is_active == True,  # noqa: E712
+                )
+            )
+            .order_by(Applicants.id.desc())
+        ).all()
+
+        return applicants_approved
+
+
+def handle_get_applicants_reproved():
+    with Session(engine) as session:
+        applicants_reproved = session.exec(
+            select(Applicants)
+            .where(
+                or_(
+                    and_(
+                        Applicants.rh_opinion == "reprovado",
+                        Applicants.is_active == True,  # noqa: E712
+                    ),
+                    and_(
+                        Applicants.coordinator_opinion == "reprovado",
+                        Applicants.is_active == True,  # noqa: E712
+                    ),
+                )
+            )
+            .order_by(Applicants.id.desc())
+        ).all()
+
+        return applicants_reproved
 
 
 def handle_post_applicant(applicant: Applicants):

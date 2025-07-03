@@ -4,9 +4,12 @@ from controllers.applicants import (
     handle_delete_applicants,
     handle_get_applicant_process,
     handle_get_applicants,
+    handle_get_applicants_approved,
     handle_get_applicants_exams,
+    handle_get_applicants_in_process,
     handle_get_applicants_notifications,
     handle_get_applicants_redirected_to,
+    handle_get_applicants_reproved,
     handle_patch_applicants,
     handle_post_applicant,
     handle_post_applicants_exams,
@@ -28,6 +31,21 @@ routes = APIRouter(dependencies=[Depends(verify_token)])
 @routes.get("/applicants")
 def get_applicants():
     return handle_get_applicants()
+
+
+@routes.get("/applicants/in-process")
+def get_applicants_in_process():
+    return handle_get_applicants_in_process()
+
+
+@routes.get("/applicants/approved")
+def get_applicants_approved():
+    return handle_get_applicants_approved()
+
+
+@routes.get("/applicants/reproved")
+def get_applicants_reproved():
+    return handle_get_applicants_reproved()
 
 
 @routes.post("/applicants")

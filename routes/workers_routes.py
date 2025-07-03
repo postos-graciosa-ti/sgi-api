@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 
 from controllers.workers import (
+    handle_away_return,
     handle_deactivate_worker,
     handle_delete_worker_notation,
     handle_export_single_worker_excel,
@@ -25,6 +26,7 @@ from controllers.workers import (
     handle_post_worker_notation,
     handle_put_worker,
     handle_reactivate_worker,
+    handle_worker_away,
 )
 from controllers.workers_first_review import (
     handle_get_worker_first_review,
@@ -54,6 +56,7 @@ from models.workers import (
     RequestBadgesBody,
     WorkerDeactivateInput,
     Workers,
+    WorkersAway,
 )
 from models.workers_first_review import WorkersFirstReview
 from models.workers_metrics import WorkersMetrics
@@ -61,7 +64,7 @@ from models.workers_pictures import WorkersPictures
 from models.workers_second_review import WorkersSecondReview
 from pyhints.workers import PostWorkerNotationInput
 
-workers_routes = APIRouter()
+workers_routes = APIRouter(dependencies=[Depends(verify_token)])
 
 
 @workers_routes.get("/workers/{id}", dependencies=[Depends(verify_token)])
@@ -199,6 +202,16 @@ def reactivate_worker(
     request: Request, id: int, user: AuthUser = Depends(verify_token)
 ):
     return handle_reactivate_worker(request, id, user)
+
+
+@workers_routes.put("/subsidiaries/{subsidiarie_id}/workers/{worker_id}/away")
+def worker_away(subsidiarie_id: int, worker_id: int, worker: WorkersAway):
+    return handle_worker_away(subsidiarie_id, worker_id, worker)
+
+
+@workers_routes.put("/subsidiaries/{subsidiarie_id}/workers/{worker_id}/away-return")
+def away_return(subsidiarie_id: int, worker_id: int):
+    return handle_away_return(subsidiarie_id, worker_id)
 
 
 @workers_routes.patch("/patch-workers-turn", dependencies=[Depends(verify_token)])

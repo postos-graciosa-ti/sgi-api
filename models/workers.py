@@ -172,3 +172,9 @@ class GetWorkersVtReportBody(BaseModel):
 class RequestBadgesBody(BaseModel):
     workers_ids: List[int]
     recipient_email: str
+
+
+class WorkersAway(BaseModel):
+    away_start_date: str
+    away_end_date: str
+    away_reason_id: int

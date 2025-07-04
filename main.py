@@ -248,6 +248,7 @@ from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
+from models.applicants_docs import ApplicantsDocs
 from models.applicants_exams import ApplicantsExams
 from models.away_reasons import AwayReasons
 from models.banks import Banks
@@ -369,6 +370,72 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+
+@app.get("/applicants-docs/{applicant_id}")
+def get_applicant_docs_by_applicant_id(applicant_id: int):
+    with Session(engine) as session:
+        docs = session.exec(
+            select(ApplicantsDocs).where(ApplicantsDocs.applicant_id == applicant_id)
+        ).first()
+
+        if not docs:
+            raise HTTPException(status_code=404, detail="Documentos não encontrados")
+
+        return {
+            "id": docs.id,
+            "applicant_id": docs.applicant_id,
+            "resume_available": docs.resume is not None,
+            "workcard_available": docs.workcard is not None,
+        }
+
+
+@app.get("/applicants-docs/file/{id}/{doc_type}")
+def get_document_file_by_id(id: int, doc_type: str):
+    if doc_type not in ["resume", "workcard"]:
+        raise HTTPException(status_code=400, detail="Tipo de documento inválido")
+
+    with Session(engine) as session:
+        docs = session.get(ApplicantsDocs, id)
+
+        if not docs:
+            raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+        file_data = getattr(docs, doc_type)
+        if not file_data:
+            raise HTTPException(status_code=404, detail=f"{doc_type} não encontrado")
+
+        return StreamingResponse(BytesIO(file_data), media_type="application/pdf")
+
+
+@app.post("/applicants-docs/{applicant_id}")
+def post_applicants_docs(
+    applicant_id: int,
+    resume: UploadFile = File(...),
+    workcard: UploadFile = File(...),
+):
+    try:
+        resume_data = resume.file.read()
+
+        workcard_data = workcard.file.read()
+
+        new_docs = ApplicantsDocs(
+            applicant_id=applicant_id, resume=resume_data, workcard=workcard_data
+        )
+
+        with Session(engine) as session:
+            session.add(new_docs)
+
+            session.commit()
+
+            session.refresh(new_docs)
+
+        return {"message": "Documentos salvos com sucesso", "id": new_docs.id}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao salvar documentos: {str(e)}"
+        )
 
 
 @app.get("/workers-status", dependencies=[Depends(verify_token)])

@@ -28,7 +28,7 @@ from models.applicants_exams import ApplicantsExams
 from models.redirected_to import RedirectedTo
 from pyhints.applicants import RecruitProps, SendFeedbackEmailBody
 
-routes = APIRouter(dependencies=[Depends(verify_token)])
+routes = APIRouter()
 
 
 @routes.get("/applicants")

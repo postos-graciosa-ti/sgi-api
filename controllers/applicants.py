@@ -2,16 +2,19 @@ import os
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
+from io import BytesIO
 from typing import Optional
 
 from dateutil.relativedelta import relativedelta
-from fastapi import HTTPException
+from fastapi import File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, or_, text
 from sqlmodel import Session, select
 
 from database.sqlite import engine
 from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
+from models.applicants_docs import ApplicantsDocs
 from models.applicants_exams import ApplicantsExams
 from models.redirected_to import RedirectedTo
 from models.workers import Workers
@@ -651,3 +654,66 @@ def handle_upsert_applicant_process(
         session.commit()
         session.refresh(db_applicant)
         return db_applicant
+
+
+def handle_get_applicant_docs_by_applicant_id(applicant_id: int):
+    with Session(engine) as session:
+        docs = session.exec(
+            select(ApplicantsDocs).where(ApplicantsDocs.applicant_id == applicant_id)
+        ).first()
+
+        if not docs:
+            raise HTTPException(status_code=404, detail="Documentos não encontrados")
+
+        return {
+            "id": docs.id,
+            "applicant_id": docs.applicant_id,
+            "resume_available": docs.resume is not None,
+            "workcard_available": docs.workcard is not None,
+        }
+
+
+def handle_get_document_file_by_id(id: int, doc_type: str):
+    if doc_type not in ["resume", "workcard"]:
+        raise HTTPException(status_code=400, detail="Tipo de documento inválido")
+
+    with Session(engine) as session:
+        docs = session.get(ApplicantsDocs, id)
+
+        if not docs:
+            raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+        file_data = getattr(docs, doc_type)
+        if not file_data:
+            raise HTTPException(status_code=404, detail=f"{doc_type} não encontrado")
+
+        return StreamingResponse(BytesIO(file_data), media_type="application/pdf")
+
+
+def handle_post_applicants_docs(
+    applicant_id: int,
+    resume: UploadFile = File(...),
+    workcard: UploadFile = File(...),
+):
+    try:
+        resume_data = resume.file.read()
+
+        workcard_data = workcard.file.read()
+
+        new_docs = ApplicantsDocs(
+            applicant_id=applicant_id, resume=resume_data, workcard=workcard_data
+        )
+
+        with Session(engine) as session:
+            session.add(new_docs)
+
+            session.commit()
+
+            session.refresh(new_docs)
+
+        return {"message": "Documentos salvos com sucesso", "id": new_docs.id}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao salvar documentos: {str(e)}"
+        )

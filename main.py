@@ -56,295 +56,43 @@ from controllers.all_subsidiaries_no_review import (
     handle_get_workers_without_first_review_in_range_all,
     handle_get_workers_without_second_review_in_range_all,
 )
-from controllers.applicants import (
-    handle_delete_applicants,
-    handle_get_applicants,
-    handle_get_applicants_notifications,
-    handle_patch_applicants,
-    handle_post_applicant,
-    handle_post_hire_applicants,
-)
-from controllers.banks import handle_get_banks
-from controllers.candidates import (
-    handle_get_candidates,
-    handle_get_candidates_by_status,
-    handle_post_candidate,
-)
-from controllers.cities import (
-    handle_delete_cities,
-    handle_get_cities,
-    handle_get_cities_by_state,
-    handle_get_city_by_id,
-    handle_post_new_city,
-    handle_put_cities,
-)
 from controllers.cnh_categories import handle_get_cnh_categories
-from controllers.cost_center import (
-    handle_delete_cost_center,
-    handle_get_cost_center,
-    handle_get_cost_center_by_id,
-    handle_post_cost_center,
-    handle_put_cost_center,
-)
-from controllers.cost_center_log import (
-    handle_get_cost_center_logs,
-    handle_post_cost_center_logs,
-)
-from controllers.dates_events import (
-    handle_delete_dates_events,
-    handle_get_dates_events,
-    handle_get_events_by_date,
-    handle_post_dates_events,
-)
-from controllers.departments import (
-    handle_delete_department,
-    handle_get_department_by_id,
-    handle_get_departments,
-    handle_post_department,
-    handle_put_department,
-)
-from controllers.departments_logs import (
-    handle_get_departments_logs,
-    handle_post_departments_logs,
-)
-from controllers.functions import (
-    handle_delete_function,
-    handle_get_functions,
-    handle_get_functions_by_subsidiarie,
-    handle_get_functions_for_users,
-    handle_get_functions_for_workers,
-    handle_post_function,
-    handle_put_function,
-)
-from controllers.functions_logs import (
-    handle_get_functions_logs,
-    handle_post_functions_logs,
-)
 from controllers.hierarchy_structure import handle_get_hierarchy_structure
-from controllers.jobs import (
-    handle_delete_job,
-    handle_get_jobs,
-    handle_get_jobs_by_subsidiarie_id,
-    handle_post_job,
-)
-from controllers.months import handle_get_months
-from controllers.nationalities import (
-    handle_delete_nationalities,
-    handle_get_nationalities,
-    handle_post_nationalities,
-    handle_put_nationalities,
-)
-from controllers.parents_type import handle_get_parents_type
-from controllers.resignable_reasons import (
-    handle_get_resignable_reasons,
-    handle_resignable_reasons_report,
-)
-from controllers.roles import handle_get_roles, handle_get_roles_by_id
 from controllers.root import (
-    handle_get_docs_info,
-    handle_health_check,
     handle_on_startup,
-    handle_verify_schema_diff,
 )
-from controllers.scale import (
-    handle_delete_scale,
-    handle_get_days_off_quantity,
-    handle_get_scales_by_subsidiarie_and_worker_id,
-    handle_get_scales_by_subsidiarie_id,
-    handle_handle_scale,
-    handle_post_scale,
-    handle_post_some_workers_scale,
-    handle_post_subsidiarie_scale_to_print,
-)
-from controllers.scales_reports import (
-    handle_generate_scale_days_off_report,
-    handle_generate_scale_days_on_report,
-)
-from controllers.school_levels import handle_get_school_levels
-from controllers.states import (
-    handle_delete_states,
-    handle_get_states,
-    handle_get_states_by_id,
-    handle_get_states_by_nationalitie,
-    handle_post_states,
-    handle_put_states,
-)
-from controllers.subsidiaries import (
-    handle_delete_subsidiarie,
-    handle_get_subsidiarie_by_id,
-    handle_get_subsidiaries,
-    handle_post_subsidiaries,
-)
-from controllers.subsidiaries_logs import (
-    handle_get_subsidiarie_logs,
-    handle_post_subsidiaries_logs,
-)
-from controllers.subsidiaries_notifications import (
-    handle_get_subsidiarie_notifications,
-    handle_get_subsidiaries_status,
-)
-from controllers.turn import (
-    handle_delete_turn,
-    handle_get_subsidiarie_turns,
-    handle_get_turn_by_id,
-    handle_get_turns,
-    handle_post_turns,
-    handle_put_turn,
-)
-from controllers.turns_logs import handle_get_turns_logs, handle_post_turns_logs
-from controllers.users import (
-    handle_change_password,
-    handle_confirm_password,
-    handle_create_user_password,
-    handle_delete_user,
-    handle_get_test,
-    handle_get_user_by_id,
-    handle_get_users,
-    handle_get_users_roles,
-    handle_post_user,
-    handle_put_user,
-    handle_user_login,
-)
-from controllers.users_logs import handle_get_logs_user, handle_post_logs_user
 from controllers.wage_payment_method import handle_get_wage_payment_method
-from controllers.workers import (
-    handle_deactivate_worker,
-    handle_delete_worker_notation,
-    handle_get_active_workers_by_subsidiarie_and_function,
-    handle_get_active_workers_by_turn_and_subsidiarie,
-    handle_get_worker_by_id,
-    handle_get_worker_notations,
-    handle_get_workers_by_subsidiarie,
-    handle_get_workers_by_subsidiaries_functions_and_turns,
-    handle_get_workers_by_turn_and_subsidiarie,
-    handle_post_worker,
-    handle_post_worker_notation,
-    handle_put_worker,
-    handle_reactivate_worker,
-)
-from controllers.workers_logs import (
-    handle_get_create_workers_logs,
-    handle_get_delete_workers_logs,
-    handle_get_update_workers_logs,
-    handle_post_create_workers_logs,
-    handle_post_delete_workers_logs,
-    handle_post_update_workers_logs,
-    handle_post_workers_logs,
-)
 from controllers.workers_parents import (
     handle_delete_workers_parents,
     handle_get_workers_parents,
     handle_post_workers_parents,
 )
-from controllers.workers_pictures import (
-    handle_delete_workers_pictures,
-    handle_get_workers_pictures,
-    handle_post_workers_pictures,
-)
 from database.sqlite import engine
-from functions.auth import AuthUser, verify_token
-from functions.error_handling import error_handler
+from functions.auth import verify_token
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
-from models.applicant_process import ApplicantProcess
 from models.applicants import Applicants
-from models.applicants_exams import ApplicantsExams
-from models.away_reasons import AwayReasons
-from models.banks import Banks
-from models.candidate import Candidate
-from models.checklist import Checklist, ChecklistCreate, ChecklistUpdate
-from models.cities import Cities
 from models.civil_status import CivilStatus
-from models.cnh_categories import CnhCategories
-from models.cost_center import CostCenter
-from models.cost_center_logs import CostCenterLogs
-from models.CustomNotification import CustomNotification
-from models.dates_events import DatesEvents
-from models.department import Department
-from models.department_logs import DepartmentsLogs
-from models.discount_reasons import DiscountReasons
-from models.docs_checklist import DocsChecklist
 from models.ethnicity import Ethnicity
 from models.function import Function
-from models.function_logs import FunctionLogs
 from models.genders import Genders
-from models.hierarchy_structure import HierarchyStructure
-from models.hollidays_scale import HollidaysScale
-from models.indicators import Indicators
-from models.indicators_criteria import IndicatorsCriteria
-from models.jobs import Jobs
-from models.metrics import Metrics
 from models.nationalities import Nationalities
 from models.neighborhoods import Neighborhoods
-from models.open_positions import OpenPositions
-from models.parents_type import ParentsType
-from models.redirected_to import RedirectedTo
-from models.resignable_reasons import ResignableReasons
-from models.role import Role
 from models.scale import Scale
-from models.scale_logs import ScaleLogs
 from models.school_levels import SchoolLevels
+from models.service import Service
 from models.states import States
 from models.subsidiarie import Subsidiarie
-from models.subsidiarie_logs import SubsidiarieLogs
-from models.system_log import SystemLog
+from models.tickets import Tickets
+from models.tickets_comments import TicketsComments
 from models.turn import Turn
-from models.TurnsLogs import TurnsLogs
 from models.user import User
-from models.users_logs import UsersLogs
-from models.wage_payment_method import WagePaymentMethod
 from models.workers import Workers
-from models.workers_discounts import WorkersDiscounts
-from models.workers_first_review import WorkersFirstReview
-from models.workers_logs import WorkersLogs
-from models.workers_metrics import WorkersMetrics
 from models.workers_parents import WorkersParents
 from models.workers_periodic_reviews import WorkersPeriodicReviews
-from models.workers_pictures import WorkersPictures
-from models.workers_second_review import WorkersSecondReview
 from private_routes import private_routes
 from public_routes import public_routes
-from pyhints.applicants import RecruitProps
 from pyhints.no_reviews import SubsidiaryFilter
-from pyhints.resignable_reasons import StatusResignableReasonsInput
-from pyhints.scales import (
-    PostScaleInput,
-    PostSomeWorkersScaleInput,
-    ScalesPrintInput,
-    ScalesReportInput,
-    WorkerDeactivateInput,
-)
-from pyhints.users import (
-    ChangeUserPasswordInput,
-    ConfirmPassword,
-    CreateUserPasswordInput,
-    Test,
-)
-from pyhints.workers import (
-    PostWorkerNotationInput,
-    WorkerLogCreateInput,
-    WorkerLogDeleteInput,
-    WorkerLogUpdateInput,
-)
-from repositories.delete_record import delete_record
-from repositories.get_all_records import get_all_records
-from repositories.get_record_by_column import get_record_by_column
-from repositories.patch_record import patch_record
-from repositories.post_record import post_record
-from routes.applicants_routes import routes as applicants_routes
-from routes.auth_routes import auth_routes
-from routes.cities_routes import cities_routes
-from routes.nationalities_routes import nationalities_routes
-from routes.neighborhoods_routes import neighborhoods_routes
-from routes.open_positions_routes import routes as open_positions_routes
-from routes.root_routes import root_routes
-from routes.scripts_routes import scripts_routes
-from routes.states_routes import states_routes
-from routes.system_log_routes import system_log_routes
-from routes.users_routes import users_routes
-from scripts.excel_scraping import handle_excel_scraping
-from scripts.rh_sheets import handle_post_scripts_rhsheets
-from scripts.sync_workers_data import handle_post_sync_workers_data
 
 load_dotenv()
 
@@ -1107,20 +855,12 @@ def delete_workers_docs(id: int):
         return {"success": True}
 
 
-from models.service import Service
-from models.tickets import Tickets
-from models.tickets_comments import TicketsComments
-
-
 @app.get("/services")
 def get_services():
     with Session(engine) as session:
         services = session.exec(select(Service)).all()
 
         return services
-
-
-from fastapi import HTTPException
 
 
 @app.get("/tickets/requesting/{id}", response_model=list[dict])
@@ -1211,9 +951,6 @@ def post_tickets(ticket: Tickets):
         session.refresh(ticket)
 
         return ticket
-
-
-from datetime import date
 
 
 @app.patch("/tickets/{ticket_id}/close")
@@ -1780,157 +1517,3 @@ def send_all_docs_to_mabecon(id: int):
             smtp.send_message(msg)
 
     return {"message": "E-mail enviado com sucesso com todos os documentos."}
-
-
-# @app.get("/subsidiaries/{subsidiarie_id}/workers/{worker_id}")
-# def sla(subsidiarie_id: int, worker_id: int):
-#     today = datetime.today().date()
-
-#     with Session(engine) as session:
-#         first_review = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.id == worker_id)
-#             .where(Workers.first_review_date >= today)
-#         ).first()
-
-#         can_open_first_review_modal = (
-#             True
-#             if session.exec(
-#                 select(Workers)
-#                 .where(Workers.subsidiarie_id == subsidiarie_id)
-#                 .where(Workers.id == worker_id)
-#                 .where(Workers.first_review_date >= today)
-#             ).first()
-#             else False
-#         )
-
-#         second_review = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.id == worker_id)
-#             .where(Workers.second_review_date >= today)
-#         ).first()
-
-#         can_open_second_review_modal = (
-#             True
-#             if session.exec(
-#                 select(Workers)
-#                 .where(Workers.subsidiarie_id == subsidiarie_id)
-#                 .where(Workers.id == worker_id)
-#                 .where(Workers.second_review_date >= today)
-#             ).first()
-#             else False
-#         )
-
-#         return {
-#             "first_review": first_review,
-#             "second_review": second_review,
-#             "can_open_first_review_modal": can_open_first_review_modal,
-#             "can_open_second_review_modal": can_open_second_review_modal,
-#         }
-
-
-# class WorkersFieldsByTurnAndFunctionInput(BaseModel):
-#     fields: list
-
-
-# @app.post(
-#     "/subsidiaries/{subsidiarie_id}/workers/functions/{function_id}/turns/{turn_id}"
-# )
-# def workers_fields_by_turn_and_function(
-#     subsidiarie_id: int,
-#     function_id: int,
-#     turn_id: int,
-#     input: WorkersFieldsByTurnAndFunctionInput,
-# ):
-#     with Session(engine) as session:
-#         workers = session.exec(
-#             select(Workers, Function, Turn, CostCenter, Department)
-#             .join(Function, Workers.function_id == Function.id)
-#             .join(Turn, Workers.turn_id == Turn.id)
-#             .join(CostCenter, Workers.cost_center_id == CostCenter.id)
-#             .join(Department, Workers.department_id == Department.id)
-#             .where(Workers.subsidiarie_id == subsidiarie_id)
-#             .where(Workers.function_id == function_id)
-#             .where(Workers.turn_id == turn_id)
-#         ).all()
-
-#         result = [
-#             {
-#                 "esocial": worker.esocial,
-#                 "enrolment": worker.enrolment,
-#                 "sales_code": worker.sales_code,
-#                 "timecode": worker.timecode,
-#                 "worker_name": worker.name,
-#                 "function_name": function.name,
-#                 "turn_name": turn.name,
-#                 "cost_center_name": cost_center.name,
-#                 "department_name": department.name,
-#                 "admission_date": worker.admission_date,
-#             }
-#             for worker, function, turn, cost_center, department in workers
-#         ]
-
-#         return result
-
-# if not workers:
-#     return []
-
-# valid_fields = {column.name for column in Workers.__table__.columns}
-
-# requested_fields = [field for field in input.fields if field in valid_fields]
-
-# result = [
-#     {field: getattr(worker, field) for field in requested_fields}
-#     for worker in workers
-# ]
-
-# return workers
-
-
-# @app.get("/subsidiaries/{id}/get-nr20-list")
-# def get_nr_list_by_subsidiarie(id: int):
-#     today = date.today()
-
-#     first_day = today.replace(day=1)
-
-#     last_day = today.replace(day=1).replace(month=today.month + 1) - timedelta(days=1)
-
-#     with Session(engine) as session:
-#         nr_list = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == id)
-#             .where(Workers.second_review_date.between(first_day, last_day))
-#         ).all()
-
-#         return {"nr_list": nr_list, "first_day": first_day, "last_day": last_day}
-
-# class WorkersByTurnAndFunctionModel(BaseModel):
-#     turns: list
-#     functions: list
-
-
-# @app.post("/subsidiaries/{subsidiarie_id}/workers-by-turn-and-function")
-# def get_workers_by_turn_and_function(
-#     subsidiarie_id: int, data: WorkersByTurnAndFunctionModel
-# ):
-#     with Session(engine) as session:
-#         result = []
-
-#         turns = data.turns
-
-#         functions = data.functions
-
-#         for turn in turns:
-#             for function in functions:
-#                 workers = session.exec(
-#                     select(Workers)
-#                     .where(Workers.subsidiarie_id == subsidiarie_id)
-#                     .where(Workers.turn_id == turn)
-#                     .where(Workers.function_id == function)
-#                 ).all()
-
-#                 result.extend(workers)
-
-#         return result

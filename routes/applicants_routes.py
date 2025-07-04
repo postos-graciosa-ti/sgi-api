@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 
 from controllers.applicants import (
     handle_delete_applicants,
+    handle_get_applicant_docs_by_applicant_id,
     handle_get_applicant_process,
     handle_get_applicants,
     handle_get_applicants_approved,
@@ -10,8 +11,10 @@ from controllers.applicants import (
     handle_get_applicants_notifications,
     handle_get_applicants_redirected_to,
     handle_get_applicants_reproved,
+    handle_get_document_file_by_id,
     handle_patch_applicants,
     handle_post_applicant,
+    handle_post_applicants_docs,
     handle_post_applicants_exams,
     handle_post_applicants_redirected_to,
     handle_post_hire_applicants,
@@ -106,3 +109,22 @@ def get_applicant_process(applicant_id: int):
 @routes.put("/applicant-process/{applicant_id}")
 def upsert_applicant_process(applicant_id: int, applicant_process: ApplicantProcess):
     return handle_upsert_applicant_process(applicant_id, applicant_process)
+
+
+@routes.get("/applicants-docs/{applicant_id}")
+def get_applicant_docs_by_applicant_id(applicant_id: int):
+    return handle_get_applicant_docs_by_applicant_id(applicant_id)
+
+
+@routes.get("/applicants-docs/file/{id}/{doc_type}")
+def get_document_file_by_id(id: int, doc_type: str):
+    return handle_get_document_file_by_id(id, doc_type)
+
+
+@routes.post("/applicants-docs/{applicant_id}")
+def post_applicants_docs(
+    applicant_id: int,
+    resume: UploadFile = File(...),
+    workcard: UploadFile = File(...),
+):
+    return handle_post_applicants_docs(applicant_id, resume, workcard)

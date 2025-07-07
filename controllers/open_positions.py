@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 
 from database.sqlite import engine
+from models.applicants import Applicants
 from models.function import Function
 from models.open_positions import OpenPositions
 from models.subsidiarie import Subsidiarie
@@ -17,6 +18,11 @@ def handle_get_open_positions():
                 "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
                 "function": session.get(Function, open_position.function_id),
                 "turn": session.get(Turn, open_position.turn_id),
+                "talents_database": session.exec(
+                    select(Applicants).where(
+                        Applicants.talents_database == open_position.subsidiarie_id
+                    )
+                ).all(),
             }
             for open_position in open_positions
         ]

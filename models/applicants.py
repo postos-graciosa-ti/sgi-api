@@ -110,3 +110,5 @@ class Applicants(SQLModel, table=True):
     identity_complete: Optional[bool] = Field(default=False)
     rh_interview_complete: Optional[bool] = Field(default=False)
     coordinator_interview_complete: Optional[bool] = Field(default=False)
+
+    talents_database: int = Field(default=None, nullable=True, foreign_key="subsidiarie.id", index=True)

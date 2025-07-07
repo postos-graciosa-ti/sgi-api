@@ -4,7 +4,6 @@ import time
 from typing import Set
 
 import psutil
-from fastapi import HTTPException
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy_utils import database_exists
@@ -29,6 +28,7 @@ from models.open_positions import OpenPositions
 from models.redirected_to import RedirectedTo
 from models.system_log import SystemLog
 from models.user import User
+from models.workers_courses import WorkersCourses
 from models.workers_discounts import WorkersDiscounts
 from models.workers_metrics import WorkersMetrics
 from models.workers_periodic_reviews import WorkersPeriodicReviews
@@ -80,6 +80,8 @@ def handle_watch_models():
     watch(WorkersDiscounts)
 
     watch(ApplicantsDocs)
+
+    watch(WorkersCourses)
 
 
 def handle_on_startup():

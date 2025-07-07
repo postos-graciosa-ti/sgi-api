@@ -1,3 +1,4 @@
+from sqlalchemy import and_
 from sqlmodel import Session, select
 
 from database.sqlite import engine
@@ -20,7 +21,12 @@ def handle_get_open_positions():
                 "turn": session.get(Turn, open_position.turn_id),
                 "talents_database": session.exec(
                     select(Applicants).where(
-                        Applicants.talents_database == open_position.subsidiarie_id
+                        and_(
+                            Applicants.talents_database == open_position.subsidiarie_id,
+                            Applicants.talents_database_turn == open_position.turn_id,
+                            Applicants.talents_database_function
+                            == open_position.function_id,
+                        )
                     )
                 ).all(),
             }

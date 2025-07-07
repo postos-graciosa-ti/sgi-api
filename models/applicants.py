@@ -111,4 +111,12 @@ class Applicants(SQLModel, table=True):
     rh_interview_complete: Optional[bool] = Field(default=False)
     coordinator_interview_complete: Optional[bool] = Field(default=False)
 
-    talents_database: int = Field(default=None, nullable=True, foreign_key="subsidiarie.id", index=True)
+    talents_database: int = Field(
+        default=None, nullable=True, foreign_key="subsidiarie.id", index=True
+    )
+    talents_database_turn: int = Field(
+        default=None, nullable=True, foreign_key="turn.id", index=True
+    )
+    talents_database_function: int = Field(
+        default=None, nullable=True, foreign_key="function.id", index=True
+    )

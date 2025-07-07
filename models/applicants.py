@@ -63,6 +63,24 @@ class Applicants(SQLModel, table=True):
     email_feedback: Optional[str] = Field(default=None, nullable=True)
     whatsapp_feedback: Optional[str] = Field(default=None, nullable=True)
 
+    rh_personal_life: Optional[str] = Field(default=None, nullable=True)
+    rh_gas_station_experience: Optional[str] = Field(default=None, nullable=True)
+    rh_life_structure: Optional[str] = Field(default=None, nullable=True)
+    rh_working_here_objectives: Optional[str] = Field(default=None, nullable=True)
+    rh_expect_working_here: Optional[str] = Field(default=None, nullable=True)
+    rh_applicant_criteria: Optional[str] = Field(default=None, nullable=True)
+    rh_wage_info: Optional[str] = Field(default=None, nullable=True)
+    rh_target_goals: Optional[str] = Field(default=None, nullable=True)
+    rh_claimed_goals: Optional[str] = Field(default=None, nullable=True)
+    rh_client_fidelity: Optional[str] = Field(default=None, nullable=True)
+    rh_hard_situations: Optional[str] = Field(default=None, nullable=True)
+    rh_bad_reputation: Optional[str] = Field(default=None, nullable=True)
+    rh_boring_consumer: Optional[str] = Field(default=None, nullable=True)
+    rh_rage_at_workplace: Optional[str] = Field(default=None, nullable=True)
+    rh_ecorp_changes: Optional[str] = Field(default=None, nullable=True)
+    rh_team_work: Optional[str] = Field(default=None, nullable=True)
+    rh_work_relationships: Optional[str] = Field(default=None, nullable=True)
+
     # coordinator interview questions
 
     personal_life: Optional[str] = Field(default=None, nullable=True)

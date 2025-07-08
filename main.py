@@ -134,43 +134,42 @@ for private_route in private_routes:
 @app.get("/workerscourses/current-month")
 def get_courses_current_month():
     now = datetime.now()
-
     start_month = datetime(now.year, now.month, 1)
 
     if now.month == 12:
         next_month = datetime(now.year + 1, 1, 1)
-
     else:
         next_month = datetime(now.year, now.month + 1, 1)
 
     with Session(engine) as session:
-        statement = (
-            select(WorkersCourses)
-            .where(
-                WorkersCourses.date_file >= start_month,
-                WorkersCourses.date_file < next_month,
-            )
-            .order_by(desc(WorkersCourses.id))
-        )
-
+        # Busca todos os cursos (sem filtro de data no SQL)
+        statement = select(WorkersCourses).order_by(desc(WorkersCourses.id))
         courses = session.exec(statement).all()
 
         result = []
 
         for c in courses:
-            worker = session.get(Workers, c.worker_id)
+            try:
+                # Converte a string para datetime
+                date_obj = datetime.fromisoformat(c.date_file)
+            except Exception:
+                # Ignora registros com formato inválido
+                continue
 
-            worker_name = worker.name if worker else "Desconhecido"
+            # Filtra cursos dentro do mês atual
+            if start_month <= date_obj < next_month:
+                worker = session.get(Workers, c.worker_id)
+                worker_name = worker.name if worker else "Desconhecido"
 
-            result.append(
-                {
-                    "id": c.id,
-                    "worker_id": c.worker_id,
-                    "worker_name": worker_name,
-                    "date_file": c.date_file,
-                    "is_payed": c.is_payed,
-                }
-            )
+                result.append(
+                    {
+                        "id": c.id,
+                        "worker_id": c.worker_id,
+                        "worker_name": worker_name,
+                        "date_file": c.date_file,
+                        "is_payed": c.is_payed,
+                    }
+                )
 
         return result
 

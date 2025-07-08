@@ -45,7 +45,18 @@ from openpyxl import Workbook, load_workbook
 from passlib.hash import pbkdf2_sha256
 from pydantic import BaseModel, EmailStr
 from PyPDF2 import PdfReader, PdfWriter
-from sqlalchemy import and_, create_engine, event, extract, func, inspect, or_, text
+from sqlalchemy import (
+    and_,
+    create_engine,
+    desc,
+    event,
+    extract,
+    func,
+    inspect,
+    or_,
+    text,
+)
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlmodel import Column, Field, LargeBinary, Session, SQLModel, select
 from starlette.status import HTTP_404_NOT_FOUND
@@ -121,35 +132,68 @@ for private_route in private_routes:
 
 
 @app.get("/workerscourses/current-month")
-def get_month_workers_courses():
-    current_month = datetime.now().strftime("%Y-%m")
+def get_courses_current_month():
+    now = datetime.now()
 
-    db_type = engine.dialect.name
+    start_month = datetime(now.year, now.month, 1)
 
-    if db_type == "sqlite":
-        query = text("""
-            SELECT wc.*, w.name AS worker_name, w.email AS worker_email
-            FROM workerscourses wc
-            JOIN workers w ON wc.worker_id = w.id
-            WHERE substr(wc.date_file, 1, 7) = :month
-        """)
+    if now.month == 12:
+        next_month = datetime(now.year + 1, 1, 1)
 
     else:
-        query = text("""
-            SELECT wc.*, w.name AS worker_name, w.email AS worker_email
-            FROM workerscourses wc
-            JOIN workers w ON wc.worker_id = w.id
-            WHERE TO_CHAR(TO_DATE(wc.date_file, 'YYYY-MM-DD'), 'YYYY-MM') = :month
-        """)
+        next_month = datetime(now.year, now.month + 1, 1)
 
     with Session(engine) as session:
-        result = session.execute(query, {"month": current_month}).mappings().all()
+        statement = (
+            select(WorkersCourses)
+            .where(
+                WorkersCourses.date_file >= start_month,
+                WorkersCourses.date_file < next_month,
+            )
+            .order_by(desc(WorkersCourses.id))
+        )
 
-    return result
+        courses = session.exec(statement).all()
+
+        result = []
+
+        for c in courses:
+            worker = session.get(Workers, c.worker_id)
+
+            worker_name = worker.name if worker else "Desconhecido"
+
+            result.append(
+                {
+                    "id": c.id,
+                    "worker_id": c.worker_id,
+                    "worker_name": worker_name,
+                    "date_file": c.date_file,
+                    "is_payed": c.is_payed,
+                }
+            )
+
+        return result
+
+
+@app.get("/workers-courses/file/{course_id}")
+def get_course_file(course_id: int):
+    with Session(engine) as session:
+        course = session.get(WorkersCourses, course_id)
+
+        if not course:
+            raise HTTPException(status_code=404, detail="Curso não encontrado")
+
+        file_like = io.BytesIO(course.file)
+
+        return StreamingResponse(
+            file_like,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=curso_{course_id}.pdf"},
+        )
 
 
 @app.post("/workers-courses")
-async def handle_upload_course(
+async def create_worker_course(
     worker_id: int = Form(...),
     date_file: str = Form(...),
     is_payed: str = Form(...),
@@ -160,18 +204,37 @@ async def handle_upload_course(
 
     file_data = await file.read()
 
+    try:
+        parsed_date = datetime.strptime(date_file, "%Y-%m-%d")
+
+    except ValueError:
+        raise HTTPException(
+            status_code=400, detail="Data inválida. Use o formato YYYY-MM-DD."
+        )
+
+    is_payed_bool = is_payed.lower() == "true"
+
     new_course = WorkersCourses(
         worker_id=worker_id,
         file=file_data,
-        date_file=date_file,
-        is_payed=is_payed.lower() == "true",  # Converte string para bool
+        date_file=parsed_date,
+        is_payed=is_payed_bool,
     )
 
-    with Session(engine) as session:
-        session.add(new_course)
-        session.commit()
+    try:
+        with Session(engine) as session:
+            session.add(new_course)
 
-    return {"message": "Curso enviado e salvo com sucesso!"}
+            session.commit()
+
+            session.refresh(new_course)
+
+    except Exception as e:
+        print(e)
+
+        raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados.")
+
+    return {"id": new_course.id, "message": "Curso cadastrado com sucesso."}
 
 
 @app.get("/workers-status", dependencies=[Depends(verify_token)])

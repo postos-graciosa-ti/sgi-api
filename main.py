@@ -88,6 +88,7 @@ from models.tickets_comments import TicketsComments
 from models.turn import Turn
 from models.user import User
 from models.workers import Workers
+from models.workers_courses import WorkersCourses
 from models.workers_parents import WorkersParents
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from private_routes import private_routes
@@ -103,7 +104,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    threading.Thread(target=keep_alive_function, daemon=True).start()
+    # threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 
@@ -117,6 +118,60 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+
+@app.get("/workerscourses/current-month")
+def get_month_workers_courses():
+    current_month = datetime.now().strftime("%Y-%m")
+
+    db_type = engine.dialect.name
+
+    if db_type == "sqlite":
+        query = text("""
+            SELECT wc.*, w.name AS worker_name, w.email AS worker_email
+            FROM workerscourses wc
+            JOIN workers w ON wc.worker_id = w.id
+            WHERE substr(wc.date_file, 1, 7) = :month
+        """)
+
+    else:
+        query = text("""
+            SELECT wc.*, w.name AS worker_name, w.email AS worker_email
+            FROM workerscourses wc
+            JOIN workers w ON wc.worker_id = w.id
+            WHERE TO_CHAR(TO_DATE(wc.date_file, 'YYYY-MM-DD'), 'YYYY-MM') = :month
+        """)
+
+    with Session(engine) as session:
+        result = session.execute(query, {"month": current_month}).mappings().all()
+
+    return result
+
+
+@app.post("/workers-courses")
+async def handle_upload_course(
+    worker_id: int = Form(...),
+    date_file: str = Form(...),
+    is_payed: str = Form(...),
+    file: UploadFile = File(...),
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF.")
+
+    file_data = await file.read()
+
+    new_course = WorkersCourses(
+        worker_id=worker_id,
+        file=file_data,
+        date_file=date_file,
+        is_payed=is_payed.lower() == "true",  # Converte string para bool
+    )
+
+    with Session(engine) as session:
+        session.add(new_course)
+        session.commit()
+
+    return {"message": "Curso enviado e salvo com sucesso!"}
 
 
 @app.get("/workers-status", dependencies=[Depends(verify_token)])

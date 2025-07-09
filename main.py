@@ -84,6 +84,7 @@ from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicants import Applicants
 from models.civil_status import CivilStatus
+from models.CustomNotification import CustomNotification
 from models.ethnicity import Ethnicity
 from models.function import Function
 from models.genders import Genders

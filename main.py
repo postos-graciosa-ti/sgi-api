@@ -175,6 +175,27 @@ def get_courses_current_month():
         return result
 
 
+@app.get("/workers-courses/{worker_id}")
+def get_workers_courses_by_worker_id(worker_id: int):
+    with Session(engine) as session:
+        results = session.exec(
+            select(
+                WorkersCourses.id,
+                WorkersCourses.date_file,
+                WorkersCourses.is_payed,
+            )
+            .where(WorkersCourses.worker_id == worker_id)
+            .order_by(desc(WorkersCourses.id))
+        ).all()
+
+        # Converte para lista de dicionários
+        response = [
+            {"id": row[0], "date_file": row[1], "is_payed": row[2]} for row in results
+        ]
+
+        return response
+
+
 @app.get("/workers-courses/file/{course_id}")
 def get_course_file(course_id: int):
     with Session(engine) as session:
@@ -235,6 +256,20 @@ async def create_worker_course(
         raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados.")
 
     return {"id": new_course.id, "message": "Curso cadastrado com sucesso."}
+
+
+@app.patch("/workers-courses/{id}/set-to-payed")
+def patch_workers_courses(id: int):
+    with Session(engine) as session:
+        db_course = session.get(WorkersCourses, id)
+
+        db_course.is_payed = True
+
+        session.add(db_course)
+
+        session.commit()
+
+        session.refresh(db_course)
 
 
 @app.get("/workers-status", dependencies=[Depends(verify_token)])

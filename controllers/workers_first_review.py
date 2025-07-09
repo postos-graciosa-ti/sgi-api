@@ -60,6 +60,8 @@ def handle_get_workers_first_review(subsidiarie_id: int):
                 .where(Workers.subsidiarie_id == subsidiarie_id)
                 .where(WorkersFirstReview.realized_in >= start_of_week)
                 .where(WorkersFirstReview.realized_in <= end_of_week)
+                .where(Workers.is_active == True)  # noqa: E712
+                .where(Workers.is_away == False)  # noqa: E712
             )
             .mappings()
             .all()

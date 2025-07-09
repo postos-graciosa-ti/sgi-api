@@ -59,6 +59,8 @@ def handle_get_workers_second_review(subsidiarie_id: int):
                 .where(Workers.subsidiarie_id == subsidiarie_id)
                 .where(WorkersSecondReview.realized_in >= start_of_week)
                 .where(WorkersSecondReview.realized_in <= end_of_week)
+                .where(Workers.is_active == True)  # noqa: E712
+                .where(Workers.is_away == False)  # noqa: E712
             )
             .mappings()
             .all()

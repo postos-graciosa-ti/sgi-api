@@ -37,6 +37,8 @@ async def handle_get_workers_without_first_review_in_range_all(data: SubsidiaryF
             .where(text("workers.first_review_date <= :end_of_week"))
             .where(~Workers.id.in_(select(WorkersFirstReview.worker_id)))
             .where(Workers.subsidiarie_id.in_(subsidiaries_ids))
+            .where(Workers.is_active == True)  # noqa: E712
+            .where(Workers.is_away == False)  # noqa: E712
         )
 
         workers_without_first_review = (
@@ -80,6 +82,8 @@ async def handle_get_workers_without_second_review_in_range_all(data: Subsidiary
             .where(text("workers.second_review_date <= :end_of_week"))
             .where(~Workers.id.in_(select(WorkersSecondReview.worker_id)))
             .where(Workers.subsidiarie_id.in_(subsidiaries_ids))
+            .where(Workers.is_active == True)  # noqa: E712
+            .where(Workers.is_away == False)  # noqa: E712
         )
 
         workers_without_second_review = (

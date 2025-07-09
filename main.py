@@ -101,6 +101,7 @@ from models.turn import Turn
 from models.user import User
 from models.workers import Workers
 from models.workers_courses import WorkersCourses
+from models.workers_metrics import WorkersMetrics
 from models.workers_parents import WorkersParents
 from models.workers_periodic_reviews import WorkersPeriodicReviews
 from private_routes import private_routes
@@ -130,6 +131,27 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+
+@app.get("/asas")
+def get_current_month_workers_metrics():
+    current_month = date.today().strftime("%m/%Y")
+
+    with Session(engine) as session:
+        workers_metrics = session.exec(
+            select(WorkersMetrics).where(WorkersMetrics.date == current_month)
+        ).all()
+
+        result = [
+            {
+                "worker": session.get(Workers, wm.worker_id),
+                "date": wm.date,
+                "metrics": json.loads(wm.metrics),
+            }
+            for wm in workers_metrics
+        ]
+
+        return result
 
 
 @app.get("/workerscourses/current-month")

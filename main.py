@@ -117,7 +117,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    threading.Thread(target=keep_alive_function, daemon=True).start()
+    # threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 
@@ -304,8 +304,7 @@ def get_workers_status():
         turns = session.exec(select(Turn).order_by(Turn.start_time.desc())).all()
 
         workers = session.exec(
-            select(Workers)
-            .where(Workers.is_active == True)  # noqa: E712
+            select(Workers).where(Workers.is_active == True)  # noqa: E712
         ).all()
 
         func_map = {f.id: f.name for f in functions}
@@ -1691,3 +1690,54 @@ def send_all_docs_to_mabecon(id: int):
             smtp.send_message(msg)
 
     return {"message": "E-mail enviado com sucesso com todos os documentos."}
+
+
+@app.post("/send-vacations-email")
+def send_vacations_email(request: EmailRequest):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    BCC = os.environ.get("BCC")
+
+    with Session(engine) as session:
+        vacation_report = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == request.worker_id)
+            .where(WorkersDocs.doc_title == "Relatório de férias")
+        ).first()
+
+        if not vacation_report or not vacation_report.doc:
+            raise HTTPException(
+                status_code=404, detail="Relatório de férias não encontrado."
+            )
+
+        try:
+            msg = EmailMessage()
+
+            msg["Subject"] = request.subject
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = request.to
+
+            msg["Bcc"] = BCC
+
+            msg.set_content(request.body)
+
+            msg.add_attachment(
+                vacation_report.doc,
+                maintype="application",
+                subtype="pdf",
+                filename="Relatorio_de_ferias.pdf",
+            )
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
+
+                smtp.send_message(msg)
+
+            return {"message": "E-mail enviado com sucesso com o Relatório de Férias"}
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

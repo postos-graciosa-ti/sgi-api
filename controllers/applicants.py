@@ -8,6 +8,7 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 from fastapi import File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import and_, or_, text
 from sqlmodel import Session, select
 
@@ -690,6 +691,30 @@ def handle_get_document_file_by_id(id: int, doc_type: str):
         return StreamingResponse(BytesIO(file_data), media_type="application/pdf")
 
 
+def is_image(file_data: bytes) -> bool:
+    try:
+        Image.open(BytesIO(file_data))
+
+        return True
+
+    except UnidentifiedImageError:
+        return False
+
+
+def convert_image_to_pdf(file_data: bytes) -> bytes:
+    try:
+        image = Image.open(BytesIO(file_data)).convert("RGB")
+
+        output = BytesIO()
+
+        image.save(output, format="PDF")
+
+        return output.getvalue()
+
+    except Exception as e:
+        raise Exception(f"Erro ao converter imagem para PDF: {str(e)}")
+
+
 def handle_post_applicants_docs(
     applicant_id: int,
     resume: UploadFile = File(...),
@@ -699,6 +724,12 @@ def handle_post_applicants_docs(
         resume_data = resume.file.read()
 
         workcard_data = workcard.file.read()
+
+        if is_image(resume_data):
+            resume_data = convert_image_to_pdf(resume_data)
+
+        if is_image(workcard_data):
+            workcard_data = convert_image_to_pdf(workcard_data)
 
         new_docs = ApplicantsDocs(
             applicant_id=applicant_id, resume=resume_data, workcard=workcard_data

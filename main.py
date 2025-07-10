@@ -301,7 +301,7 @@ def get_workers_status():
 
         functions = session.exec(select(Function)).all()
 
-        turns = session.exec(select(Turn)).all()
+        turns = session.exec(select(Turn).order_by(Turn.start_time.desc())).all()
 
         workers = session.exec(
             select(Workers)

@@ -306,7 +306,6 @@ def get_workers_status():
         workers = session.exec(
             select(Workers)
             .where(Workers.is_active == True)  # noqa: E712
-            .where(Workers.is_away == False)  # noqa: E712
         ).all()
 
         func_map = {f.id: f.name for f in functions}

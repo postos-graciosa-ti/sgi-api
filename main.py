@@ -133,6 +133,50 @@ for private_route in private_routes:
     app.include_router(private_route)
 
 
+class HireApplicantsRequestProps(BaseModel):
+    subsidiarie_id: int
+    function_id: int
+    turn_id: int
+    cost_center_id: int
+    department_id: int
+    admission_date: str
+
+
+@app.post("/hire-applicants/{applicant_id}")
+def post_hire_applicants(applicant_id: int, request: HireApplicantsRequestProps):
+    with Session(engine) as session:
+        db_applicant = session.exec(
+            select(Applicants).where(Applicants.id == applicant_id)
+        ).first()
+
+        new_worker = Workers(
+            name=db_applicant.name,
+            subsidiarie_id=request.subsidiarie_id,
+            function_id=request.function_id,
+            turn_id=request.turn_id,
+            cost_center_id=request.cost_center_id,
+            department_id=request.department_id,
+            admission_date=request.admission_date,
+            resignation_date=request.admission_date,
+        )
+
+        session.add(new_worker)
+
+        session.commit()
+
+        session.refresh(new_worker)
+
+        db_applicant.selective_process_status = "efetivado"
+
+        session.add(db_applicant)
+
+        session.commit()
+
+        session.refresh(db_applicant)
+
+        return new_worker
+
+
 @app.get("/asas")
 def get_current_month_workers_metrics():
     current_month = date.today().strftime("%m/%Y")

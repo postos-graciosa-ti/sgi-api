@@ -120,3 +120,5 @@ class Applicants(SQLModel, table=True):
     talents_database_function: int = Field(
         default=None, nullable=True, foreign_key="function.id", index=True
     )
+
+    selective_process_status: Optional[str] = Field(default=None, nullable=True)

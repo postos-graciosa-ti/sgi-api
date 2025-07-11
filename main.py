@@ -117,7 +117,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    threading.Thread(target=keep_alive_function, daemon=True).start()
+    # threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 
@@ -659,7 +659,6 @@ async def upload_pdf(
                     status_code=400,
                     detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
                 )
-
         else:
             if file.content_type != "application/pdf":
                 raise HTTPException(
@@ -682,15 +681,28 @@ async def upload_pdf(
 
             if doc_title == "Contrato de trabalho":
                 with pdfplumber.open(BytesIO(file_bytes)) as pdf:
-                    if len(pdf.pages) < 10:
+                    page = None
+
+                    text = None
+
+                    for p in pdf.pages:
+                        page_text = p.extract_text()
+
+                        if (
+                            page_text
+                            and "ficha de registro de empregado" in page_text.lower()
+                        ):
+                            page = p
+
+                            text = page_text
+
+                            break
+
+                    if not page or not text:
                         raise HTTPException(
                             status_code=400,
-                            detail="O PDF não possui 10 páginas.",
+                            detail="Não foi possível localizar a página com o título 'Ficha de Registro de Empregado'.",
                         )
-
-                    page = pdf.pages[9]
-
-                    text = page.extract_text()
 
                     nome = re.search(
                         r"Nome:\s*(.*?)\s*(?=Código:|Pai:|Mãe:|Nascimento:)", text
@@ -718,15 +730,11 @@ async def upload_pdf(
                         r"Bairro:\s*(.*?)\s*(?=CEP:|Munic[ií]pio:|Endere[cç]o:)", text
                     )
 
-                    # municipio = re.search(r"Município:\s*(.*)", text)
-
                     cep = re.search(r"CEP:\s*([\d\.-]+)", text)
 
                     cpf = re.search(r"CPF:\s*([\d\.-]+)", text)
 
                     rg = re.search(r"RG:\s*(\S+)", text)
-
-                    # orgao = re.search(r"Órgão:\s*(.+?)(?=\s*Estado:|\n|$)", text)
 
                     ctps_numero = re.search(r"Número CTPS:\s*(\d+)", text)
 
@@ -782,43 +790,41 @@ async def upload_pdf(
                             if sexo_db:
                                 db_worker.gender_id = sexo_db.id
 
-                            if estado_civil:
-                                estado_nome = estado_civil.group(1).strip().lower()
+                        if estado_civil:
+                            estado_nome = estado_civil.group(1).strip().lower()
 
-                                estado_db = session.exec(
-                                    select(CivilStatus).where(
-                                        CivilStatus.name.ilike(f"%{estado_nome}%")
-                                    )
-                                ).first()
+                            estado_db = session.exec(
+                                select(CivilStatus).where(
+                                    CivilStatus.name.ilike(f"%{estado_nome}%")
+                                )
+                            ).first()
 
-                                if estado_db:
-                                    db_worker.civil_status_id = estado_db.id
+                            if estado_db:
+                                db_worker.civil_status_id = estado_db.id
 
-                                if raca:
-                                    raca_nome = raca.group(1).strip().lower()
+                        if raca:
+                            raca_nome = raca.group(1).strip().lower()
 
-                                    feminino_para_masculino = {
-                                        "branca": "branco",
-                                        "preta": "preto",
-                                        "parda": "pardo",
-                                        "amarela": "amarelo",
-                                        "indígena": "indígena",
-                                    }
+                            feminino_para_masculino = {
+                                "branca": "branco",
+                                "preta": "preto",
+                                "parda": "pardo",
+                                "amarela": "amarelo",
+                                "indígena": "indígena",
+                            }
 
-                                    raca_normalizada = feminino_para_masculino.get(
-                                        raca_nome, raca_nome
-                                    )
+                            raca_normalizada = feminino_para_masculino.get(
+                                raca_nome, raca_nome
+                            )
 
-                                    raca_db = session.exec(
-                                        select(Ethnicity).where(
-                                            Ethnicity.name.ilike(
-                                                f"%{raca_normalizada}%"
-                                            )
-                                        )
-                                    ).first()
+                            raca_db = session.exec(
+                                select(Ethnicity).where(
+                                    Ethnicity.name.ilike(f"%{raca_normalizada}%")
+                                )
+                            ).first()
 
-                                    if raca_db:
-                                        db_worker.ethnicity_id = raca_db.id
+                            if raca_db:
+                                db_worker.ethnicity_id = raca_db.id
 
                         if nacionalidade:
                             nacionalidade_nome = nacionalidade.group(1).strip().lower()
@@ -833,10 +839,7 @@ async def upload_pdf(
                                 db_worker.nationality = nacionalidade_db.id
 
                         if enderecos:
-                            endereco_final = enderecos[
-                                -1
-                            ].strip()  # pega o último endereço encontrado
-                            db_worker.street = endereco_final
+                            db_worker.street = enderecos[-1].strip()
 
                         if bairros:
                             bairro_nome = bairros[-1].strip()
@@ -850,9 +853,6 @@ async def upload_pdf(
                             if bairro_db:
                                 db_worker.neighborhood_id = bairro_db.id
 
-                        # if municipio:
-                        #     db_worker.city = 1
-
                         if cep:
                             db_worker.cep = cep.group(1).strip()
 
@@ -861,9 +861,6 @@ async def upload_pdf(
 
                         if rg:
                             db_worker.rg = rg.group(1).strip()
-
-                        # if orgao:
-                        #     db_worker.rg_issuing_agency = orgao.group(1).strip()
 
                         if ctps_numero:
                             db_worker.ctps = ctps_numero.group(1).strip()

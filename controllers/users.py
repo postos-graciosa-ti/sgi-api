@@ -62,7 +62,11 @@ def handle_user_login(user: User):
 
             if user_subsidiarie:
                 user_subsidiaries.append(
-                    {"label": user_subsidiarie.name, "value": user_subsidiarie.id}
+                    {
+                        "label": user_subsidiarie.name,
+                        "value": user_subsidiarie.id,
+                        "cnpj": user_subsidiarie.cnpj,
+                    }
                 )
 
         return {

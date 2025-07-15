@@ -122,3 +122,5 @@ class Applicants(SQLModel, table=True):
     )
 
     selective_process_status: Optional[str] = Field(default=None, nullable=True)
+
+    talents_bank_subsidiaries: Optional[str] = Field(default=None, nullable=True)

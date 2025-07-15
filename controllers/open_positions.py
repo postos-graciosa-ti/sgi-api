@@ -1,4 +1,5 @@
-from sqlalchemy import and_
+import json
+
 from sqlmodel import Session, select
 
 from database.sqlite import engine
@@ -13,25 +14,36 @@ def handle_get_open_positions():
     with Session(engine) as session:
         open_positions = session.exec(select(OpenPositions)).all()
 
-        result = [
-            {
-                "id": open_position.id,
-                "subsidiarie": session.get(Subsidiarie, open_position.subsidiarie_id),
-                "function": session.get(Function, open_position.function_id),
-                "turn": session.get(Turn, open_position.turn_id),
-                "talents_database": session.exec(
-                    select(Applicants).where(
-                        and_(
-                            Applicants.talents_database == open_position.subsidiarie_id,
-                            Applicants.talents_database_turn == open_position.turn_id,
-                            Applicants.talents_database_function
-                            == open_position.function_id,
-                        )
-                    )
-                ).all(),
-            }
-            for open_position in open_positions
-        ]
+        all_applicants = session.exec(
+            select(Applicants).where(Applicants.is_active == True)  # noqa: E712
+        ).all()
+
+        result = []
+
+        for open_position in open_positions:
+            matched_applicants = []
+
+            for applicant in all_applicants:
+                try:
+                    subs_list = json.loads(applicant.talents_bank_subsidiaries or "[]")
+
+                except json.JSONDecodeError:
+                    subs_list = []
+
+                if open_position.id in subs_list:
+                    matched_applicants.append(applicant)
+
+            result.append(
+                {
+                    "id": open_position.id,
+                    "subsidiarie": session.get(
+                        Subsidiarie, open_position.subsidiarie_id
+                    ),
+                    "function": session.get(Function, open_position.function_id),
+                    "turn": session.get(Turn, open_position.turn_id),
+                    "talents_database": matched_applicants,
+                }
+            )
 
         return result
 

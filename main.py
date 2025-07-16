@@ -83,7 +83,9 @@ from functions.auth import verify_token
 from keep_alive import keep_alive_function
 from middlewares.cors_middleware import add_cors_middleware
 from models.applicants import Applicants
+from models.cities import Cities
 from models.civil_status import CivilStatus
+from models.cnh_categories import CnhCategories
 from models.CustomNotification import CustomNotification
 from models.ethnicity import Ethnicity
 from models.function import Function
@@ -1673,9 +1675,9 @@ def send_all_docs_to_mabecon(id: int):
 
     SENHA = os.environ["SENHA"]
 
-    MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+    MABECON_EMAIL = "postosgraciosati@gmail.com"
 
-    BCC = os.environ.get("BCC")
+    # BCC = os.environ.get("BCC")
 
     with Session(engine) as session:
         docs_with_worker = session.exec(
@@ -1687,36 +1689,224 @@ def send_all_docs_to_mabecon(id: int):
         if not docs_with_worker:
             raise HTTPException(status_code=404, detail="Nenhum documento encontrado.")
 
-        worker_name = docs_with_worker[0][1].name
+        worker = docs_with_worker[0][1]
 
         docs = [d[0] for d in docs_with_worker]
+
+        worker_subsidiarie = session.get(Subsidiarie, worker.subsidiarie_id)
+
+        worker_gender = session.get(Genders, worker.gender_id)
+
+        worker_civil_status = session.get(CivilStatus, worker.civil_status_id)
+
+        worker_neighborhood = session.get(Neighborhoods, worker.neighborhood_id)
+
+        worker_city = session.get(Cities, worker_neighborhood.city_id)
+
+        worker_state = session.get(States, worker_city.state_id)
+
+        worker_ethnicity = session.get(Ethnicity, worker.ethnicity_id)
+
+        worker_birthcity = session.get(Cities, worker.birthcity)
+
+        worker_birthstate = "session.get(States, worker.birthstate)"
+
+        worker_nationalitie = (
+            "session.get(Nationalities, worker_birthstate.nationalities_id)"
+        )
+
+        has_children = session.exec(
+            select(WorkersParents).where(WorkersParents.worker_id == worker.id)
+        ).first()
 
         msg = EmailMessage()
 
         msg["Subject"] = (
-            f"Encaminhamento de documentos do colaborador {worker_name} para admissão"
+            f"Encaminhamento de documentos do colaborador {worker.name} para admissão"
         )
 
         msg["From"] = EMAIL_REMETENTE
 
         msg["To"] = MABECON_EMAIL
 
-        if BCC:
-            msg["Bcc"] = BCC
+        # if BCC:
+        #     msg["Bcc"] = BCC
 
         msg.set_content(
-            f"Segue em anexo os documentos do colaborador {worker_name} para admissão"
+            f"Segue em anexo os documentos do colaborador {worker.name} para admissão"
         )
+
+        original_path = "./assets/ficha_da_contabilidade.xlsx"
+
+        wb = load_workbook(original_path)
+
+        ws = wb.active
+
+        ws["H1"].value = worker_subsidiarie.name
+
+        ws["H4"].value = worker.name
+
+        ws["AA4"].value = worker_gender.name
+
+        ws["AI4"].value = worker_civil_status.name
+
+        ws["J6"].value = worker.street
+
+        ws["Y6"].value = worker.street_number
+
+        ws["AJ6"].value = worker.street_complement
+
+        ws["H7"].value = worker_neighborhood.name
+
+        ws["X7"].value = worker.cep
+
+        ws["AD7"].value = worker_city.name
+
+        ws["AM7"].value = worker_state.name
+
+        ws["H9"].value = worker.phone
+
+        ws["O9"].value = worker.mobile
+
+        ws["Y9"].value = worker.email
+
+        ws["AL9"].value = worker_ethnicity.name
+
+        ws["H10"].value = worker.birthdate
+
+        ws["R10"].value = worker_birthcity.name
+
+        ws["AB10"].value = worker_birthstate
+
+        ws["AJ10"].value = worker_nationalitie
+
+        ws["H11"].value = worker.mothername
+
+        ws["AF11"].value = worker.fathername
+
+        ws["H17"].value = worker.cpf
+
+        ws["H18"].value = worker.rg
+
+        ws["R18"].value = worker.rg_issuing_agency
+
+        ws["X18"].value = (session.get(States, worker.rg_state)).name
+
+        ws["AA18"].value = worker.rg_expedition_date
+
+        ws["H19"].value = worker.military_cert_number
+
+        ws["H20"].value = worker.pis
+
+        ws["W20"].value = worker.pis_register_date
+
+        ws["H21"].value = worker.votant_title
+
+        ws["R21"].value = worker.votant_zone
+
+        ws["Y21"].value = worker.votant_session
+
+        ws["H22"].value = worker.ctps
+
+        ws["M22"].value = worker.ctps_serie
+
+        ws["R22"].value = (session.get(States, worker.ctps_state)).name
+
+        ws["Y22"].value = worker.ctps_emission_date
+
+        ws["H23"].value = worker.cnh
+
+        ws["T23"].value = (session.get(CnhCategories, worker.cnh_category)).name
+
+        ws["Z23"].value = worker.cnh_emition_date
+
+        ws["AI23"].value = worker.cnh_valid_date
+
+        ws["H30"].value = session.get(Function, worker.function_id).name
+
+        ws["W30"].value = worker.admission_date
+
+        ws["AD30"].value = worker.month_wage
+
+        ws["AJ30"].value = worker.hour_wage
+
+        ws["AL30"].value = worker.propotional_payment
+
+        if has_children:
+            ws["C15"].value = "X"
+        else:
+            ws["F15"].value = "X"
+
+        if worker.first_job == True:  # noqa: E712
+            ws["H25"].value = "X"
+        else:
+            ws["H26"].value = "X"
+
+        if worker.was_employee == True:  # noqa: E712
+            ws["O25"].value = "X"
+        else:
+            ws["O26"].value = "X"
+
+        if worker.union_contribute_current_year == True:  # noqa: E712
+            ws["W25"].value = "X"
+        else:
+            ws["W26"].value = "X"
+
+        if worker.receiving_unemployment_insurance == True:  # noqa: E712
+            ws["AA25"].value = "X"
+        else:
+            ws["AA26"].value = "X"
+
+        if worker.previous_experience == True:  # noqa: E712
+            ws["AK25"].value = "X"
+        else:
+            ws["AK26"].value = "X"
+
+        if worker.transport_voucher == True:  # noqa: E712
+            ws["B35"].value = "X"
+
+            ws["G36"].value = worker.transport_voucher_quantity
+        else:
+            ws["B36"].value = "X"
+
+        ws["B39"].value = "X"
+
+        ws["F39"].value = "X"
+
+        ws["H41"].value = "X"
+
+        ws["AJ44"].value = worker.ag
+
+        ws["AM44"].value = worker.cc
+
+        temp_dir = tempfile.mkdtemp()
+
+        modified_excel_path = os.path.join(
+            temp_dir, "ficha_da_contabilidade_modificada.xlsx"
+        )
+
+        wb.save(modified_excel_path)
+
+        with open(modified_excel_path, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename="ficha_da_contabilidade.xlsx",
+            )
 
         ext_map = {
             "Ficha da contabilidade": (
-                "ficha_da_contabilidade.xls",
+                "ficha_da_contabilidade.xlsx",
                 "application",
-                "vnd.ms-excel",
+                "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         }
 
         for doc in docs:
+            if doc.doc_title == "Ficha da contabilidade":
+                continue
+
             filename, maintype, subtype = ext_map.get(
                 doc.doc_title, (f"{doc.doc_title}.pdf", "application", "pdf")
             )

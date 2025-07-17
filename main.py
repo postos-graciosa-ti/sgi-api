@@ -119,7 +119,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    # threading.Thread(target=keep_alive_function, daemon=True).start()
+    threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 

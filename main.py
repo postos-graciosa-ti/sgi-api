@@ -119,7 +119,7 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    threading.Thread(target=keep_alive_function, daemon=True).start()
+    # threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 
@@ -160,6 +160,14 @@ def post_hire_applicants(applicant_id: int, request: HireApplicantsRequestProps)
             department_id=request.department_id,
             admission_date=request.admission_date,
             resignation_date=request.admission_date,
+            ###
+            email=db_applicant.email,
+            mobile=db_applicant.mobile,
+            birthdate=db_applicant.data_nascimento,
+            fathername=db_applicant.nome_pai,
+            mothername=db_applicant.nome_mae,
+            rg=db_applicant.rg,
+            cpf=db_applicant.cpf,
         )
 
         session.add(new_worker)
@@ -1675,9 +1683,9 @@ def send_all_docs_to_mabecon(id: int):
 
     SENHA = os.environ["SENHA"]
 
-    MABECON_EMAIL = "postosgraciosati@gmail.com"
+    MABECON_EMAIL = os.environ["MABECON_EMAIL"]
 
-    # BCC = os.environ.get("BCC")
+    BCC = os.environ.get("BCC")
 
     with Session(engine) as session:
         docs_with_worker = session.exec(
@@ -1729,8 +1737,8 @@ def send_all_docs_to_mabecon(id: int):
 
         msg["To"] = MABECON_EMAIL
 
-        # if BCC:
-        #     msg["Bcc"] = BCC
+        if BCC:
+            msg["Bcc"] = BCC
 
         msg.set_content(
             f"Segue em anexo os documentos do colaborador {worker.name} para admissão"

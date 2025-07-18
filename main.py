@@ -109,6 +109,7 @@ from models.workers_periodic_reviews import WorkersPeriodicReviews
 from private_routes import private_routes
 from public_routes import public_routes
 from pyhints.no_reviews import SubsidiaryFilter
+from run_daily_custom_notification_check import run_daily_custom_notification_check
 
 load_dotenv()
 
@@ -120,6 +121,10 @@ add_cors_middleware(app)
 @app.on_event("startup")
 def on_startup():
     if os.environ.get("ENV") == "production":
+        threading.Thread(
+            target=run_daily_custom_notification_check, daemon=True
+        ).start()
+
         threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()

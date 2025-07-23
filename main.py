@@ -7,6 +7,7 @@ import math
 import mimetypes
 import os
 import re
+import shutil
 import smtplib
 import subprocess
 import tempfile
@@ -190,6 +191,26 @@ async def enviar_backup():
         return {"status": "success", "message": "Backup enviado por e-mail."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
+
+
+NOME_ARQUIVO = "database.db"
+
+
+@app.post("/substituir-db")
+async def substituir_db(file: UploadFile = File(...)):
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
+
+    try:
+        # Salvar o arquivo enviado sobrescrevendo o database.db
+        with open(caminho_db, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar arquivo: {e}")
+
+    return {
+        "status": "success",
+        "message": f"Arquivo '{NOME_ARQUIVO}' substituído com sucesso.",
+    }
 
 
 class HireApplicantsRequestProps(BaseModel):

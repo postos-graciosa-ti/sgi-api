@@ -124,12 +124,12 @@ add_cors_middleware(app)
 
 @app.on_event("startup")
 def on_startup():
-    if os.environ.get("ENV") == "production":
-        threading.Thread(
-            target=run_daily_custom_notification_check, daemon=True
-        ).start()
+    # if os.environ.get("ENV") == "production":
+    #     threading.Thread(
+    #         target=run_daily_custom_notification_check, daemon=True
+    #     ).start()
 
-        threading.Thread(target=keep_alive_function, daemon=True).start()
+    threading.Thread(target=keep_alive_function, daemon=True).start()
 
     handle_on_startup()
 

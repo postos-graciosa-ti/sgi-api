@@ -144,61 +144,50 @@ for private_route in private_routes:
     app.include_router(private_route)
 
 SMTP_SERVER = "smtp.gmail.com"
-
 SMTP_PORT = 587
-
 EMAIL_ORIGEM = "postosgraciosati@gmail.com"
-
 SENHA_APP = "ywog lshz tzdn nvru"
-
 EMAIL_DESTINO = "postosgraciosati@gmail.com"
+NOME_ARQUIVO = "database.db"  # arquivo na raiz
 
-ARQUIVO_DB = "/app/database.db"
 
-
-def enviar_email():
-    if not os.path.isfile(ARQUIVO_DB):
-        raise FileNotFoundError(f"Arquivo não encontrado: {ARQUIVO_DB}")
+def enviar_email(caminho_arquivo: str):
+    if not os.path.isfile(caminho_arquivo):
+        raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
 
     msg = MIMEMultipart()
-
     msg["From"] = EMAIL_ORIGEM
-
     msg["To"] = EMAIL_DESTINO
-
     msg["Subject"] = "Backup do banco SQLite"
 
-    with open(ARQUIVO_DB, "rb") as f:
+    with open(caminho_arquivo, "rb") as f:
         part = MIMEBase("application", "octet-stream")
-
         part.set_payload(f.read())
 
     encoders.encode_base64(part)
-
     part.add_header(
-        "Content-Disposition", f'attachment; filename="{os.path.basename(ARQUIVO_DB)}"'
+        "Content-Disposition",
+        f'attachment; filename="{os.path.basename(caminho_arquivo)}"',
     )
-
     msg.attach(part)
 
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.starttls()
-
         smtp.login(EMAIL_ORIGEM, SENHA_APP)
-
         smtp.send_message(msg)
 
 
 @app.post("/enviar-backup")
 async def enviar_backup():
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)  # raiz do processo
+    if not os.path.isfile(caminho_db):
+        raise HTTPException(
+            status_code=404, detail=f"Arquivo '{NOME_ARQUIVO}' não encontrado na raiz."
+        )
+
     try:
-        enviar_email()
-
+        enviar_email(caminho_db)
         return {"status": "success", "message": "Backup enviado por e-mail."}
-
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 

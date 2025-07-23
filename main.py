@@ -14,7 +14,10 @@ import threading
 import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from email import encoders
 from email.message import EmailMessage
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
 from functools import wraps
 from io import BytesIO
 from typing import Annotated, Any, Callable, Dict, List, Optional, Set
@@ -139,6 +142,65 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+SMTP_SERVER = "smtp.gmail.com"
+
+SMTP_PORT = 587
+
+EMAIL_ORIGEM = "postosgraciosati@gmail.com"
+
+SENHA_APP = "ywog lshz tzdn nvru"
+
+EMAIL_DESTINO = "postosgraciosati@gmail.com"
+
+ARQUIVO_DB = "/app/database.db"
+
+
+def enviar_email():
+    if not os.path.isfile(ARQUIVO_DB):
+        raise FileNotFoundError(f"Arquivo não encontrado: {ARQUIVO_DB}")
+
+    msg = MIMEMultipart()
+
+    msg["From"] = EMAIL_ORIGEM
+
+    msg["To"] = EMAIL_DESTINO
+
+    msg["Subject"] = "Backup do banco SQLite"
+
+    with open(ARQUIVO_DB, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+
+        part.set_payload(f.read())
+
+    encoders.encode_base64(part)
+
+    part.add_header(
+        "Content-Disposition", f'attachment; filename="{os.path.basename(ARQUIVO_DB)}"'
+    )
+
+    msg.attach(part)
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+
+        smtp.login(EMAIL_ORIGEM, SENHA_APP)
+
+        smtp.send_message(msg)
+
+
+@app.post("/enviar-backup")
+async def enviar_backup():
+    try:
+        enviar_email()
+
+        return {"status": "success", "message": "Backup enviado por e-mail."}
+
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 
 
 class HireApplicantsRequestProps(BaseModel):

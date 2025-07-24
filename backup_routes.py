@@ -6,6 +6,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import create_engine
 
 from functions.verify_api_key import verify_api_key
 
@@ -89,10 +90,16 @@ async def replace_db(file: UploadFile = File(...)):
         with open(db_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        global engine
+
+        engine.dispose()
+
+        engine = create_engine(f"sqlite:///{FILE_NAME}", echo=True)
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
+        raise HTTPException(status_code=500, detail=f"Error replacing DB: {e}")
 
     return {
         "status": "success",
-        "message": f"File '{FILE_NAME}' successfully replaced.",
+        "message": f"File '{FILE_NAME}' successfully replaced and engine refreshed.",
     }

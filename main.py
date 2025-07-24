@@ -31,6 +31,7 @@ import PyPDF2
 import requests
 from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
+from decouple import config
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -115,24 +116,29 @@ from private_routes import private_routes
 from public_routes import public_routes
 from pyhints.no_reviews import SubsidiaryFilter
 from seeds.seed_all import seed_database
+from functions.verify_api_key import verify_api_key
 
-# Carregar variáveis de ambiente
 load_dotenv()
 
-# Configurações
 NOME_ARQUIVO = "database.db"
+
 DATABASE_URL = f"sqlite:///{os.path.join(os.getcwd(), NOME_ARQUIVO)}"
 
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_ORIGEM = "postosgraciosati@gmail.com"
-SENHA_APP = "ywog lshz tzdn nvru"
-EMAIL_DESTINO = "postosgraciosati@gmail.com"
+SMTP_SERVER = config("SMTP_SERVER")
 
-# Inicializar app
+SMTP_PORT = config("SMTP_PORT")
+
+EMAIL_ORIGEM = config("EMAIL_REMETENTE")
+
+SENHA_APP = config("SENHA")
+
+EMAIL_DESTINO = config("EMAIL_REMETENTE")
+
+FRONT_URL = config("FRONT_URL")
+
+API_KEY = config("API_KEY")
+
 app = FastAPI()
-
-FRONT_URL = os.getenv("FRONT_URL", "*")  # "*" como fallback
 
 app.add_middleware(
     CORSMiddleware,
@@ -142,79 +148,90 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Engine global
 engine = None
 
 
-# Função para criar engine
 def criar_engine():
     global engine
+
     engine = create_engine(DATABASE_URL, echo=True)
 
 
-# Função para reconectar e aplicar seeds
 def reconectar_banco():
     criar_engine()
+
     SQLModel.metadata.create_all(engine)
+
     seed_database()
 
 
-# Evento de startup
 @app.on_event("startup")
 def on_startup():
     threading.Thread(target=keep_alive_function, daemon=True).start()
+
     reconectar_banco()
 
 
-# Inclusão de rotas públicas e privadas
+# include public routes
+
 for r in public_routes:
     app.include_router(r)
+
+# include private routes
 
 for r in private_routes:
     app.include_router(r)
 
 
-# Função para envio de e-mail
 def enviar_email(caminho_arquivo: str):
     if not os.path.isfile(caminho_arquivo):
         raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
 
     msg = MIMEMultipart()
+
     msg["From"] = EMAIL_ORIGEM
+
     msg["To"] = EMAIL_DESTINO
+
     msg["Subject"] = "Backup do banco SQLite"
 
     with open(caminho_arquivo, "rb") as f:
         part = MIMEBase("application", "octet-stream")
+
         part.set_payload(f.read())
 
     encoders.encode_base64(part)
+
     part.add_header("Content-Disposition", f'attachment; filename="{NOME_ARQUIVO}"')
+
     msg.attach(part)
 
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.starttls()
+
         smtp.login(EMAIL_ORIGEM, SENHA_APP)
+
         smtp.send_message(msg)
 
 
-# Endpoint para envio do banco por e-mail
 @app.post("/enviar-backup")
-async def enviar_backup():
+async def enviar_backup(token: str = Depends(verify_api_key)):
     caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
+
     if not os.path.isfile(caminho_db):
         raise HTTPException(status_code=404, detail="Arquivo do banco não encontrado.")
 
     try:
         enviar_email(caminho_db)
+
         return {"status": "success", "message": "Backup enviado por e-mail."}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 
 
-# Endpoint para substituir o banco e reiniciar a conexão
 @app.post("/substituir-db")
-async def substituir_db(file: UploadFile = File(...)):
+async def substituir_db(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
     caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
 
     try:
@@ -232,7 +249,6 @@ async def substituir_db(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Erro ao substituir o banco: {e}")
 
 
-# Endpoint para efetivar um candidato
 class HireApplicantsRequestProps(BaseModel):
     subsidiarie_id: int
     function_id: int
@@ -271,1956 +287,1812 @@ def post_hire_applicants(applicant_id: int, request: HireApplicantsRequestProps)
         )
 
         session.add(new_worker)
+
         session.commit()
+
         session.refresh(new_worker)
 
         db_applicant.selective_process_status = "efetivado"
+
         session.add(db_applicant)
+
         session.commit()
+
         session.refresh(db_applicant)
 
         return new_worker
 
 
-# load_dotenv()
+@app.get("/asas")
+def get_current_month_workers_metrics():
+    current_month = date.today().strftime("%m/%Y")
 
-# app = FastAPI()
+    with Session(engine) as session:
+        workers_metrics = session.exec(
+            select(WorkersMetrics).where(WorkersMetrics.date == current_month)
+        ).all()
 
-# add_cors_middleware(app)
+        result = [
+            {
+                "worker": session.get(Workers, wm.worker_id),
+                "date": wm.date,
+                "metrics": json.loads(wm.metrics),
+            }
+            for wm in workers_metrics
+        ]
 
-
-# @app.on_event("startup")
-# def on_startup():
-#     threading.Thread(target=keep_alive_function, daemon=True).start()
-
-#     handle_on_startup()
-
-
-# # include backup routes
-
-# # app.include_router(backup_routes)
-
-# # include public routes
-
-# for public_route in public_routes:
-#     app.include_router(public_route)
-
-# # include private routes
-
-# for private_route in private_routes:
-#     app.include_router(private_route)
-
-# SMTP_SERVER = "smtp.gmail.com"
-# SMTP_PORT = 587
-# EMAIL_ORIGEM = "postosgraciosati@gmail.com"
-# SENHA_APP = "ywog lshz tzdn nvru"
-# EMAIL_DESTINO = "postosgraciosati@gmail.com"
-# NOME_ARQUIVO = "database.db"  # arquivo na raiz
+        return result
 
 
-# def enviar_email(caminho_arquivo: str):
-#     if not os.path.isfile(caminho_arquivo):
-#         raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
+@app.get("/workerscourses/current-month")
+def get_courses_current_month():
+    now = datetime.now()
+    start_month = datetime(now.year, now.month, 1)
 
-#     msg = MIMEMultipart()
-#     msg["From"] = EMAIL_ORIGEM
-#     msg["To"] = EMAIL_DESTINO
-#     msg["Subject"] = "Backup do banco SQLite"
+    if now.month == 12:
+        next_month = datetime(now.year + 1, 1, 1)
+    else:
+        next_month = datetime(now.year, now.month + 1, 1)
 
-#     with open(caminho_arquivo, "rb") as f:
-#         part = MIMEBase("application", "octet-stream")
-#         part.set_payload(f.read())
+    with Session(engine) as session:
+        # Busca todos os cursos (sem filtro de data no SQL)
+        statement = select(WorkersCourses).order_by(desc(WorkersCourses.id))
+        courses = session.exec(statement).all()
 
-#     encoders.encode_base64(part)
-#     part.add_header(
-#         "Content-Disposition",
-#         f'attachment; filename="{os.path.basename(caminho_arquivo)}"',
-#     )
-#     msg.attach(part)
+        result = []
 
-#     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-#         smtp.starttls()
-#         smtp.login(EMAIL_ORIGEM, SENHA_APP)
-#         smtp.send_message(msg)
+        for c in courses:
+            try:
+                # Converte a string para datetime
+                date_obj = datetime.fromisoformat(c.date_file)
+            except Exception:
+                # Ignora registros com formato inválido
+                continue
 
+            # Filtra cursos dentro do mês atual
+            if start_month <= date_obj < next_month:
+                worker = session.get(Workers, c.worker_id)
+                worker_name = worker.name if worker else "Desconhecido"
 
-# @app.post("/enviar-backup")
-# async def enviar_backup():
-#     caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)  # raiz do processo
-#     if not os.path.isfile(caminho_db):
-#         raise HTTPException(
-#             status_code=404, detail=f"Arquivo '{NOME_ARQUIVO}' não encontrado na raiz."
-#         )
+                result.append(
+                    {
+                        "id": c.id,
+                        "worker_id": c.worker_id,
+                        "worker_name": worker_name,
+                        "date_file": c.date_file,
+                        "is_payed": c.is_payed,
+                    }
+                )
 
-#     try:
-#         enviar_email(caminho_db)
-#         return {"status": "success", "message": "Backup enviado por e-mail."}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
-
-
-# NOME_ARQUIVO = "database.db"
-
-
-# @app.post("/substituir-db")
-# async def substituir_db(file: UploadFile = File(...)):
-#     caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
-
-#     try:
-#         # Salvar o arquivo enviado sobrescrevendo o database.db
-#         with open(caminho_db, "wb") as buffer:
-#             shutil.copyfileobj(file.file, buffer)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Erro ao salvar arquivo: {e}")
-
-#     return {
-#         "status": "success",
-#         "message": f"Arquivo '{NOME_ARQUIVO}' substituído com sucesso.",
-#     }
+        return result
 
 
-# class HireApplicantsRequestProps(BaseModel):
-#     subsidiarie_id: int
-#     function_id: int
-#     turn_id: int
-#     cost_center_id: int
-#     department_id: int
-#     admission_date: str
+@app.get("/workers-courses/{worker_id}")
+def get_workers_courses_by_worker_id(worker_id: int):
+    with Session(engine) as session:
+        results = session.exec(
+            select(
+                WorkersCourses.id,
+                WorkersCourses.date_file,
+                WorkersCourses.is_payed,
+            )
+            .where(WorkersCourses.worker_id == worker_id)
+            .order_by(desc(WorkersCourses.id))
+        ).all()
+
+        # Converte para lista de dicionários
+        response = [
+            {"id": row[0], "date_file": row[1], "is_payed": row[2]} for row in results
+        ]
+
+        return response
 
 
-# @app.post("/hire-applicants/{applicant_id}")
-# def post_hire_applicants(applicant_id: int, request: HireApplicantsRequestProps):
+@app.get("/workers-courses/file/{course_id}")
+def get_course_file(course_id: int):
+    with Session(engine) as session:
+        course = session.get(WorkersCourses, course_id)
+
+        if not course:
+            raise HTTPException(status_code=404, detail="Curso não encontrado")
+
+        file_like = io.BytesIO(course.file)
+
+        return StreamingResponse(
+            file_like,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=curso_{course_id}.pdf"},
+        )
+
+
+@app.post("/workers-courses")
+async def create_worker_course(
+    worker_id: int = Form(...),
+    date_file: str = Form(...),
+    is_payed: str = Form(...),
+    file: UploadFile = File(...),
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF.")
+
+    file_data = await file.read()
+
+    try:
+        parsed_date = datetime.strptime(date_file, "%Y-%m-%d")
+
+    except ValueError:
+        raise HTTPException(
+            status_code=400, detail="Data inválida. Use o formato YYYY-MM-DD."
+        )
+
+    is_payed_bool = is_payed.lower() == "true"
+
+    new_course = WorkersCourses(
+        worker_id=worker_id,
+        file=file_data,
+        date_file=parsed_date,
+        is_payed=is_payed_bool,
+    )
+
+    try:
+        with Session(engine) as session:
+            session.add(new_course)
+
+            session.commit()
+
+            session.refresh(new_course)
+
+    except Exception as e:
+        print(e)
+
+        raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados.")
+
+    return {"id": new_course.id, "message": "Curso cadastrado com sucesso."}
+
+
+@app.patch("/workers-courses/{id}/set-to-payed")
+def patch_workers_courses(id: int):
+    with Session(engine) as session:
+        db_course = session.get(WorkersCourses, id)
+
+        db_course.is_payed = True
+
+        session.add(db_course)
+
+        session.commit()
+
+        session.refresh(db_course)
+
+
+@app.get("/workers-status", dependencies=[Depends(verify_token)])
+def get_workers_status():
+    with Session(engine) as session:
+        subsidiaries = session.exec(select(Subsidiarie)).all()
+
+        functions = session.exec(select(Function)).all()
+
+        turns = session.exec(select(Turn).order_by(Turn.start_time.desc())).all()
+
+        workers = session.exec(
+            select(Workers).where(Workers.is_active == True)  # noqa: E712
+        ).all()
+
+        func_map = {f.id: f.name for f in functions}
+
+        turn_map = {t.id: t.name for t in turns}
+
+        sub_map = {s.id: s.name for s in subsidiaries}
+
+        grouped = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+        count_by_sub = defaultdict(int)
+
+        total_count = 0
+
+        for worker in workers:
+            if worker.subsidiarie_id and worker.function_id and worker.turn_id:
+                sub_name = sub_map.get(worker.subsidiarie_id, "Desconhecida")
+
+                turn_name = turn_map.get(worker.turn_id, "Sem Turno")
+
+                func_name = func_map.get(worker.function_id, "Sem Função")
+
+                grouped[sub_name][turn_name][func_name].append(worker.name)
+
+                count_by_sub[sub_name] += 1
+
+                total_count += 1
+
+        result = {
+            "total_geral": total_count,
+            "por_subsidiaria": [],
+        }
+
+        for sub_name, turns in grouped.items():
+            sub_entry = {
+                "subsidiaria": sub_name,
+                "total": count_by_sub[sub_name],
+                "turnos": [],
+            }
+
+            for turn_name, funcs in turns.items():
+                turn_entry = {"turno": turn_name, "funções": []}
+
+                for func_name, names in funcs.items():
+                    turn_entry["funções"].append(
+                        {"função": func_name, "funcionários": names}
+                    )
+
+                sub_entry["turnos"].append(turn_entry)
+
+            result["por_subsidiaria"].append(sub_entry)
+
+        return result
+
+
+@app.post("/workers/{worker_id}/autorize-app", dependencies=[Depends(verify_token)])
+def post_workers_autorize_app(worker_id: int):
+    with Session(engine) as session:
+        db_worker = session.get(Workers, worker_id)
+
+        db_worker.app_login = db_worker.cpf
+
+        db_worker.app_password = pbkdf2_sha256.hash(db_worker.cpf)
+
+        session.add(db_worker)
+
+        session.commit()
+
+        session.refresh(db_worker)
+
+        return {"success": True}
+
+
+# workers parents
+
+
+@app.get("/workers/{id}/parents")
+def get_workers_parents(id: int):
+    return handle_get_workers_parents(id)
+
+
+@app.post("/workers-parents")
+def post_workers_parents(worker_parent: WorkersParents):
+    return handle_post_workers_parents(worker_parent)
+
+
+@app.delete("/workers-parents/{id}")
+def delete_workers_parents(id: int):
+    return handle_delete_workers_parents(id)
+
+
+# hierarchy structure
+
+
+@app.get("/hierarchy-structure")
+def get_hierarchy_structure():
+    return handle_get_hierarchy_structure()
+
+
+# wage payment method
+
+
+@app.get("/wage-payment-methods")
+def get_wage_payment_method():
+    return handle_get_wage_payment_method()
+
+
+# hollidays scale
+
+
+# @app.get("/subsidiaries/{id}/hollidays-scale/{date}")
+# def get_hollidays_scale(id: int, date: str):
+#     return handle_get_hollidays_scale(id, date)
+
+
+# @app.post("/hollidays-scale")
+# def post_hollidays_scale(holliday_scale: HollidaysScale):
+#     return handle_post_hollidays_scale(holliday_scale)
+
+
+# @app.delete("/hollidays-scale/{id}")
+# def delete_hollidays_scale(id: int):
+#     return handle_delete_hollidays_scale(id)
+
+
+# cnh categories
+
+
+@app.get("/cnh-categories")
+def get_cnh_categories():
+    return handle_get_cnh_categories()
+
+
+# @app.delete("/workers/{id}")
+# def delete_workers(id: int):
 #     with Session(engine) as session:
-#         db_applicant = session.exec(
-#             select(Applicants).where(Applicants.id == applicant_id)
-#         ).first()
+#         worker = session.exec(select(Workers).where(Workers.id == id)).first()
 
-#         new_worker = Workers(
-#             name=db_applicant.name,
-#             subsidiarie_id=request.subsidiarie_id,
-#             function_id=request.function_id,
-#             turn_id=request.turn_id,
-#             cost_center_id=request.cost_center_id,
-#             department_id=request.department_id,
-#             admission_date=request.admission_date,
-#             resignation_date=request.admission_date,
-#             ###
-#             email=db_applicant.email,
-#             mobile=db_applicant.mobile,
-#             birthdate=db_applicant.data_nascimento,
-#             fathername=db_applicant.nome_pai,
-#             mothername=db_applicant.nome_mae,
-#             rg=db_applicant.rg,
-#             cpf=db_applicant.cpf,
-#         )
-
-#         session.add(new_worker)
-
-#         session.commit()
-
-#         session.refresh(new_worker)
-
-#         db_applicant.selective_process_status = "efetivado"
-
-#         session.add(db_applicant)
-
-#         session.commit()
-
-#         session.refresh(db_applicant)
-
-#         return new_worker
-
-
-# @app.get("/asas")
-# def get_current_month_workers_metrics():
-#     current_month = date.today().strftime("%m/%Y")
-
-#     with Session(engine) as session:
-#         workers_metrics = session.exec(
-#             select(WorkersMetrics).where(WorkersMetrics.date == current_month)
-#         ).all()
-
-#         result = [
-#             {
-#                 "worker": session.get(Workers, wm.worker_id),
-#                 "date": wm.date,
-#                 "metrics": json.loads(wm.metrics),
-#             }
-#             for wm in workers_metrics
-#         ]
-
-#         return result
-
-
-# @app.get("/workerscourses/current-month")
-# def get_courses_current_month():
-#     now = datetime.now()
-#     start_month = datetime(now.year, now.month, 1)
-
-#     if now.month == 12:
-#         next_month = datetime(now.year + 1, 1, 1)
-#     else:
-#         next_month = datetime(now.year, now.month + 1, 1)
-
-#     with Session(engine) as session:
-#         # Busca todos os cursos (sem filtro de data no SQL)
-#         statement = select(WorkersCourses).order_by(desc(WorkersCourses.id))
-#         courses = session.exec(statement).all()
-
-#         result = []
-
-#         for c in courses:
-#             try:
-#                 # Converte a string para datetime
-#                 date_obj = datetime.fromisoformat(c.date_file)
-#             except Exception:
-#                 # Ignora registros com formato inválido
-#                 continue
-
-#             # Filtra cursos dentro do mês atual
-#             if start_month <= date_obj < next_month:
-#                 worker = session.get(Workers, c.worker_id)
-#                 worker_name = worker.name if worker else "Desconhecido"
-
-#                 result.append(
-#                     {
-#                         "id": c.id,
-#                         "worker_id": c.worker_id,
-#                         "worker_name": worker_name,
-#                         "date_file": c.date_file,
-#                         "is_payed": c.is_payed,
-#                     }
-#                 )
-
-#         return result
-
-
-# @app.get("/workers-courses/{worker_id}")
-# def get_workers_courses_by_worker_id(worker_id: int):
-#     with Session(engine) as session:
-#         results = session.exec(
-#             select(
-#                 WorkersCourses.id,
-#                 WorkersCourses.date_file,
-#                 WorkersCourses.is_payed,
-#             )
-#             .where(WorkersCourses.worker_id == worker_id)
-#             .order_by(desc(WorkersCourses.id))
-#         ).all()
-
-#         # Converte para lista de dicionários
-#         response = [
-#             {"id": row[0], "date_file": row[1], "is_payed": row[2]} for row in results
-#         ]
-
-#         return response
-
-
-# @app.get("/workers-courses/file/{course_id}")
-# def get_course_file(course_id: int):
-#     with Session(engine) as session:
-#         course = session.get(WorkersCourses, course_id)
-
-#         if not course:
-#             raise HTTPException(status_code=404, detail="Curso não encontrado")
-
-#         file_like = io.BytesIO(course.file)
-
-#         return StreamingResponse(
-#             file_like,
-#             media_type="application/pdf",
-#             headers={"Content-Disposition": f"inline; filename=curso_{course_id}.pdf"},
-#         )
-
-
-# @app.post("/workers-courses")
-# async def create_worker_course(
-#     worker_id: int = Form(...),
-#     date_file: str = Form(...),
-#     is_payed: str = Form(...),
-#     file: UploadFile = File(...),
-# ):
-#     if file.content_type != "application/pdf":
-#         raise HTTPException(status_code=400, detail="O arquivo deve ser um PDF.")
-
-#     file_data = await file.read()
-
-#     try:
-#         parsed_date = datetime.strptime(date_file, "%Y-%m-%d")
-
-#     except ValueError:
-#         raise HTTPException(
-#             status_code=400, detail="Data inválida. Use o formato YYYY-MM-DD."
-#         )
-
-#     is_payed_bool = is_payed.lower() == "true"
-
-#     new_course = WorkersCourses(
-#         worker_id=worker_id,
-#         file=file_data,
-#         date_file=parsed_date,
-#         is_payed=is_payed_bool,
-#     )
-
-#     try:
-#         with Session(engine) as session:
-#             session.add(new_course)
-
-#             session.commit()
-
-#             session.refresh(new_course)
-
-#     except Exception as e:
-#         print(e)
-
-#         raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados.")
-
-#     return {"id": new_course.id, "message": "Curso cadastrado com sucesso."}
-
-
-# @app.patch("/workers-courses/{id}/set-to-payed")
-# def patch_workers_courses(id: int):
-#     with Session(engine) as session:
-#         db_course = session.get(WorkersCourses, id)
-
-#         db_course.is_payed = True
-
-#         session.add(db_course)
-
-#         session.commit()
-
-#         session.refresh(db_course)
-
-
-# @app.get("/workers-status", dependencies=[Depends(verify_token)])
-# def get_workers_status():
-#     with Session(engine) as session:
-#         subsidiaries = session.exec(select(Subsidiarie)).all()
-
-#         functions = session.exec(select(Function)).all()
-
-#         turns = session.exec(select(Turn).order_by(Turn.start_time.desc())).all()
-
-#         workers = session.exec(
-#             select(Workers).where(Workers.is_active == True)  # noqa: E712
-#         ).all()
-
-#         func_map = {f.id: f.name for f in functions}
-
-#         turn_map = {t.id: t.name for t in turns}
-
-#         sub_map = {s.id: s.name for s in subsidiaries}
-
-#         grouped = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
-#         count_by_sub = defaultdict(int)
-
-#         total_count = 0
-
-#         for worker in workers:
-#             if worker.subsidiarie_id and worker.function_id and worker.turn_id:
-#                 sub_name = sub_map.get(worker.subsidiarie_id, "Desconhecida")
-
-#                 turn_name = turn_map.get(worker.turn_id, "Sem Turno")
-
-#                 func_name = func_map.get(worker.function_id, "Sem Função")
-
-#                 grouped[sub_name][turn_name][func_name].append(worker.name)
-
-#                 count_by_sub[sub_name] += 1
-
-#                 total_count += 1
-
-#         result = {
-#             "total_geral": total_count,
-#             "por_subsidiaria": [],
-#         }
-
-#         for sub_name, turns in grouped.items():
-#             sub_entry = {
-#                 "subsidiaria": sub_name,
-#                 "total": count_by_sub[sub_name],
-#                 "turnos": [],
-#             }
-
-#             for turn_name, funcs in turns.items():
-#                 turn_entry = {"turno": turn_name, "funções": []}
-
-#                 for func_name, names in funcs.items():
-#                     turn_entry["funções"].append(
-#                         {"função": func_name, "funcionários": names}
-#                     )
-
-#                 sub_entry["turnos"].append(turn_entry)
-
-#             result["por_subsidiaria"].append(sub_entry)
-
-#         return result
-
-
-# @app.post("/workers/{worker_id}/autorize-app", dependencies=[Depends(verify_token)])
-# def post_workers_autorize_app(worker_id: int):
-#     with Session(engine) as session:
-#         db_worker = session.get(Workers, worker_id)
-
-#         db_worker.app_login = db_worker.cpf
-
-#         db_worker.app_password = pbkdf2_sha256.hash(db_worker.cpf)
-
-#         session.add(db_worker)
-
-#         session.commit()
-
-#         session.refresh(db_worker)
-
-#         return {"success": True}
-
-
-# # workers parents
-
-
-# @app.get("/workers/{id}/parents")
-# def get_workers_parents(id: int):
-#     return handle_get_workers_parents(id)
-
-
-# @app.post("/workers-parents")
-# def post_workers_parents(worker_parent: WorkersParents):
-#     return handle_post_workers_parents(worker_parent)
-
-
-# @app.delete("/workers-parents/{id}")
-# def delete_workers_parents(id: int):
-#     return handle_delete_workers_parents(id)
-
-
-# # hierarchy structure
-
-
-# @app.get("/hierarchy-structure")
-# def get_hierarchy_structure():
-#     return handle_get_hierarchy_structure()
-
-
-# # wage payment method
-
-
-# @app.get("/wage-payment-methods")
-# def get_wage_payment_method():
-#     return handle_get_wage_payment_method()
-
-
-# # hollidays scale
-
-
-# # @app.get("/subsidiaries/{id}/hollidays-scale/{date}")
-# # def get_hollidays_scale(id: int, date: str):
-# #     return handle_get_hollidays_scale(id, date)
-
-
-# # @app.post("/hollidays-scale")
-# # def post_hollidays_scale(holliday_scale: HollidaysScale):
-# #     return handle_post_hollidays_scale(holliday_scale)
-
-
-# # @app.delete("/hollidays-scale/{id}")
-# # def delete_hollidays_scale(id: int):
-# #     return handle_delete_hollidays_scale(id)
-
-
-# # cnh categories
-
-
-# @app.get("/cnh-categories")
-# def get_cnh_categories():
-#     return handle_get_cnh_categories()
-
-
-# # @app.delete("/workers/{id}")
-# # def delete_workers(id: int):
-# #     with Session(engine) as session:
-# #         worker = session.exec(select(Workers).where(Workers.id == id)).first()
-
-# #         session.delete(worker)
-
-# #         session.commit()
-
-# #         return {"success": True}
-
-
-# @app.get("/functions/{id}")
-# def get_function_by_id(id: int):
-#     with Session(engine) as session:
-#         function = session.exec(select(Function).where(Function.id == id)).first()
-
-#         return function
-
-
-# # all subsidiaries no first review and second review
-
-
-# @app.post("/subsidiaries/workers/experience-time-no-first-review")
-# async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
-#     return await handle_get_workers_without_first_review_in_range_all(data)
-
-
-# @app.post("/subsidiaries/workers/experience-time-no-second-review")
-# async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
-#     return await handle_get_workers_without_second_review_in_range_all(data)
-
-
-# @app.post("/subsidiaries/away-workers")
-# def get_away_return_workers(data: SubsidiaryFilter):
-#     return handle_get_away_return_workers(data)
-
-
-# class ScalesListProps(BaseModel):
-#     start_date: str
-#     end_date: str
-#     turn_id: int | None = None
-#     function_id: int | None = None
-
-
-# @app.post("/subsidiaries/{id}/scales/list")
-# def get_scales(id: int, scales_list_props: ScalesListProps):
-#     with Session(engine) as session:
-#         start_date = datetime.strptime(scales_list_props.start_date, "%d-%m-%Y").date()
-
-#         end_date = datetime.strptime(scales_list_props.end_date, "%d-%m-%Y").date()
-
-#         query = select(Scale).where(Scale.subsidiarie_id == id)
-
-#         if scales_list_props.turn_id is not None:
-#             query = query.where(Scale.worker_turn_id == scales_list_props.turn_id)
-
-#         if scales_list_props.function_id is not None:
-#             query = query.where(
-#                 Scale.worker_function_id == scales_list_props.function_id
-#             )
-
-#         scales = session.exec(query).all()
-
-#         in_range_scales = []
-
-#         for scale in scales:
-#             worker = session.get(Workers, scale.worker_id)
-
-#             scale_days_off = (
-#                 json.loads(scale.days_off)
-#                 if isinstance(scale.days_off, str)
-#                 else scale.days_off or []
-#             )
-
-#             scale_days_on = (
-#                 json.loads(scale.days_on)
-#                 if isinstance(scale.days_on, str)
-#                 else scale.days_on or []
-#             )
-
-#             scale_proportion = (
-#                 json.loads(scale.proportion)
-#                 if isinstance(scale.proportion, str)
-#                 else scale.proportion or []
-#             )
-
-#             valid_days_off = [
-#                 datetime.strptime(day["date"], "%d-%m-%Y").date()
-#                 for day in scale_days_off
-#                 if isinstance(day, dict)
-#                 and "date" in day
-#                 and start_date
-#                 <= datetime.strptime(day["date"], "%d-%m-%Y").date()
-#                 <= end_date
-#             ]
-
-#             valid_days_on = [
-#                 datetime.strptime(day["date"], "%d-%m-%Y").date()
-#                 for day in scale_days_on
-#                 if isinstance(day, dict)
-#                 and "date" in day
-#                 and start_date
-#                 <= datetime.strptime(day["date"], "%d-%m-%Y").date()
-#                 <= end_date
-#             ]
-
-#             valid_proportion = [
-#                 day
-#                 for day in scale_proportion
-#                 if isinstance(day, dict)
-#                 and start_date
-#                 <= datetime.strptime(day["data"], "%d-%m-%Y").date()
-#                 <= end_date
-#             ]
-
-#             in_range_scales.append(
-#                 {
-#                     "worker": worker,
-#                     "worker_turn": session.get(Turn, worker.turn_id),
-#                     "worker_function": session.get(Function, worker.function_id),
-#                     "days_on": valid_days_on,
-#                     "days_off": valid_days_off,
-#                     "proportion": valid_proportion,
-#                     "start_date": start_date,
-#                     "end_date": end_date,
-#                 }
-#             )
-
-#         return in_range_scales
-
-
-# # workers docs
-
-
-# class WorkersDocs(SQLModel, table=True):
-#     id: Optional[int] = Field(default=None, primary_key=True)
-#     worker_id: int = Field(foreign_key="workers.id")
-#     doc: bytes = Field(sa_column=Column(LargeBinary))
-#     doc_title: str = Field(max_length=100)
-
-
-# @app.get("/worker-pdfs/{worker_id}")
-# def get_worker_pdfs(worker_id: int):
-#     try:
-#         with Session(engine) as session:
-#             statement = select(WorkersDocs).where(WorkersDocs.worker_id == worker_id)
-#             docs = session.exec(statement).all()
-
-#             if not docs:
-#                 return []
-
-#             return [
-#                 {
-#                     "doc_id": doc.id,
-#                     "worker_id": doc.worker_id,
-#                     "size": len(doc.doc),
-#                     "doc_title": doc.doc_title,
-#                 }
-#                 for doc in docs
-#             ]
-
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, detail=f"Erro ao buscar documentos: {str(e)}"
-#         )
-
-
-# # Baixar documento por ID
-# @app.get("/get-pdf/{doc_id}")
-# def get_pdf(doc_id: int):
-#     try:
-#         with Session(engine) as session:
-#             doc = session.get(WorkersDocs, doc_id)
-
-#             if not doc:
-#                 raise HTTPException(status_code=404, detail="Documento não encontrado")
-
-#             if doc.doc_title == "Ficha da contabilidade":
-#                 # Detectar se é .xlsx (formato zip) ou .xls (binário)
-#                 ext = ".xlsx" if doc.doc[:4] == b"PK\x03\x04" else ".xls"
-#                 media_type = (
-#                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-#                     if ext == ".xlsx"
-#                     else "application/vnd.ms-excel"
-#                 )
-#                 filename = f"ficha_contabilidade_{doc_id}{ext}"
-#             else:
-#                 media_type = "application/pdf"
-#                 filename = f"document_{doc_id}.pdf"
-
-#             return StreamingResponse(
-#                 BytesIO(doc.doc),
-#                 media_type=media_type,
-#                 headers={"Content-Disposition": f"inline; filename={filename}"},
-#             )
-
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, detail=f"Erro ao recuperar documento: {str(e)}"
-#         )
-
-
-# @app.post("/upload-pdf/{worker_id}")
-# async def upload_pdf(
-#     worker_id: int,
-#     doc_title: str = Form(...),
-#     file: UploadFile = File(...),
-# ):
-#     try:
-#         file_bytes = await file.read()
-
-#         if doc_title == "Ficha da contabilidade":
-#             if file.content_type not in [
-#                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#                 "application/vnd.ms-excel",
-#             ]:
-#                 raise HTTPException(
-#                     status_code=400,
-#                     detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
-#                 )
-#         else:
-#             if file.content_type != "application/pdf":
-#                 raise HTTPException(
-#                     status_code=400,
-#                     detail="O arquivo deve ser um PDF",
-#                 )
-
-#         with Session(engine) as session:
-#             db_doc = WorkersDocs(
-#                 worker_id=worker_id,
-#                 doc=file_bytes,
-#                 doc_title=doc_title,
-#             )
-
-#             session.add(db_doc)
-
-#             session.commit()
-
-#             session.refresh(db_doc)
-
-#             if doc_title == "Contrato de trabalho":
-#                 with pdfplumber.open(BytesIO(file_bytes)) as pdf:
-#                     page = None
-
-#                     text = None
-
-#                     for p in pdf.pages:
-#                         page_text = p.extract_text()
-
-#                         if (
-#                             page_text
-#                             and "ficha de registro de empregado" in page_text.lower()
-#                         ):
-#                             page = p
-
-#                             text = page_text
-
-#                             break
-
-#                     if not page or not text:
-#                         raise HTTPException(
-#                             status_code=400,
-#                             detail="Não foi possível localizar a página com o título 'Ficha de Registro de Empregado'.",
-#                         )
-
-#                     nome = re.search(
-#                         r"Nome:\s*(.*?)\s*(?=Código:|Pai:|Mãe:|Nascimento:)", text
-#                     )
-
-#                     pai = re.search(r"Pai:\s*(.*?)\s*(?=Nr\.)", text)
-
-#                     mae = re.search(r"Mãe:\s*(.*)", text)
-
-#                     nascimento = re.search(r"Nascimento:\s*(\d{2}/\d{2}/\d{4})", text)
-
-#                     sexo = re.search(r"Sexo:\s*(\w+)", text)
-
-#                     estado_civil = re.search(r"Est\.? Civil:\s*(\w+)", text)
-
-#                     raca = re.search(r"Ra[çc]a\s*/\s*Cor\s*:\s*(.+?)(?=\n|$)", text)
-
-#                     nacionalidade = re.search(r"Nacionalidade:\s*(.+?)(?=\n|$)", text)
-
-#                     enderecos = re.findall(
-#                         r"Endere[cç]o:\s*(.*?)\s*(?=Bairro:|CEP:|Munic[ií]pio:)", text
-#                     )
-
-#                     bairros = re.findall(
-#                         r"Bairro:\s*(.*?)\s*(?=CEP:|Munic[ií]pio:|Endere[cç]o:)", text
-#                     )
-
-#                     cep = re.search(r"CEP:\s*([\d\.-]+)", text)
-
-#                     cpf = re.search(r"CPF:\s*([\d\.-]+)", text)
-
-#                     rg = re.search(r"RG:\s*(\S+)", text)
-
-#                     ctps_numero = re.search(r"Número CTPS:\s*(\d+)", text)
-
-#                     ctps_serie = re.search(r"Série CTPS:\s*(\d+)", text)
-
-#                     ctps_estado = re.search(r"Estado CTPS:\s*([A-Z]{2})", text)
-
-#                     pis = re.search(r"PIS:\s*([\d\.\-]+)", text)
-
-#                     instrucao = re.search(r"Instru[cç][aã]o:\s*(.+?)(?=\n|$)", text)
-
-#                     banco = re.search(r"Banco:\s*(.*)", text)
-
-#                     conta = re.search(r"Conta:\s*(\d+)", text)
-
-#                     agencia = re.search(r"Agência:\s*(\d+)", text)
-
-#                     db_worker = session.get(Workers, worker_id)
-
-#                     if db_worker:
-#                         if nome:
-#                             db_worker.name = nome.group(1).strip()
-
-#                         if pai:
-#                             db_worker.fathername = pai.group(1).strip()
-
-#                         if mae:
-#                             db_worker.mothername = mae.group(1).strip()
-
-#                         if nascimento:
-#                             try:
-#                                 nascimento_formatada = datetime.strptime(
-#                                     nascimento.group(1), "%d/%m/%Y"
-#                                 ).strftime("%Y-%m-%d")
-
-#                                 db_worker.birthdate = nascimento_formatada
-
-#                             except ValueError:
-#                                 raise HTTPException(
-#                                     status_code=400,
-#                                     detail="Data de nascimento inválida",
-#                                 )
-
-#                         if sexo:
-#                             sexo_nome = sexo.group(1).strip().lower()
-
-#                             sexo_db = session.exec(
-#                                 select(Genders).where(
-#                                     Genders.name.ilike(f"%{sexo_nome}%")
-#                                 )
-#                             ).first()
-
-#                             if sexo_db:
-#                                 db_worker.gender_id = sexo_db.id
-
-#                         if estado_civil:
-#                             estado_nome = estado_civil.group(1).strip().lower()
-
-#                             estado_db = session.exec(
-#                                 select(CivilStatus).where(
-#                                     CivilStatus.name.ilike(f"%{estado_nome}%")
-#                                 )
-#                             ).first()
-
-#                             if estado_db:
-#                                 db_worker.civil_status_id = estado_db.id
-
-#                         if raca:
-#                             raca_nome = raca.group(1).strip().lower()
-
-#                             feminino_para_masculino = {
-#                                 "branca": "branco",
-#                                 "preta": "preto",
-#                                 "parda": "pardo",
-#                                 "amarela": "amarelo",
-#                                 "indígena": "indígena",
-#                             }
-
-#                             raca_normalizada = feminino_para_masculino.get(
-#                                 raca_nome, raca_nome
-#                             )
-
-#                             raca_db = session.exec(
-#                                 select(Ethnicity).where(
-#                                     Ethnicity.name.ilike(f"%{raca_normalizada}%")
-#                                 )
-#                             ).first()
-
-#                             if raca_db:
-#                                 db_worker.ethnicity_id = raca_db.id
-
-#                         if nacionalidade:
-#                             nacionalidade_nome = nacionalidade.group(1).strip().lower()
-
-#                             nacionalidade_db = session.exec(
-#                                 select(Nationalities).where(
-#                                     Nationalities.name.ilike(f"%{nacionalidade_nome}%")
-#                                 )
-#                             ).first()
-
-#                             if nacionalidade_db:
-#                                 db_worker.nationality = nacionalidade_db.id
-
-#                         if enderecos:
-#                             db_worker.street = enderecos[-1].strip()
-
-#                         if bairros:
-#                             bairro_nome = bairros[-1].strip()
-
-#                             bairro_db = session.exec(
-#                                 select(Neighborhoods).where(
-#                                     Neighborhoods.name.ilike(f"%{bairro_nome}%")
-#                                 )
-#                             ).first()
-
-#                             if bairro_db:
-#                                 db_worker.neighborhood_id = bairro_db.id
-
-#                         if cep:
-#                             db_worker.cep = cep.group(1).strip()
-
-#                         if cpf:
-#                             db_worker.cpf = cpf.group(1).strip()
-
-#                         if rg:
-#                             db_worker.rg = rg.group(1).strip()
-
-#                         if ctps_numero:
-#                             db_worker.ctps = ctps_numero.group(1).strip()
-
-#                         if ctps_serie:
-#                             db_worker.ctps_serie = ctps_serie.group(1).strip()
-
-#                         if ctps_estado:
-#                             uf = ctps_estado.group(1).strip().upper()
-
-#                             estado_db = session.exec(
-#                                 select(States).where(States.sail == uf)
-#                             ).first()
-
-#                             if estado_db:
-#                                 db_worker.ctps_state = estado_db.id
-
-#                         if pis:
-#                             db_worker.pis = pis.group(1).strip()
-
-#                         if instrucao:
-#                             instrucao_nome = instrucao.group(1).strip().lower()
-
-#                             instrucao_db = session.exec(
-#                                 select(SchoolLevels).where(
-#                                     SchoolLevels.name.ilike(f"%{instrucao_nome}%")
-#                                 )
-#                             ).first()
-
-#                             if instrucao_db:
-#                                 db_worker.school_level = instrucao_db.id
-
-#                         if banco:
-#                             db_worker.bank = 1
-
-#                         if conta:
-#                             db_worker.bank_account = conta.group(1).strip()
-
-#                         if agencia:
-#                             db_worker.bank_agency = agencia.group(1).strip()
-
-#                         session.add(db_worker)
-
-#                         session.commit()
-
-#                 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-
-#                 SENHA = os.environ.get("SENHA")
-
-#                 BCC = os.environ.get("BCC")
-
-#                 msg = EmailMessage()
-
-#                 msg["Subject"] = "Novo contrato de trabalho"
-
-#                 msg["From"] = EMAIL_REMETENTE
-
-#                 msg["To"] = BCC
-
-#                 msg.set_content(
-#                     "Um novo contrato de trabalho foi anexado ao SGI, confira já!"
-#                 )
-
-#                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#                     smtp.login(EMAIL_REMETENTE, SENHA)
-
-#                     smtp.send_message(msg)
-
-#             return {
-#                 "message": "Arquivo salvo com sucesso",
-#                 "id": db_doc.id,
-#                 "worker_id": db_doc.worker_id,
-#                 "doc_title": db_doc.doc_title,
-#                 "filename": file.filename,
-#             }
-
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}"
-#         )
-
-
-# class EmailRequest(BaseModel):
-#     worker_id: int
-#     to: EmailStr
-#     subject: str
-#     body: str
-
-
-# @app.post("/send-email")
-# def send_email(request: EmailRequest):
-#     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-
-#     SENHA = os.environ.get("SENHA")
-
-#     BCC = os.environ.get("BCC")
-
-#     with Session(engine) as session:
-#         work_contract = session.exec(
-#             select(WorkersDocs)
-#             .where(WorkersDocs.worker_id == request.worker_id)
-#             .where(WorkersDocs.doc_title == "Contrato de trabalho")
-#         ).first()
-
-#         if not work_contract or not work_contract.doc:
-#             raise HTTPException(status_code=404, detail="Documento não encontrado.")
-
-#         try:
-#             original_pdf = PdfReader(io.BytesIO(work_contract.doc))
-
-#             new_pdf_stream = io.BytesIO()
-
-#             writer = PdfWriter()
-
-#             for page_num in range(2, 9):
-#                 if page_num < len(original_pdf.pages):
-#                     writer.add_page(original_pdf.pages[page_num])
-
-#             writer.write(new_pdf_stream)
-
-#             new_pdf_stream.seek(0)
-
-#             msg = EmailMessage()
-
-#             msg["Subject"] = request.subject
-
-#             msg["From"] = EMAIL_REMETENTE
-
-#             msg["To"] = request.to
-
-#             msg["Bcc"] = BCC
-
-#             msg.set_content(request.body)
-
-#             msg.add_attachment(
-#                 new_pdf_stream.read(),
-#                 maintype="application",
-#                 subtype="pdf",
-#                 filename="Contrato_paginas_3_a_9.pdf",
-#             )
-
-#             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#                 smtp.login(EMAIL_REMETENTE, SENHA)
-
-#                 smtp.send_message(msg)
-
-#             return {"message": "E-mail enviado com sucesso com as páginas 3 e 9"}
-
-#         except Exception as e:
-#             raise HTTPException(status_code=500, detail=str(e))
-
-
-# @app.delete("/workers-docs/{id}")
-# def delete_workers_docs(id: int):
-#     with Session(engine) as session:
-#         doc = session.exec(select(WorkersDocs).where(WorkersDocs.id == id)).first()
-
-#         session.delete(doc)
+#         session.delete(worker)
 
 #         session.commit()
 
 #         return {"success": True}
 
 
-# @app.get("/services")
-# def get_services():
-#     with Session(engine) as session:
-#         services = session.exec(select(Service)).all()
+@app.get("/functions/{id}")
+def get_function_by_id(id: int):
+    with Session(engine) as session:
+        function = session.exec(select(Function).where(Function.id == id)).first()
 
-#         return services
+        return function
 
 
-# @app.get("/tickets/requesting/{id}", response_model=list[dict])
-# def get_tickets_requesting(id: int):
-#     with Session(engine) as session:
-#         requesting_user = session.get(User, id)
+# all subsidiaries no first review and second review
+
+
+@app.post("/subsidiaries/workers/experience-time-no-first-review")
+async def get_workers_without_first_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_first_review_in_range_all(data)
+
+
+@app.post("/subsidiaries/workers/experience-time-no-second-review")
+async def get_workers_without_second_review_in_range_all(data: SubsidiaryFilter):
+    return await handle_get_workers_without_second_review_in_range_all(data)
+
 
-#         if not requesting_user:
-#             raise HTTPException(status_code=404, detail="Requesting user not found")
+@app.post("/subsidiaries/away-workers")
+def get_away_return_workers(data: SubsidiaryFilter):
+    return handle_get_away_return_workers(data)
 
-#         tickets = session.exec(
-#             select(Tickets)
-#             .where(Tickets.requesting_id == id)
-#             .order_by(Tickets.id.desc())
-#         ).all()
 
-#         if not tickets:
-#             return []
+class ScalesListProps(BaseModel):
+    start_date: str
+    end_date: str
+    turn_id: int | None = None
+    function_id: int | None = None
 
-#         all_responsible_ids = set()
 
-#         service_ids = set()
+@app.post("/subsidiaries/{id}/scales/list")
+def get_scales(id: int, scales_list_props: ScalesListProps):
+    with Session(engine) as session:
+        start_date = datetime.strptime(scales_list_props.start_date, "%d-%m-%Y").date()
 
-#         for ticket in tickets:
-#             try:
-#                 responsible_ids = json.loads(ticket.responsibles_ids)
+        end_date = datetime.strptime(scales_list_props.end_date, "%d-%m-%Y").date()
 
-#             except (json.JSONDecodeError, TypeError):
-#                 responsible_ids = []
+        query = select(Scale).where(Scale.subsidiarie_id == id)
 
-#             all_responsible_ids.update(responsible_ids)
+        if scales_list_props.turn_id is not None:
+            query = query.where(Scale.worker_turn_id == scales_list_props.turn_id)
 
-#             if ticket.service:
-#                 service_ids.add(ticket.service)
+        if scales_list_props.function_id is not None:
+            query = query.where(
+                Scale.worker_function_id == scales_list_props.function_id
+            )
+
+        scales = session.exec(query).all()
+
+        in_range_scales = []
+
+        for scale in scales:
+            worker = session.get(Workers, scale.worker_id)
 
-#         responsibles_map = {
-#             user.id: user
-#             for user in session.exec(
-#                 select(User).where(User.id.in_(all_responsible_ids))
-#             ).all()
-#         }
+            scale_days_off = (
+                json.loads(scale.days_off)
+                if isinstance(scale.days_off, str)
+                else scale.days_off or []
+            )
+
+            scale_days_on = (
+                json.loads(scale.days_on)
+                if isinstance(scale.days_on, str)
+                else scale.days_on or []
+            )
+
+            scale_proportion = (
+                json.loads(scale.proportion)
+                if isinstance(scale.proportion, str)
+                else scale.proportion or []
+            )
+
+            valid_days_off = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_off
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_days_on = [
+                datetime.strptime(day["date"], "%d-%m-%Y").date()
+                for day in scale_days_on
+                if isinstance(day, dict)
+                and "date" in day
+                and start_date
+                <= datetime.strptime(day["date"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            valid_proportion = [
+                day
+                for day in scale_proportion
+                if isinstance(day, dict)
+                and start_date
+                <= datetime.strptime(day["data"], "%d-%m-%Y").date()
+                <= end_date
+            ]
+
+            in_range_scales.append(
+                {
+                    "worker": worker,
+                    "worker_turn": session.get(Turn, worker.turn_id),
+                    "worker_function": session.get(Function, worker.function_id),
+                    "days_on": valid_days_on,
+                    "days_off": valid_days_off,
+                    "proportion": valid_proportion,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                }
+            )
+
+        return in_range_scales
+
+
+# workers docs
+
+
+class WorkersDocs(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    worker_id: int = Field(foreign_key="workers.id")
+    doc: bytes = Field(sa_column=Column(LargeBinary))
+    doc_title: str = Field(max_length=100)
+
+
+@app.get("/worker-pdfs/{worker_id}")
+def get_worker_pdfs(worker_id: int):
+    try:
+        with Session(engine) as session:
+            statement = select(WorkersDocs).where(WorkersDocs.worker_id == worker_id)
+            docs = session.exec(statement).all()
+
+            if not docs:
+                return []
+
+            return [
+                {
+                    "doc_id": doc.id,
+                    "worker_id": doc.worker_id,
+                    "size": len(doc.doc),
+                    "doc_title": doc.doc_title,
+                }
+                for doc in docs
+            ]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao buscar documentos: {str(e)}"
+        )
+
+
+# Baixar documento por ID
+@app.get("/get-pdf/{doc_id}")
+def get_pdf(doc_id: int):
+    try:
+        with Session(engine) as session:
+            doc = session.get(WorkersDocs, doc_id)
+
+            if not doc:
+                raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+            if doc.doc_title == "Ficha da contabilidade":
+                # Detectar se é .xlsx (formato zip) ou .xls (binário)
+                ext = ".xlsx" if doc.doc[:4] == b"PK\x03\x04" else ".xls"
+                media_type = (
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    if ext == ".xlsx"
+                    else "application/vnd.ms-excel"
+                )
+                filename = f"ficha_contabilidade_{doc_id}{ext}"
+            else:
+                media_type = "application/pdf"
+                filename = f"document_{doc_id}.pdf"
+
+            return StreamingResponse(
+                BytesIO(doc.doc),
+                media_type=media_type,
+                headers={"Content-Disposition": f"inline; filename={filename}"},
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao recuperar documento: {str(e)}"
+        )
+
+
+@app.post("/upload-pdf/{worker_id}")
+async def upload_pdf(
+    worker_id: int,
+    doc_title: str = Form(...),
+    file: UploadFile = File(...),
+):
+    try:
+        file_bytes = await file.read()
 
-#         services_map = {
-#             service.id: service
-#             for service in session.exec(
-#                 select(Service).where(Service.id.in_(service_ids))
-#             ).all()
-#         }
+        if doc_title == "Ficha da contabilidade":
+            if file.content_type not in [
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+            ]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="O arquivo deve estar no formato Excel (.xls ou .xlsx)",
+                )
+        else:
+            if file.content_type != "application/pdf":
+                raise HTTPException(
+                    status_code=400,
+                    detail="O arquivo deve ser um PDF",
+                )
 
-#         tickets_data = []
+        with Session(engine) as session:
+            db_doc = WorkersDocs(
+                worker_id=worker_id,
+                doc=file_bytes,
+                doc_title=doc_title,
+            )
 
-#         for ticket in tickets:
-#             try:
-#                 responsible_ids = json.loads(ticket.responsibles_ids)
+            session.add(db_doc)
 
-#             except (json.JSONDecodeError, TypeError):
-#                 responsible_ids = []
+            session.commit()
 
-#             responsibles = [
-#                 responsible.dict()
-#                 for responsible_id in responsible_ids
-#                 if (responsible := responsibles_map.get(responsible_id))
-#             ]
+            session.refresh(db_doc)
 
-#             tickets_data.append(
-#                 {
-#                     "ticket_id": ticket.id,
-#                     "requesting": requesting_user.dict(),
-#                     "responsibles": responsibles,
-#                     "service": services_map.get(ticket.service),
-#                     "description": ticket.description,
-#                     "is_open": ticket.is_open,
-#                     "opened_at": ticket.opened_at,
-#                     "closed_at": ticket.closed_at,
-#                 }
-#             )
+            if doc_title == "Contrato de trabalho":
+                with pdfplumber.open(BytesIO(file_bytes)) as pdf:
+                    page = None
 
-#         return tickets_data
+                    text = None
 
+                    for p in pdf.pages:
+                        page_text = p.extract_text()
 
-# @app.post("/tickets")
-# def post_tickets(ticket: Tickets):
-#     with Session(engine) as session:
-#         session.add(ticket)
+                        if (
+                            page_text
+                            and "ficha de registro de empregado" in page_text.lower()
+                        ):
+                            page = p
 
-#         session.commit()
+                            text = page_text
 
-#         session.refresh(ticket)
+                            break
 
-#         return ticket
+                    if not page or not text:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Não foi possível localizar a página com o título 'Ficha de Registro de Empregado'.",
+                        )
 
+                    nome = re.search(
+                        r"Nome:\s*(.*?)\s*(?=Código:|Pai:|Mãe:|Nascimento:)", text
+                    )
 
-# @app.patch("/tickets/{ticket_id}/close")
-# def close_ticket(ticket_id: int):
-#     with Session(engine) as session:
-#         ticket = session.get(Tickets, ticket_id)
+                    pai = re.search(r"Pai:\s*(.*?)\s*(?=Nr\.)", text)
 
-#         if not ticket:
-#             raise HTTPException(status_code=404, detail="Ticket not found")
+                    mae = re.search(r"Mãe:\s*(.*)", text)
 
-#         ticket.is_open = False
+                    nascimento = re.search(r"Nascimento:\s*(\d{2}/\d{2}/\d{4})", text)
 
-#         ticket.closed_at = date.today()
+                    sexo = re.search(r"Sexo:\s*(\w+)", text)
 
-#         session.add(ticket)
+                    estado_civil = re.search(r"Est\.? Civil:\s*(\w+)", text)
 
-#         session.commit()
+                    raca = re.search(r"Ra[çc]a\s*/\s*Cor\s*:\s*(.+?)(?=\n|$)", text)
 
-#         return {
-#             "message": "Ticket fechado com sucesso",
-#             "closed_at": ticket.closed_at,
-#         }
+                    nacionalidade = re.search(r"Nacionalidade:\s*(.+?)(?=\n|$)", text)
 
+                    enderecos = re.findall(
+                        r"Endere[cç]o:\s*(.*?)\s*(?=Bairro:|CEP:|Munic[ií]pio:)", text
+                    )
 
-# @app.get("/tickets-comments/{id}")
-# def get_tickets_comments(id: int):
-#     with Session(engine) as session:
-#         ticket_comments = (
-#             session.exec(
-#                 select(TicketsComments, User)
-#                 .join(User, TicketsComments.comentator_id == User.id)
-#                 .where(TicketsComments.ticket_id == id)
-#                 .order_by(TicketsComments.ticket_id.asc())
-#             )
-#             .mappings()
-#             .all()
-#         )
+                    bairros = re.findall(
+                        r"Bairro:\s*(.*?)\s*(?=CEP:|Munic[ií]pio:|Endere[cç]o:)", text
+                    )
 
-#         return ticket_comments
+                    cep = re.search(r"CEP:\s*([\d\.-]+)", text)
 
+                    cpf = re.search(r"CPF:\s*([\d\.-]+)", text)
 
-# @app.post("/tickets-comments")
-# def post_tickets_comments(ticket_comment: TicketsComments):
-#     with Session(engine) as session:
-#         session.add(ticket_comment)
+                    rg = re.search(r"RG:\s*(\S+)", text)
 
-#         session.commit()
+                    ctps_numero = re.search(r"Número CTPS:\s*(\d+)", text)
 
-#         session.refresh(ticket_comment)
+                    ctps_serie = re.search(r"Série CTPS:\s*(\d+)", text)
 
-#         return ticket_comment
+                    ctps_estado = re.search(r"Estado CTPS:\s*([A-Z]{2})", text)
 
+                    pis = re.search(r"PIS:\s*([\d\.\-]+)", text)
 
-# @app.get("/tickets/responsible/{id}", response_model=list[dict])
-# def get_tickets_responsible(id: int):
-#     with Session(engine) as session:
-#         responsible_user = session.get(User, id)
+                    instrucao = re.search(r"Instru[cç][aã]o:\s*(.+?)(?=\n|$)", text)
 
-#         if not responsible_user:
-#             raise HTTPException(status_code=404, detail="Responsible user not found")
+                    banco = re.search(r"Banco:\s*(.*)", text)
 
-#         tickets = session.exec(select(Tickets).order_by(Tickets.id.desc())).all()
+                    conta = re.search(r"Conta:\s*(\d+)", text)
 
-#         filtered_tickets = []
+                    agencia = re.search(r"Agência:\s*(\d+)", text)
 
-#         for t in tickets:
-#             try:
-#                 responsible_ids = json.loads(t.responsibles_ids)
+                    db_worker = session.get(Workers, worker_id)
 
-#             except (json.JSONDecodeError, TypeError):
-#                 responsible_ids = []
+                    if db_worker:
+                        if nome:
+                            db_worker.name = nome.group(1).strip()
 
-#             if id in responsible_ids:
-#                 filtered_tickets.append((t, responsible_ids))
+                        if pai:
+                            db_worker.fathername = pai.group(1).strip()
 
-#         if not filtered_tickets:
-#             return []
+                        if mae:
+                            db_worker.mothername = mae.group(1).strip()
 
-#         requesting_ids = {t.requesting_id for t, _ in filtered_tickets}
+                        if nascimento:
+                            try:
+                                nascimento_formatada = datetime.strptime(
+                                    nascimento.group(1), "%d/%m/%Y"
+                                ).strftime("%Y-%m-%d")
 
-#         all_responsible_ids = set()
+                                db_worker.birthdate = nascimento_formatada
 
-#         service_ids = set()
+                            except ValueError:
+                                raise HTTPException(
+                                    status_code=400,
+                                    detail="Data de nascimento inválida",
+                                )
 
-#         for t, responsible_ids in filtered_tickets:
-#             all_responsible_ids.update(responsible_ids)
+                        if sexo:
+                            sexo_nome = sexo.group(1).strip().lower()
 
-#             if t.service:
-#                 service_ids.add(t.service)
+                            sexo_db = session.exec(
+                                select(Genders).where(
+                                    Genders.name.ilike(f"%{sexo_nome}%")
+                                )
+                            ).first()
 
-#         users_map = {
-#             user.id: user
-#             for user in session.exec(
-#                 select(User).where(User.id.in_(requesting_ids | all_responsible_ids))
-#             ).all()
-#         }
+                            if sexo_db:
+                                db_worker.gender_id = sexo_db.id
 
-#         services_map = {
-#             service.id: service
-#             for service in session.exec(
-#                 select(Service).where(Service.id.in_(service_ids))
-#             ).all()
-#         }
+                        if estado_civil:
+                            estado_nome = estado_civil.group(1).strip().lower()
 
-#         tickets_data = []
+                            estado_db = session.exec(
+                                select(CivilStatus).where(
+                                    CivilStatus.name.ilike(f"%{estado_nome}%")
+                                )
+                            ).first()
 
-#         for t, responsible_ids in filtered_tickets:
-#             responsibles = [
-#                 responsible.dict()
-#                 for responsible_id in responsible_ids
-#                 if (responsible := users_map.get(responsible_id))
-#             ]
+                            if estado_db:
+                                db_worker.civil_status_id = estado_db.id
 
-#             tickets_data.append(
-#                 {
-#                     "ticket_id": t.id,
-#                     "requesting": users_map.get(t.requesting_id),
-#                     "responsibles": responsibles,
-#                     "service": services_map.get(t.service),
-#                     "description": t.description,
-#                     "is_open": t.is_open,
-#                     "opened_at": t.opened_at,
-#                     "closed_at": t.closed_at,
-#                 }
-#             )
+                        if raca:
+                            raca_nome = raca.group(1).strip().lower()
 
-#         return tickets_data
+                            feminino_para_masculino = {
+                                "branca": "branco",
+                                "preta": "preto",
+                                "parda": "pardo",
+                                "amarela": "amarelo",
+                                "indígena": "indígena",
+                            }
 
+                            raca_normalizada = feminino_para_masculino.get(
+                                raca_nome, raca_nome
+                            )
 
-# @app.get("/tickets/responsible/{id}/notifications")
-# def get_tickets_responsible_notifications(id: int):
-#     with Session(engine) as session:
-#         today = date.today()
+                            raca_db = session.exec(
+                                select(Ethnicity).where(
+                                    Ethnicity.name.ilike(f"%{raca_normalizada}%")
+                                )
+                            ).first()
 
-#         start_of_week = (today - timedelta(days=today.weekday())).isoformat()
+                            if raca_db:
+                                db_worker.ethnicity_id = raca_db.id
 
-#         end_of_week = (
-#             datetime.fromisoformat(start_of_week) + timedelta(days=6)
-#         ).isoformat()
+                        if nacionalidade:
+                            nacionalidade_nome = nacionalidade.group(1).strip().lower()
 
-#         tickets = (
-#             session.exec(
-#                 select(Tickets, User, Service)
-#                 .join(User, Tickets.requesting_id == User.id)
-#                 .join(Service, Tickets.service == Service.id)
-#                 .where(Tickets.opened_at >= start_of_week)
-#                 .where(Tickets.opened_at <= end_of_week)
-#                 .where(Tickets.responsibles_ids.contains(id))
-#                 .order_by(Tickets.id.desc())
-#             )
-#             .mappings()
-#             .all()
-#         )
+                            nacionalidade_db = session.exec(
+                                select(Nationalities).where(
+                                    Nationalities.name.ilike(f"%{nacionalidade_nome}%")
+                                )
+                            ).first()
 
-#         return tickets
+                            if nacionalidade_db:
+                                db_worker.nationality = nacionalidade_db.id
 
+                        if enderecos:
+                            db_worker.street = enderecos[-1].strip()
 
-# @app.get("/subsidiaries/{id}/metrics")
-# def get_subsidiarie_metrics(id: int):
-#     with Session(engine) as session:
-#         caixas_function = session.exec(
-#             select(Function)
-#             .where(Function.subsidiarie_id == id)
-#             .where(Function.name == "Operador(a) de Caixa I")
-#         ).first()
+                        if bairros:
+                            bairro_nome = bairros[-1].strip()
 
-#         caixas_at_subsidiarie = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == id)
-#             .where(Workers.function_id == caixas_function.id)
-#         ).all()
+                            bairro_db = session.exec(
+                                select(Neighborhoods).where(
+                                    Neighborhoods.name.ilike(f"%{bairro_nome}%")
+                                )
+                            ).first()
 
-#         frentistas_function = session.exec(
-#             select(Function)
-#             .where(Function.subsidiarie_id == id)
-#             .where(Function.name == "Frentista I")
-#         ).first()
+                            if bairro_db:
+                                db_worker.neighborhood_id = bairro_db.id
 
-#         frentistas_at_subsidiarie = session.exec(
-#             select(Workers)
-#             .where(Workers.subsidiarie_id == id)
-#             .where(Workers.function_id == frentistas_function.id)
-#         ).all()
+                        if cep:
+                            db_worker.cep = cep.group(1).strip()
 
-#         caixas_ideal = caixas_function.ideal_quantity or 9
+                        if cpf:
+                            db_worker.cpf = cpf.group(1).strip()
 
-#         frentistas_ideal = frentistas_function.ideal_quantity or 18
+                        if rg:
+                            db_worker.rg = rg.group(1).strip()
 
-#         return {
-#             "caixas_quantity": len(caixas_at_subsidiarie),
-#             "caixas_ideal_quantity": caixas_ideal,
-#             "has_caixas_ideal_quantity": len(caixas_at_subsidiarie) >= caixas_ideal,
-#             "frentistas_quantity": len(frentistas_at_subsidiarie),
-#             "frentistas_ideal_quantity": frentistas_ideal,
-#             "has_frentistas_ideal_quantity": len(frentistas_at_subsidiarie)
-#             >= frentistas_ideal,
-#         }
+                        if ctps_numero:
+                            db_worker.ctps = ctps_numero.group(1).strip()
 
+                        if ctps_serie:
+                            db_worker.ctps_serie = ctps_serie.group(1).strip()
 
-# #
+                        if ctps_estado:
+                            uf = ctps_estado.group(1).strip().upper()
 
+                            estado_db = session.exec(
+                                select(States).where(States.sail == uf)
+                            ).first()
 
-# class AdmissionsReportInput(BaseModel):
-#     first_day: str
-#     last_day: str
+                            if estado_db:
+                                db_worker.ctps_state = estado_db.id
 
+                        if pis:
+                            db_worker.pis = pis.group(1).strip()
 
-# @app.post("/subsidiaries/{id}/workers/admissions-report")
-# def get_admissions_report(id: int, input: AdmissionsReportInput):
-#     with Session(engine) as session:
-#         first_day = datetime.strptime(input.first_day, "%Y-%m-%d")
+                        if instrucao:
+                            instrucao_nome = instrucao.group(1).strip().lower()
 
-#         last_day = datetime.strptime(input.last_day, "%Y-%m-%d")
+                            instrucao_db = session.exec(
+                                select(SchoolLevels).where(
+                                    SchoolLevels.name.ilike(f"%{instrucao_nome}%")
+                                )
+                            ).first()
 
-#         subsidiarie_workers = session.exec(
-#             select(Workers).where(Workers.subsidiarie_id == id)
-#         ).all()
+                            if instrucao_db:
+                                db_worker.school_level = instrucao_db.id
 
-#         result = []
+                        if banco:
+                            db_worker.bank = 1
 
-#         for worker in subsidiarie_workers:
-#             worker_admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
+                        if conta:
+                            db_worker.bank_account = conta.group(1).strip()
 
-#             if worker_admission_date >= first_day and worker_admission_date <= last_day:
-#                 result.append({"id": worker.id, "name": worker.name})
+                        if agencia:
+                            db_worker.bank_agency = agencia.group(1).strip()
 
-#         return result
+                        session.add(db_worker)
 
+                        session.commit()
 
-# class ImagePayload(BaseModel):
-#     image: str
+                EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
+                SENHA = os.environ.get("SENHA")
 
-# @app.post("/applicants/{id}/api/upload-image")
-# async def upload_image(id: int, payload: ImagePayload):
-#     with Session(engine) as session:
-#         applicant = session.exec(select(Applicants).where(Applicants.id == id)).first()
+                BCC = os.environ.get("BCC")
 
-#         if not applicant:
-#             raise HTTPException(status_code=404, detail="Applicant não encontrado")
+                msg = EmailMessage()
 
-#         applicant.picture_url = payload.image
+                msg["Subject"] = "Novo contrato de trabalho"
 
-#         applicant.identity_complete = True
+                msg["From"] = EMAIL_REMETENTE
 
-#         session.add(applicant)
+                msg["To"] = BCC
 
-#         session.commit()
+                msg.set_content(
+                    "Um novo contrato de trabalho foi anexado ao SGI, confira já!"
+                )
 
-#         print(f"Imagem salva para applicant {id}: {payload.image}")
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                    smtp.login(EMAIL_REMETENTE, SENHA)
 
-#         return {"status": "ok"}
+                    smtp.send_message(msg)
 
+            return {
+                "message": "Arquivo salvo com sucesso",
+                "id": db_doc.id,
+                "worker_id": db_doc.worker_id,
+                "doc_title": db_doc.doc_title,
+                "filename": file.filename,
+            }
 
-# class SendEmailToMabeconBodyProps(BaseModel):
-#     subsidiarie: str
-#     worker_name: str
-#     worker_admission_date: str
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}"
+        )
 
 
-# @app.post("/send-email-to-mabecon")
-# def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
-#     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+class EmailRequest(BaseModel):
+    worker_id: int
+    to: EmailStr
+    subject: str
+    body: str
 
-#     SENHA = os.environ.get("SENHA")
 
-#     MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+@app.post("/send-email")
+def send_email(request: EmailRequest):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
-#     BCC = os.environ.get("BCC")
+    SENHA = os.environ.get("SENHA")
 
-#     msg = EmailMessage()
+    BCC = os.environ.get("BCC")
 
-#     msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
+    with Session(engine) as session:
+        work_contract = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == request.worker_id)
+            .where(WorkersDocs.doc_title == "Contrato de trabalho")
+        ).first()
 
-#     msg["From"] = EMAIL_REMETENTE
+        if not work_contract or not work_contract.doc:
+            raise HTTPException(status_code=404, detail="Documento não encontrado.")
 
-#     msg["To"] = MABECON_EMAIL
+        try:
+            original_pdf = PdfReader(io.BytesIO(work_contract.doc))
 
-#     msg["Bcc"] = BCC
+            new_pdf_stream = io.BytesIO()
 
-#     msg.set_content(
-#         f"""
-#             Prezada Mabecon,
+            writer = PdfWriter()
 
-#             Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
+            for page_num in range(2, 9):
+                if page_num < len(original_pdf.pages):
+                    writer.add_page(original_pdf.pages[page_num])
 
-#             Demais informações de funcionário disponíveis em https://sgi-front-prod.onrender.com,
+            writer.write(new_pdf_stream)
 
-#             Desde já, agradecemos o serviço prestado,
+            new_pdf_stream.seek(0)
 
-#             Atenciosamente,
+            msg = EmailMessage()
 
-#             RH Postos Graciosa
-#             """
-#     )
+            msg["Subject"] = request.subject
 
-#     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#         smtp.login(EMAIL_REMETENTE, SENHA)
+            msg["From"] = EMAIL_REMETENTE
 
-#         smtp.send_message(msg)
+            msg["To"] = request.to
 
-#         return {"message": "E-mail enviado com sucesso"}
+            msg["Bcc"] = BCC
 
+            msg.set_content(request.body)
 
-# @app.post("/users/recovery-password/send-email")
-# def recovery_user_password_send_email(user: User):
-#     with Session(engine) as session:
-#         GMAIL_USER = os.environ.get("EMAIL_REMETENTE")
+            msg.add_attachment(
+                new_pdf_stream.read(),
+                maintype="application",
+                subtype="pdf",
+                filename="Contrato_paginas_3_a_9.pdf",
+            )
 
-#         GMAIL_APP_PASSWORD = os.environ.get("SENHA")
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
 
-#         db_user = session.exec(
-#             select(User).where(and_(User.name == user.name, User.email == user.email))
-#         ).first()
+                smtp.send_message(msg)
 
-#         if not db_user:
-#             raise HTTPException(status_code=404, detail="Usuário não encontrado")
+            return {"message": "E-mail enviado com sucesso com as páginas 3 e 9"}
 
-#         msg = EmailMessage()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
-#         msg["Subject"] = "Recuperação de senha"
 
-#         msg["From"] = GMAIL_USER
+@app.delete("/workers-docs/{id}")
+def delete_workers_docs(id: int):
+    with Session(engine) as session:
+        doc = session.exec(select(WorkersDocs).where(WorkersDocs.id == id)).first()
 
-#         msg["To"] = db_user.email
+        session.delete(doc)
 
-#         msg.set_content(
-#             f"""
-#             Olá {db_user.name},
+        session.commit()
 
-#             Recebemos uma solicitação para redefinir sua senha.
-#             Clique no link abaixo para continuar o processo de recuperação:
+        return {"success": True}
 
-#             https://seusite.com/recovery/{db_user.id}
 
-#             Se você não solicitou isso, ignore este e-mail.
+@app.get("/services")
+def get_services():
+    with Session(engine) as session:
+        services = session.exec(select(Service)).all()
 
-#             Atenciosamente,
-#             Equipe de Suporte
-#             """
-#         )
+        return services
 
-#         try:
-#             with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-#                 smtp.starttls()
 
-#                 smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+@app.get("/tickets/requesting/{id}", response_model=list[dict])
+def get_tickets_requesting(id: int):
+    with Session(engine) as session:
+        requesting_user = session.get(User, id)
 
-#                 smtp.send_message(msg)
+        if not requesting_user:
+            raise HTTPException(status_code=404, detail="Requesting user not found")
 
-#         except Exception as e:
-#             raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
+        tickets = session.exec(
+            select(Tickets)
+            .where(Tickets.requesting_id == id)
+            .order_by(Tickets.id.desc())
+        ).all()
 
-#         return {"message": "E-mail de recuperação enviado com sucesso"}
+        if not tickets:
+            return []
 
+        all_responsible_ids = set()
 
-# @app.get("/workers-periodic-reviews/{worker_id}")
-# def get_workers_periodic_reviews(worker_id: int):
-#     with Session(engine) as session:
-#         workers_periodic_reviews = session.exec(
-#             select(WorkersPeriodicReviews).where(
-#                 WorkersPeriodicReviews.worker_id == worker_id
-#             )
-#         ).all()
+        service_ids = set()
 
-#         result = [
-#             {
-#                 "id": review.id,
-#                 "worker_id": review.worker_id,
-#                 "label": review.label,
-#                 "date": review.date,
-#                 "answers": json.loads(review.answers),
-#             }
-#             for review in workers_periodic_reviews
-#         ]
+        for ticket in tickets:
+            try:
+                responsible_ids = json.loads(ticket.responsibles_ids)
 
-#         return result
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
 
+            all_responsible_ids.update(responsible_ids)
 
-# @app.post("/workers-periodic-reviews")
-# def post_workers_periodic_reviews(body: WorkersPeriodicReviews):
-#     with Session(engine) as session:
-#         session.add(body)
+            if ticket.service:
+                service_ids.add(ticket.service)
 
-#         session.commit()
+        responsibles_map = {
+            user.id: user
+            for user in session.exec(
+                select(User).where(User.id.in_(all_responsible_ids))
+            ).all()
+        }
 
-#         session.refresh(body)
+        services_map = {
+            service.id: service
+            for service in session.exec(
+                select(Service).where(Service.id.in_(service_ids))
+            ).all()
+        }
 
-#         return body
+        tickets_data = []
 
+        for ticket in tickets:
+            try:
+                responsible_ids = json.loads(ticket.responsibles_ids)
 
-# @app.delete("/workers-periodic-reviews/{id}")
-# def delete_workers_periodic_reviews(id: int):
-#     with Session(engine) as session:
-#         db_review = session.exec(
-#             select(WorkersPeriodicReviews).where(WorkersPeriodicReviews.id == id)
-#         ).first()
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
 
-#         session.delete(db_review)
+            responsibles = [
+                responsible.dict()
+                for responsible_id in responsible_ids
+                if (responsible := responsibles_map.get(responsible_id))
+            ]
 
-#         session.commit()
+            tickets_data.append(
+                {
+                    "ticket_id": ticket.id,
+                    "requesting": requesting_user.dict(),
+                    "responsibles": responsibles,
+                    "service": services_map.get(ticket.service),
+                    "description": ticket.description,
+                    "is_open": ticket.is_open,
+                    "opened_at": ticket.opened_at,
+                    "closed_at": ticket.closed_at,
+                }
+            )
 
-#         return {"success": True}
+        return tickets_data
 
 
-# class NrBodyProps(BaseModel):
-#     message: str
+@app.post("/tickets")
+def post_tickets(ticket: Tickets):
+    with Session(engine) as session:
+        session.add(ticket)
 
+        session.commit()
 
-# @app.post("/send-nr-20-email-to-coordinators")
-# def post_send_email_to_coordinators(body: NrBodyProps):
-#     with Session(engine) as session:
-#         managers = session.exec(select(Subsidiarie.manager)).all()
+        session.refresh(ticket)
 
-#         coordinators = session.exec(select(Subsidiarie.coordinator)).all()
+        return ticket
 
-#         staffs = set(managers + coordinators)
 
-#         EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+@app.patch("/tickets/{ticket_id}/close")
+def close_ticket(ticket_id: int):
+    with Session(engine) as session:
+        ticket = session.get(Tickets, ticket_id)
 
-#         SENHA = os.environ.get("SENHA")
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
 
-#         BCC = os.environ.get("BCC")
+        ticket.is_open = False
 
-#         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#             smtp.login(EMAIL_REMETENTE, SENHA)
+        ticket.closed_at = date.today()
 
-#             for staff_id in staffs:
-#                 user = session.get(User, staff_id)
+        session.add(ticket)
 
-#                 if not user or not user.email:
-#                     continue
+        session.commit()
 
-#                 msg = EmailMessage()
+        return {
+            "message": "Ticket fechado com sucesso",
+            "closed_at": ticket.closed_at,
+        }
 
-#                 msg["Subject"] = "Treinamento de NR-20"
 
-#                 msg["From"] = EMAIL_REMETENTE
+@app.get("/tickets-comments/{id}")
+def get_tickets_comments(id: int):
+    with Session(engine) as session:
+        ticket_comments = (
+            session.exec(
+                select(TicketsComments, User)
+                .join(User, TicketsComments.comentator_id == User.id)
+                .where(TicketsComments.ticket_id == id)
+                .order_by(TicketsComments.ticket_id.asc())
+            )
+            .mappings()
+            .all()
+        )
 
-#                 msg["To"] = user.email
+        return ticket_comments
 
-#                 if BCC:
-#                     msg["Bcc"] = BCC
 
-#                 msg.set_content(body.message)
+@app.post("/tickets-comments")
+def post_tickets_comments(ticket_comment: TicketsComments):
+    with Session(engine) as session:
+        session.add(ticket_comment)
 
-#                 smtp.send_message(msg)
+        session.commit()
 
-#     return {"message": "E-mails enviados com sucesso"}
+        session.refresh(ticket_comment)
 
+        return ticket_comment
 
-# @app.post("/workers/{id}/send-ficha-contabilidade-to-mabecon")
-# def send_ficha_contabilidade(id: int):
-#     with Session(engine) as session:
-#         db_worker_doc = session.exec(
-#             select(WorkersDocs)
-#             .where(WorkersDocs.worker_id == id)
-#             .where(WorkersDocs.doc_title == "Ficha da contabilidade")
-#         ).first()
 
-#         if not db_worker_doc:
-#             raise HTTPException(status_code=404, detail="Documento não encontrado.")
+@app.get("/tickets/responsible/{id}", response_model=list[dict])
+def get_tickets_responsible(id: int):
+    with Session(engine) as session:
+        responsible_user = session.get(User, id)
 
-#         EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+        if not responsible_user:
+            raise HTTPException(status_code=404, detail="Responsible user not found")
 
-#         MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+        tickets = session.exec(select(Tickets).order_by(Tickets.id.desc())).all()
 
-#         SENHA = os.environ.get("SENHA")
+        filtered_tickets = []
 
-#         BCC = os.environ.get("BCC")
+        for t in tickets:
+            try:
+                responsible_ids = json.loads(t.responsibles_ids)
 
-#         filename = "ficha_contabilidade.xls"
+            except (json.JSONDecodeError, TypeError):
+                responsible_ids = []
 
-#         maintype = "application"
+            if id in responsible_ids:
+                filtered_tickets.append((t, responsible_ids))
 
-#         subtype = "vnd.ms-excel"
+        if not filtered_tickets:
+            return []
 
-#         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#             smtp.login(EMAIL_REMETENTE, SENHA)
+        requesting_ids = {t.requesting_id for t, _ in filtered_tickets}
 
-#             msg = EmailMessage()
+        all_responsible_ids = set()
 
-#             msg["Subject"] = "Encaminhamento ficha da contabilidade"
+        service_ids = set()
 
-#             msg["From"] = EMAIL_REMETENTE
+        for t, responsible_ids in filtered_tickets:
+            all_responsible_ids.update(responsible_ids)
 
-#             msg["To"] = MABECON_EMAIL
+            if t.service:
+                service_ids.add(t.service)
 
-#             if BCC:
-#                 msg["Bcc"] = BCC
+        users_map = {
+            user.id: user
+            for user in session.exec(
+                select(User).where(User.id.in_(requesting_ids | all_responsible_ids))
+            ).all()
+        }
 
-#             msg.set_content("Encaminhamento de ficha da contabilidade")
+        services_map = {
+            service.id: service
+            for service in session.exec(
+                select(Service).where(Service.id.in_(service_ids))
+            ).all()
+        }
 
-#             msg.add_attachment(
-#                 db_worker_doc.doc, maintype=maintype, subtype=subtype, filename=filename
-#             )
+        tickets_data = []
 
-#             smtp.send_message(msg)
+        for t, responsible_ids in filtered_tickets:
+            responsibles = [
+                responsible.dict()
+                for responsible_id in responsible_ids
+                if (responsible := users_map.get(responsible_id))
+            ]
 
-#         return {"message": "E-mail enviado com sucesso"}
+            tickets_data.append(
+                {
+                    "ticket_id": t.id,
+                    "requesting": users_map.get(t.requesting_id),
+                    "responsibles": responsibles,
+                    "service": services_map.get(t.service),
+                    "description": t.description,
+                    "is_open": t.is_open,
+                    "opened_at": t.opened_at,
+                    "closed_at": t.closed_at,
+                }
+            )
 
+        return tickets_data
 
-# @app.post("/workers/{id}/send-docs-to-mabecon")
-# def send_all_docs_to_mabecon(id: int):
-#     EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
 
-#     SENHA = os.environ["SENHA"]
+@app.get("/tickets/responsible/{id}/notifications")
+def get_tickets_responsible_notifications(id: int):
+    with Session(engine) as session:
+        today = date.today()
 
-#     MABECON_EMAIL = os.environ["MABECON_EMAIL"]
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
 
-#     BCC = os.environ.get("BCC")
+        end_of_week = (
+            datetime.fromisoformat(start_of_week) + timedelta(days=6)
+        ).isoformat()
 
-#     with Session(engine) as session:
-#         docs_with_worker = session.exec(
-#             select(WorkersDocs, Workers)
-#             .join(Workers, Workers.id == WorkersDocs.worker_id)
-#             .where(Workers.id == id)
-#         ).all()
+        tickets = (
+            session.exec(
+                select(Tickets, User, Service)
+                .join(User, Tickets.requesting_id == User.id)
+                .join(Service, Tickets.service == Service.id)
+                .where(Tickets.opened_at >= start_of_week)
+                .where(Tickets.opened_at <= end_of_week)
+                .where(Tickets.responsibles_ids.contains(id))
+                .order_by(Tickets.id.desc())
+            )
+            .mappings()
+            .all()
+        )
 
-#         if not docs_with_worker:
-#             raise HTTPException(status_code=404, detail="Nenhum documento encontrado.")
+        return tickets
 
-#         worker = docs_with_worker[0][1]
 
-#         docs = [d[0] for d in docs_with_worker]
+@app.get("/subsidiaries/{id}/metrics")
+def get_subsidiarie_metrics(id: int):
+    with Session(engine) as session:
+        caixas_function = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == id)
+            .where(Function.name == "Operador(a) de Caixa I")
+        ).first()
 
-#         worker_subsidiarie = session.get(Subsidiarie, worker.subsidiarie_id)
+        caixas_at_subsidiarie = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == caixas_function.id)
+        ).all()
 
-#         worker_gender = session.get(Genders, worker.gender_id)
+        frentistas_function = session.exec(
+            select(Function)
+            .where(Function.subsidiarie_id == id)
+            .where(Function.name == "Frentista I")
+        ).first()
 
-#         worker_civil_status = session.get(CivilStatus, worker.civil_status_id)
+        frentistas_at_subsidiarie = session.exec(
+            select(Workers)
+            .where(Workers.subsidiarie_id == id)
+            .where(Workers.function_id == frentistas_function.id)
+        ).all()
 
-#         worker_neighborhood = session.get(Neighborhoods, worker.neighborhood_id)
+        caixas_ideal = caixas_function.ideal_quantity or 9
 
-#         worker_city = session.get(Cities, worker_neighborhood.city_id)
+        frentistas_ideal = frentistas_function.ideal_quantity or 18
 
-#         worker_state = session.get(States, worker_city.state_id)
+        return {
+            "caixas_quantity": len(caixas_at_subsidiarie),
+            "caixas_ideal_quantity": caixas_ideal,
+            "has_caixas_ideal_quantity": len(caixas_at_subsidiarie) >= caixas_ideal,
+            "frentistas_quantity": len(frentistas_at_subsidiarie),
+            "frentistas_ideal_quantity": frentistas_ideal,
+            "has_frentistas_ideal_quantity": len(frentistas_at_subsidiarie)
+            >= frentistas_ideal,
+        }
 
-#         worker_ethnicity = session.get(Ethnicity, worker.ethnicity_id)
 
-#         worker_birthcity = session.get(Cities, worker.birthcity)
+#
 
-#         worker_birthstate = "session.get(States, worker.birthstate)"
 
-#         worker_nationalitie = (
-#             "session.get(Nationalities, worker_birthstate.nationalities_id)"
-#         )
+class AdmissionsReportInput(BaseModel):
+    first_day: str
+    last_day: str
 
-#         has_children = session.exec(
-#             select(WorkersParents).where(WorkersParents.worker_id == worker.id)
-#         ).first()
 
-#         msg = EmailMessage()
+@app.post("/subsidiaries/{id}/workers/admissions-report")
+def get_admissions_report(id: int, input: AdmissionsReportInput):
+    with Session(engine) as session:
+        first_day = datetime.strptime(input.first_day, "%Y-%m-%d")
 
-#         msg["Subject"] = (
-#             f"Encaminhamento de documentos do colaborador {worker.name} para admissão"
-#         )
+        last_day = datetime.strptime(input.last_day, "%Y-%m-%d")
 
-#         msg["From"] = EMAIL_REMETENTE
+        subsidiarie_workers = session.exec(
+            select(Workers).where(Workers.subsidiarie_id == id)
+        ).all()
 
-#         msg["To"] = MABECON_EMAIL
+        result = []
 
-#         if BCC:
-#             msg["Bcc"] = BCC
+        for worker in subsidiarie_workers:
+            worker_admission_date = datetime.strptime(worker.admission_date, "%Y-%m-%d")
 
-#         msg.set_content(
-#             f"Segue em anexo os documentos do colaborador {worker.name} para admissão"
-#         )
+            if worker_admission_date >= first_day and worker_admission_date <= last_day:
+                result.append({"id": worker.id, "name": worker.name})
 
-#         original_path = "./assets/ficha_da_contabilidade.xlsx"
+        return result
 
-#         wb = load_workbook(original_path)
 
-#         ws = wb.active
+class ImagePayload(BaseModel):
+    image: str
 
-#         ws["H1"].value = worker_subsidiarie.name
 
-#         ws["H4"].value = worker.name
+@app.post("/applicants/{id}/api/upload-image")
+async def upload_image(id: int, payload: ImagePayload):
+    with Session(engine) as session:
+        applicant = session.exec(select(Applicants).where(Applicants.id == id)).first()
 
-#         ws["AA4"].value = worker_gender.name
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant não encontrado")
 
-#         ws["AI4"].value = worker_civil_status.name
+        applicant.picture_url = payload.image
 
-#         ws["J6"].value = worker.street
+        applicant.identity_complete = True
 
-#         ws["Y6"].value = worker.street_number
+        session.add(applicant)
 
-#         ws["AJ6"].value = worker.street_complement
+        session.commit()
 
-#         ws["H7"].value = worker_neighborhood.name
+        print(f"Imagem salva para applicant {id}: {payload.image}")
 
-#         ws["X7"].value = worker.cep
+        return {"status": "ok"}
 
-#         ws["AD7"].value = worker_city.name
 
-#         ws["AM7"].value = worker_state.name
+class SendEmailToMabeconBodyProps(BaseModel):
+    subsidiarie: str
+    worker_name: str
+    worker_admission_date: str
 
-#         ws["H9"].value = worker.phone
 
-#         ws["O9"].value = worker.mobile
+@app.post("/send-email-to-mabecon")
+def post_send_email_to_mabecon(body: SendEmailToMabeconBodyProps):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
-#         ws["Y9"].value = worker.email
+    SENHA = os.environ.get("SENHA")
 
-#         ws["AL9"].value = worker_ethnicity.name
+    MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
 
-#         ws["H10"].value = worker.birthdate
+    BCC = os.environ.get("BCC")
 
-#         ws["R10"].value = worker_birthcity.name
+    msg = EmailMessage()
 
-#         ws["AB10"].value = worker_birthstate
+    msg["Subject"] = f"Solicitação de admissão para {body.worker_name}"
 
-#         ws["AJ10"].value = worker_nationalitie
+    msg["From"] = EMAIL_REMETENTE
 
-#         ws["H11"].value = worker.mothername
+    msg["To"] = MABECON_EMAIL
 
-#         ws["AF11"].value = worker.fathername
+    msg["Bcc"] = BCC
 
-#         ws["H17"].value = worker.cpf
+    msg.set_content(
+        f"""
+            Prezada Mabecon,
 
-#         ws["H18"].value = worker.rg
+            Solicitamos a admissão de {body.worker_name} para {body.subsidiarie}, com data prevista de ínicio para {body.worker_admission_date},
 
-#         ws["R18"].value = worker.rg_issuing_agency
+            Demais informações de funcionário disponíveis em https://sgi-front-prod.onrender.com,
 
-#         ws["X18"].value = (session.get(States, worker.rg_state)).name
+            Desde já, agradecemos o serviço prestado,
 
-#         ws["AA18"].value = worker.rg_expedition_date
+            Atenciosamente,
 
-#         ws["H19"].value = worker.military_cert_number
+            RH Postos Graciosa
+            """
+    )
 
-#         ws["H20"].value = worker.pis
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_REMETENTE, SENHA)
 
-#         ws["W20"].value = worker.pis_register_date
+        smtp.send_message(msg)
 
-#         ws["H21"].value = worker.votant_title
+        return {"message": "E-mail enviado com sucesso"}
 
-#         ws["R21"].value = worker.votant_zone
 
-#         ws["Y21"].value = worker.votant_session
+@app.post("/users/recovery-password/send-email")
+def recovery_user_password_send_email(user: User):
+    with Session(engine) as session:
+        GMAIL_USER = os.environ.get("EMAIL_REMETENTE")
 
-#         ws["H22"].value = worker.ctps
+        GMAIL_APP_PASSWORD = os.environ.get("SENHA")
 
-#         ws["M22"].value = worker.ctps_serie
+        db_user = session.exec(
+            select(User).where(and_(User.name == user.name, User.email == user.email))
+        ).first()
 
-#         ws["R22"].value = (session.get(States, worker.ctps_state)).name
+        if not db_user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-#         ws["Y22"].value = worker.ctps_emission_date
+        msg = EmailMessage()
 
-#         ws["H23"].value = worker.cnh
+        msg["Subject"] = "Recuperação de senha"
 
-#         ws["T23"].value = (session.get(CnhCategories, worker.cnh_category)).name
+        msg["From"] = GMAIL_USER
 
-#         ws["Z23"].value = worker.cnh_emition_date
+        msg["To"] = db_user.email
 
-#         ws["AI23"].value = worker.cnh_valid_date
+        msg.set_content(
+            f"""
+            Olá {db_user.name},
 
-#         ws["H30"].value = session.get(Function, worker.function_id).name
+            Recebemos uma solicitação para redefinir sua senha.
+            Clique no link abaixo para continuar o processo de recuperação:
 
-#         ws["W30"].value = worker.admission_date
+            https://seusite.com/recovery/{db_user.id}
 
-#         ws["AD30"].value = worker.month_wage
+            Se você não solicitou isso, ignore este e-mail.
 
-#         ws["AJ30"].value = worker.hour_wage
+            Atenciosamente,
+            Equipe de Suporte
+            """
+        )
 
-#         ws["AL30"].value = worker.propotional_payment
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+                smtp.starttls()
 
-#         if has_children:
-#             ws["C15"].value = "X"
-#         else:
-#             ws["F15"].value = "X"
+                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
 
-#         if worker.first_job == True:  # noqa: E712
-#             ws["H25"].value = "X"
-#         else:
-#             ws["H26"].value = "X"
+                smtp.send_message(msg)
 
-#         if worker.was_employee == True:  # noqa: E712
-#             ws["O25"].value = "X"
-#         else:
-#             ws["O26"].value = "X"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 
-#         if worker.union_contribute_current_year == True:  # noqa: E712
-#             ws["W25"].value = "X"
-#         else:
-#             ws["W26"].value = "X"
+        return {"message": "E-mail de recuperação enviado com sucesso"}
 
-#         if worker.receiving_unemployment_insurance == True:  # noqa: E712
-#             ws["AA25"].value = "X"
-#         else:
-#             ws["AA26"].value = "X"
 
-#         if worker.previous_experience == True:  # noqa: E712
-#             ws["AK25"].value = "X"
-#         else:
-#             ws["AK26"].value = "X"
+@app.get("/workers-periodic-reviews/{worker_id}")
+def get_workers_periodic_reviews(worker_id: int):
+    with Session(engine) as session:
+        workers_periodic_reviews = session.exec(
+            select(WorkersPeriodicReviews).where(
+                WorkersPeriodicReviews.worker_id == worker_id
+            )
+        ).all()
 
-#         if worker.transport_voucher == True:  # noqa: E712
-#             ws["B35"].value = "X"
+        result = [
+            {
+                "id": review.id,
+                "worker_id": review.worker_id,
+                "label": review.label,
+                "date": review.date,
+                "answers": json.loads(review.answers),
+            }
+            for review in workers_periodic_reviews
+        ]
 
-#             ws["G36"].value = worker.transport_voucher_quantity
-#         else:
-#             ws["B36"].value = "X"
+        return result
 
-#         ws["B39"].value = "X"
 
-#         ws["F39"].value = "X"
+@app.post("/workers-periodic-reviews")
+def post_workers_periodic_reviews(body: WorkersPeriodicReviews):
+    with Session(engine) as session:
+        session.add(body)
 
-#         ws["H41"].value = "X"
+        session.commit()
 
-#         ws["AJ44"].value = worker.ag
+        session.refresh(body)
 
-#         ws["AM44"].value = worker.cc
+        return body
 
-#         temp_dir = tempfile.mkdtemp()
 
-#         modified_excel_path = os.path.join(
-#             temp_dir, "ficha_da_contabilidade_modificada.xlsx"
-#         )
+@app.delete("/workers-periodic-reviews/{id}")
+def delete_workers_periodic_reviews(id: int):
+    with Session(engine) as session:
+        db_review = session.exec(
+            select(WorkersPeriodicReviews).where(WorkersPeriodicReviews.id == id)
+        ).first()
 
-#         wb.save(modified_excel_path)
+        session.delete(db_review)
 
-#         with open(modified_excel_path, "rb") as f:
-#             msg.add_attachment(
-#                 f.read(),
-#                 maintype="application",
-#                 subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#                 filename="ficha_da_contabilidade.xlsx",
-#             )
+        session.commit()
 
-#         ext_map = {
-#             "Ficha da contabilidade": (
-#                 "ficha_da_contabilidade.xlsx",
-#                 "application",
-#                 "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#             )
-#         }
+        return {"success": True}
 
-#         for doc in docs:
-#             if doc.doc_title == "Ficha da contabilidade":
-#                 continue
 
-#             filename, maintype, subtype = ext_map.get(
-#                 doc.doc_title, (f"{doc.doc_title}.pdf", "application", "pdf")
-#             )
+class NrBodyProps(BaseModel):
+    message: str
 
-#             msg.add_attachment(
-#                 doc.doc, maintype=maintype, subtype=subtype, filename=filename
-#             )
 
-#         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#             smtp.login(EMAIL_REMETENTE, SENHA)
+@app.post("/send-nr-20-email-to-coordinators")
+def post_send_email_to_coordinators(body: NrBodyProps):
+    with Session(engine) as session:
+        managers = session.exec(select(Subsidiarie.manager)).all()
 
-#             smtp.send_message(msg)
+        coordinators = session.exec(select(Subsidiarie.coordinator)).all()
 
-#     return {"message": "E-mail enviado com sucesso com todos os documentos."}
+        staffs = set(managers + coordinators)
 
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 
-# @app.post("/send-vacations-email")
-# def send_vacations_email(request: EmailRequest):
-#     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+        SENHA = os.environ.get("SENHA")
 
-#     SENHA = os.environ.get("SENHA")
+        BCC = os.environ.get("BCC")
 
-#     BCC = os.environ.get("BCC")
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
 
-#     with Session(engine) as session:
-#         vacation_report = session.exec(
-#             select(WorkersDocs)
-#             .where(WorkersDocs.worker_id == request.worker_id)
-#             .where(WorkersDocs.doc_title == "Relatório de férias")
-#         ).first()
+            for staff_id in staffs:
+                user = session.get(User, staff_id)
 
-#         if not vacation_report or not vacation_report.doc:
-#             raise HTTPException(
-#                 status_code=404, detail="Relatório de férias não encontrado."
-#             )
+                if not user or not user.email:
+                    continue
 
-#         try:
-#             msg = EmailMessage()
+                msg = EmailMessage()
 
-#             msg["Subject"] = request.subject
+                msg["Subject"] = "Treinamento de NR-20"
 
-#             msg["From"] = EMAIL_REMETENTE
+                msg["From"] = EMAIL_REMETENTE
 
-#             msg["To"] = request.to
+                msg["To"] = user.email
 
-#             msg["Bcc"] = BCC
+                if BCC:
+                    msg["Bcc"] = BCC
 
-#             msg.set_content(request.body)
+                msg.set_content(body.message)
 
-#             msg.add_attachment(
-#                 vacation_report.doc,
-#                 maintype="application",
-#                 subtype="pdf",
-#                 filename="Relatorio_de_ferias.pdf",
-#             )
+                smtp.send_message(msg)
 
-#             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-#                 smtp.login(EMAIL_REMETENTE, SENHA)
+    return {"message": "E-mails enviados com sucesso"}
 
-#                 smtp.send_message(msg)
 
-#             return {"message": "E-mail enviado com sucesso com o Relatório de Férias"}
+@app.post("/workers/{id}/send-ficha-contabilidade-to-mabecon")
+def send_ficha_contabilidade(id: int):
+    with Session(engine) as session:
+        db_worker_doc = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == id)
+            .where(WorkersDocs.doc_title == "Ficha da contabilidade")
+        ).first()
 
-#         except Exception as e:
-#             raise HTTPException(status_code=500, detail=str(e))
+        if not db_worker_doc:
+            raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+        EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+        MABECON_EMAIL = os.environ.get("MABECON_EMAIL")
+
+        SENHA = os.environ.get("SENHA")
+
+        BCC = os.environ.get("BCC")
+
+        filename = "ficha_contabilidade.xls"
+
+        maintype = "application"
+
+        subtype = "vnd.ms-excel"
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            msg = EmailMessage()
+
+            msg["Subject"] = "Encaminhamento ficha da contabilidade"
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = MABECON_EMAIL
+
+            if BCC:
+                msg["Bcc"] = BCC
+
+            msg.set_content("Encaminhamento de ficha da contabilidade")
+
+            msg.add_attachment(
+                db_worker_doc.doc, maintype=maintype, subtype=subtype, filename=filename
+            )
+
+            smtp.send_message(msg)
+
+        return {"message": "E-mail enviado com sucesso"}
+
+
+@app.post("/workers/{id}/send-docs-to-mabecon")
+def send_all_docs_to_mabecon(id: int):
+    EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
+
+    SENHA = os.environ["SENHA"]
+
+    MABECON_EMAIL = os.environ["MABECON_EMAIL"]
+
+    BCC = os.environ.get("BCC")
+
+    with Session(engine) as session:
+        docs_with_worker = session.exec(
+            select(WorkersDocs, Workers)
+            .join(Workers, Workers.id == WorkersDocs.worker_id)
+            .where(Workers.id == id)
+        ).all()
+
+        if not docs_with_worker:
+            raise HTTPException(status_code=404, detail="Nenhum documento encontrado.")
+
+        worker = docs_with_worker[0][1]
+
+        docs = [d[0] for d in docs_with_worker]
+
+        worker_subsidiarie = session.get(Subsidiarie, worker.subsidiarie_id)
+
+        worker_gender = session.get(Genders, worker.gender_id)
+
+        worker_civil_status = session.get(CivilStatus, worker.civil_status_id)
+
+        worker_neighborhood = session.get(Neighborhoods, worker.neighborhood_id)
+
+        worker_city = session.get(Cities, worker_neighborhood.city_id)
+
+        worker_state = session.get(States, worker_city.state_id)
+
+        worker_ethnicity = session.get(Ethnicity, worker.ethnicity_id)
+
+        worker_birthcity = session.get(Cities, worker.birthcity)
+
+        worker_birthstate = "session.get(States, worker.birthstate)"
+
+        worker_nationalitie = (
+            "session.get(Nationalities, worker_birthstate.nationalities_id)"
+        )
+
+        has_children = session.exec(
+            select(WorkersParents).where(WorkersParents.worker_id == worker.id)
+        ).first()
+
+        msg = EmailMessage()
+
+        msg["Subject"] = (
+            f"Encaminhamento de documentos do colaborador {worker.name} para admissão"
+        )
+
+        msg["From"] = EMAIL_REMETENTE
+
+        msg["To"] = MABECON_EMAIL
+
+        if BCC:
+            msg["Bcc"] = BCC
+
+        msg.set_content(
+            f"Segue em anexo os documentos do colaborador {worker.name} para admissão"
+        )
+
+        original_path = "./assets/ficha_da_contabilidade.xlsx"
+
+        wb = load_workbook(original_path)
+
+        ws = wb.active
+
+        ws["H1"].value = worker_subsidiarie.name
+
+        ws["H4"].value = worker.name
+
+        ws["AA4"].value = worker_gender.name
+
+        ws["AI4"].value = worker_civil_status.name
+
+        ws["J6"].value = worker.street
+
+        ws["Y6"].value = worker.street_number
+
+        ws["AJ6"].value = worker.street_complement
+
+        ws["H7"].value = worker_neighborhood.name
+
+        ws["X7"].value = worker.cep
+
+        ws["AD7"].value = worker_city.name
+
+        ws["AM7"].value = worker_state.name
+
+        ws["H9"].value = worker.phone
+
+        ws["O9"].value = worker.mobile
+
+        ws["Y9"].value = worker.email
+
+        ws["AL9"].value = worker_ethnicity.name
+
+        ws["H10"].value = worker.birthdate
+
+        ws["R10"].value = worker_birthcity.name
+
+        ws["AB10"].value = worker_birthstate
+
+        ws["AJ10"].value = worker_nationalitie
+
+        ws["H11"].value = worker.mothername
+
+        ws["AF11"].value = worker.fathername
+
+        ws["H17"].value = worker.cpf
+
+        ws["H18"].value = worker.rg
+
+        ws["R18"].value = worker.rg_issuing_agency
+
+        ws["X18"].value = (session.get(States, worker.rg_state)).name
+
+        ws["AA18"].value = worker.rg_expedition_date
+
+        ws["H19"].value = worker.military_cert_number
+
+        ws["H20"].value = worker.pis
+
+        ws["W20"].value = worker.pis_register_date
+
+        ws["H21"].value = worker.votant_title
+
+        ws["R21"].value = worker.votant_zone
+
+        ws["Y21"].value = worker.votant_session
+
+        ws["H22"].value = worker.ctps
+
+        ws["M22"].value = worker.ctps_serie
+
+        ws["R22"].value = (session.get(States, worker.ctps_state)).name
+
+        ws["Y22"].value = worker.ctps_emission_date
+
+        ws["H23"].value = worker.cnh
+
+        ws["T23"].value = (session.get(CnhCategories, worker.cnh_category)).name
+
+        ws["Z23"].value = worker.cnh_emition_date
+
+        ws["AI23"].value = worker.cnh_valid_date
+
+        ws["H30"].value = session.get(Function, worker.function_id).name
+
+        ws["W30"].value = worker.admission_date
+
+        ws["AD30"].value = worker.month_wage
+
+        ws["AJ30"].value = worker.hour_wage
+
+        ws["AL30"].value = worker.propotional_payment
+
+        if has_children:
+            ws["C15"].value = "X"
+        else:
+            ws["F15"].value = "X"
+
+        if worker.first_job == True:  # noqa: E712
+            ws["H25"].value = "X"
+        else:
+            ws["H26"].value = "X"
+
+        if worker.was_employee == True:  # noqa: E712
+            ws["O25"].value = "X"
+        else:
+            ws["O26"].value = "X"
+
+        if worker.union_contribute_current_year == True:  # noqa: E712
+            ws["W25"].value = "X"
+        else:
+            ws["W26"].value = "X"
+
+        if worker.receiving_unemployment_insurance == True:  # noqa: E712
+            ws["AA25"].value = "X"
+        else:
+            ws["AA26"].value = "X"
+
+        if worker.previous_experience == True:  # noqa: E712
+            ws["AK25"].value = "X"
+        else:
+            ws["AK26"].value = "X"
+
+        if worker.transport_voucher == True:  # noqa: E712
+            ws["B35"].value = "X"
+
+            ws["G36"].value = worker.transport_voucher_quantity
+        else:
+            ws["B36"].value = "X"
+
+        ws["B39"].value = "X"
+
+        ws["F39"].value = "X"
+
+        ws["H41"].value = "X"
+
+        ws["AJ44"].value = worker.ag
+
+        ws["AM44"].value = worker.cc
+
+        temp_dir = tempfile.mkdtemp()
+
+        modified_excel_path = os.path.join(
+            temp_dir, "ficha_da_contabilidade_modificada.xlsx"
+        )
+
+        wb.save(modified_excel_path)
+
+        with open(modified_excel_path, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename="ficha_da_contabilidade.xlsx",
+            )
+
+        ext_map = {
+            "Ficha da contabilidade": (
+                "ficha_da_contabilidade.xlsx",
+                "application",
+                "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        }
+
+        for doc in docs:
+            if doc.doc_title == "Ficha da contabilidade":
+                continue
+
+            filename, maintype, subtype = ext_map.get(
+                doc.doc_title, (f"{doc.doc_title}.pdf", "application", "pdf")
+            )
+
+            msg.add_attachment(
+                doc.doc, maintype=maintype, subtype=subtype, filename=filename
+            )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_REMETENTE, SENHA)
+
+            smtp.send_message(msg)
+
+    return {"message": "E-mail enviado com sucesso com todos os documentos."}
+
+
+@app.post("/send-vacations-email")
+def send_vacations_email(request: EmailRequest):
+    EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+
+    SENHA = os.environ.get("SENHA")
+
+    BCC = os.environ.get("BCC")
+
+    with Session(engine) as session:
+        vacation_report = session.exec(
+            select(WorkersDocs)
+            .where(WorkersDocs.worker_id == request.worker_id)
+            .where(WorkersDocs.doc_title == "Relatório de férias")
+        ).first()
+
+        if not vacation_report or not vacation_report.doc:
+            raise HTTPException(
+                status_code=404, detail="Relatório de férias não encontrado."
+            )
+
+        try:
+            msg = EmailMessage()
+
+            msg["Subject"] = request.subject
+
+            msg["From"] = EMAIL_REMETENTE
+
+            msg["To"] = request.to
+
+            msg["Bcc"] = BCC
+
+            msg.set_content(request.body)
+
+            msg.add_attachment(
+                vacation_report.doc,
+                maintype="application",
+                subtype="pdf",
+                filename="Relatorio_de_ferias.pdf",
+            )
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(EMAIL_REMETENTE, SENHA)
+
+                smtp.send_message(msg)
+
+            return {"message": "E-mail enviado com sucesso com o Relatório de Férias"}
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

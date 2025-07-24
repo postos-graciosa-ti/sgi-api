@@ -131,7 +131,7 @@ def on_startup():
 
 # include backup routes
 
-app.include_router(backup_routes)
+# app.include_router(backup_routes)
 
 # include public routes
 
@@ -142,6 +142,74 @@ for public_route in public_routes:
 
 for private_route in private_routes:
     app.include_router(private_route)
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+EMAIL_ORIGEM = "postosgraciosati@gmail.com"
+SENHA_APP = "ywog lshz tzdn nvru"
+EMAIL_DESTINO = "postosgraciosati@gmail.com"
+NOME_ARQUIVO = "database.db"  # arquivo na raiz
+
+
+def enviar_email(caminho_arquivo: str):
+    if not os.path.isfile(caminho_arquivo):
+        raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
+
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_ORIGEM
+    msg["To"] = EMAIL_DESTINO
+    msg["Subject"] = "Backup do banco SQLite"
+
+    with open(caminho_arquivo, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(f.read())
+
+    encoders.encode_base64(part)
+    part.add_header(
+        "Content-Disposition",
+        f'attachment; filename="{os.path.basename(caminho_arquivo)}"',
+    )
+    msg.attach(part)
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.login(EMAIL_ORIGEM, SENHA_APP)
+        smtp.send_message(msg)
+
+
+@app.post("/enviar-backup")
+async def enviar_backup():
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)  # raiz do processo
+    if not os.path.isfile(caminho_db):
+        raise HTTPException(
+            status_code=404, detail=f"Arquivo '{NOME_ARQUIVO}' não encontrado na raiz."
+        )
+
+    try:
+        enviar_email(caminho_db)
+        return {"status": "success", "message": "Backup enviado por e-mail."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
+
+
+NOME_ARQUIVO = "database.db"
+
+
+@app.post("/substituir-db")
+async def substituir_db(file: UploadFile = File(...)):
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
+
+    try:
+        # Salvar o arquivo enviado sobrescrevendo o database.db
+        with open(caminho_db, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar arquivo: {e}")
+
+    return {
+        "status": "success",
+        "message": f"Arquivo '{NOME_ARQUIVO}' substituído com sucesso.",
+    }
 
 
 class HireApplicantsRequestProps(BaseModel):

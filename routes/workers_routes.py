@@ -26,6 +26,7 @@ from controllers.workers import (
     handle_post_worker_notation,
     handle_put_worker,
     handle_reactivate_worker,
+    handle_update_worker_metrics,
     handle_worker_away,
 )
 from controllers.workers_first_review import (
@@ -52,6 +53,7 @@ from controllers.workers_second_review import (
 from functions.auth import AuthUser, verify_token
 from models.workers import (
     GetWorkersVtReportBody,
+    MetricsUpdateRequest,
     PatchWorkersTurnBody,
     RequestBadgesBody,
     WorkerDeactivateInput,
@@ -311,3 +313,8 @@ def get_workers_metrics_by_id(id: int):
 @workers_routes.post("/workers-metrics")
 def post_workers_metrics(workers_metrics: WorkersMetrics):
     return handle_post_workers_metrics(workers_metrics)
+
+
+@workers_routes.patch("/workers-metrics/{metrics_id}")
+def update_worker_metrics(metrics_id: int, body: MetricsUpdateRequest):
+    return handle_update_worker_metrics(metrics_id, body)

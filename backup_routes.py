@@ -5,101 +5,94 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
+from decouple import config
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlmodel import create_engine
 
+from config.database import reconectar_banco
 from functions.verify_api_key import verify_api_key
+
+NOME_ARQUIVO = "database.db"
+
+DATABASE_URL = f"sqlite:///{os.path.join(os.getcwd(), NOME_ARQUIVO)}"
+
+SMTP_SERVER = config("SMTP_SERVER")
+
+SMTP_PORT = config("SMTP_PORT")
+
+EMAIL_ORIGEM = config("EMAIL_REMETENTE")
+
+SENHA_APP = config("SENHA")
+
+EMAIL_DESTINO = config("EMAIL_REMETENTE")
+
+FRONT_URL = config("FRONT_URL")
+
+API_KEY = config("API_KEY")
 
 backup_routes = APIRouter(dependencies=[Depends(verify_api_key)])
 
-FILE_NAME = os.environ.get("FILE_NAME", "database.db")
+
+def enviar_email(caminho_arquivo: str):
+    if not os.path.isfile(caminho_arquivo):
+        raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
+
+    msg = MIMEMultipart()
+
+    msg["From"] = EMAIL_ORIGEM
+
+    msg["To"] = EMAIL_DESTINO
+
+    msg["Subject"] = "Backup do banco SQLite"
+
+    with open(caminho_arquivo, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+
+        part.set_payload(f.read())
+
+    encoders.encode_base64(part)
+
+    part.add_header("Content-Disposition", f'attachment; filename="{NOME_ARQUIVO}"')
+
+    msg.attach(part)
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+
+        smtp.login(EMAIL_ORIGEM, SENHA_APP)
+
+        smtp.send_message(msg)
 
 
-@backup_routes.post("/send-backup")
-async def send_backup():
-    SMTP_SERVER = os.environ.get("SMTP_SERVER")
+@backup_routes.post("/enviar-backup")
+async def enviar_backup():
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
 
-    SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-
-    EMAIL_SENDER = os.environ.get("EMAIL_REMETENTE")
-
-    APP_PASSWORD = os.environ.get("SENHA")
-
-    EMAIL_RECIPIENT = os.environ.get("EMAIL_REMETENTE")
-
-    EMAIL_CC = os.environ.get("BCC")
-
-    if not all([SMTP_SERVER, EMAIL_SENDER, APP_PASSWORD, EMAIL_RECIPIENT]):
-        raise HTTPException(
-            status_code=500,
-            detail="Missing environment variables required to send email.",
-        )
-
-    file_path = os.path.join(os.getcwd(), FILE_NAME)
-
-    if not os.path.isfile(file_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"File '{FILE_NAME}' not found in the root directory.",
-        )
+    if not os.path.isfile(caminho_db):
+        raise HTTPException(status_code=404, detail="Arquivo do banco não encontrado.")
 
     try:
-        msg = MIMEMultipart()
+        enviar_email(caminho_db)
 
-        msg["From"] = EMAIL_SENDER
-
-        msg["To"] = EMAIL_RECIPIENT
-
-        if EMAIL_CC:
-            msg["Cc"] = EMAIL_CC
-
-        msg["Subject"] = "SQLite Database Backup"
-
-        with open(file_path, "rb") as file:
-            attachment = MIMEBase("application", "octet-stream")
-
-            attachment.set_payload(file.read())
-
-            encoders.encode_base64(attachment)
-
-            attachment.add_header(
-                "Content-Disposition",
-                f'attachment; filename="{os.path.basename(file_path)}"',
-            )
-
-            msg.attach(attachment)
-
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-            smtp.starttls()
-
-            smtp.login(EMAIL_SENDER, APP_PASSWORD)
-
-            smtp.send_message(msg)
-
-        return {"status": "success", "message": "Backup sent via email."}
+        return {"status": "success", "message": "Backup enviado por e-mail."}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
 
 
-@backup_routes.post("/replace-db")
-async def replace_db(file: UploadFile = File(...)):
-    db_path = os.path.join(os.getcwd(), FILE_NAME)
+@backup_routes.post("/substituir-db")
+async def substituir_db(file: UploadFile = File(...)):
+    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
 
     try:
-        with open(db_path, "wb") as buffer:
+        with open(caminho_db, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        global engine
+        reconectar_banco()
 
-        engine.dispose()
-
-        engine = create_engine(f"sqlite:///{FILE_NAME}", echo=True)
+        return {
+            "status": "success",
+            "message": f"Arquivo '{NOME_ARQUIVO}' substituído com sucesso e conexão reiniciada.",
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error replacing DB: {e}")
-
-    return {
-        "status": "success",
-        "message": f"File '{FILE_NAME}' successfully replaced and engine refreshed.",
-    }
+        raise HTTPException(status_code=500, detail=f"Erro ao substituir o banco: {e}")

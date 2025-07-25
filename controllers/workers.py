@@ -1,3 +1,4 @@
+import json
 import os
 import smtplib
 import tempfile
@@ -43,10 +44,12 @@ from models.user import User
 from models.wage_payment_method import WagePaymentMethod
 from models.workers import (
     GetWorkersVtReportBody,
+    MetricsUpdateRequest,
     PatchWorkersTurnBody,
     Workers,
     WorkersAway,
 )
+from models.workers_metrics import WorkersMetrics
 from models.workers_notations import WorkersNotations
 from pyhints.scales import WorkerDeactivateInput
 from pyhints.workers import PostWorkerNotationInput
@@ -1366,3 +1369,31 @@ def handle_post_request_workers_badges(body: RequestBadgesBody):
             return JSONResponse(
                 content={"detail": f"Erro ao enviar e-mail: {str(e)}"}, status_code=500
             )
+
+
+def handle_update_worker_metrics(metrics_id: int, body: MetricsUpdateRequest):
+    with Session(engine) as session:
+        metrics_record = session.get(WorkersMetrics, metrics_id)
+
+        if not metrics_record:
+            raise HTTPException(status_code=404, detail="Indicador não encontrado.")
+
+        try:
+            existing_metrics = json.loads(metrics_record.metrics or "{}")
+
+            incoming_metrics = json.loads(body.metrics)
+
+            merged = {**existing_metrics, **incoming_metrics}
+
+            metrics_record.metrics = json.dumps(merged)
+
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Erro no JSON: {str(e)}")
+
+        session.add(metrics_record)
+
+        session.commit()
+
+        session.refresh(metrics_record)
+
+        return {"message": "Indicador atualizado com sucesso.", "data": metrics_record}

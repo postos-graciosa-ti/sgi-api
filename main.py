@@ -69,6 +69,7 @@ from starlette.status import HTTP_404_NOT_FOUND
 from unidecode import unidecode
 
 from backup_routes import backup_routes
+from config.database import engine, reconectar_banco
 from controllers.all_subsidiaries_no_review import (
     handle_get_away_return_workers,
     handle_get_workers_without_first_review_in_range_all,
@@ -80,6 +81,7 @@ from controllers.root import (
     handle_on_startup,
 )
 from controllers.wage_payment_method import handle_get_wage_payment_method
+from controllers.workers import handle_update_worker_metrics
 from controllers.workers_parents import (
     handle_delete_workers_parents,
     handle_get_workers_parents,
@@ -92,7 +94,6 @@ from models.applicants import Applicants
 from models.cities import Cities
 from models.civil_status import CivilStatus
 from models.cnh_categories import CnhCategories
-from models.CustomNotification import CustomNotification
 from models.ethnicity import Ethnicity
 from models.function import Function
 from models.genders import Genders
@@ -115,54 +116,12 @@ from models.workers_periodic_reviews import WorkersPeriodicReviews
 from private_routes import private_routes
 from public_routes import public_routes
 from pyhints.no_reviews import SubsidiaryFilter
-from seeds.seed_all import seed_database
-from functions.verify_api_key import verify_api_key
 
 load_dotenv()
 
-NOME_ARQUIVO = "database.db"
-
-DATABASE_URL = f"sqlite:///{os.path.join(os.getcwd(), NOME_ARQUIVO)}"
-
-SMTP_SERVER = config("SMTP_SERVER")
-
-SMTP_PORT = config("SMTP_PORT")
-
-EMAIL_ORIGEM = config("EMAIL_REMETENTE")
-
-SENHA_APP = config("SENHA")
-
-EMAIL_DESTINO = config("EMAIL_REMETENTE")
-
-FRONT_URL = config("FRONT_URL")
-
-API_KEY = config("API_KEY")
-
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONT_URL],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-engine = None
-
-
-def criar_engine():
-    global engine
-
-    engine = create_engine(DATABASE_URL, echo=True)
-
-
-def reconectar_banco():
-    criar_engine()
-
-    SQLModel.metadata.create_all(engine)
-
-    seed_database()
+add_cors_middleware(app)
 
 
 @app.on_event("startup")
@@ -171,6 +130,10 @@ def on_startup():
 
     reconectar_banco()
 
+
+# include backup routes
+
+app.include_router(backup_routes)
 
 # include public routes
 
@@ -181,72 +144,6 @@ for r in public_routes:
 
 for r in private_routes:
     app.include_router(r)
-
-
-def enviar_email(caminho_arquivo: str):
-    if not os.path.isfile(caminho_arquivo):
-        raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
-
-    msg = MIMEMultipart()
-
-    msg["From"] = EMAIL_ORIGEM
-
-    msg["To"] = EMAIL_DESTINO
-
-    msg["Subject"] = "Backup do banco SQLite"
-
-    with open(caminho_arquivo, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-
-        part.set_payload(f.read())
-
-    encoders.encode_base64(part)
-
-    part.add_header("Content-Disposition", f'attachment; filename="{NOME_ARQUIVO}"')
-
-    msg.attach(part)
-
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.starttls()
-
-        smtp.login(EMAIL_ORIGEM, SENHA_APP)
-
-        smtp.send_message(msg)
-
-
-@app.post("/enviar-backup")
-async def enviar_backup(token: str = Depends(verify_api_key)):
-    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
-
-    if not os.path.isfile(caminho_db):
-        raise HTTPException(status_code=404, detail="Arquivo do banco não encontrado.")
-
-    try:
-        enviar_email(caminho_db)
-
-        return {"status": "success", "message": "Backup enviado por e-mail."}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao enviar e-mail: {e}")
-
-
-@app.post("/substituir-db")
-async def substituir_db(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
-    caminho_db = os.path.join(os.getcwd(), NOME_ARQUIVO)
-
-    try:
-        with open(caminho_db, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        reconectar_banco()
-
-        return {
-            "status": "success",
-            "message": f"Arquivo '{NOME_ARQUIVO}' substituído com sucesso e conexão reiniciada.",
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao substituir o banco: {e}")
 
 
 class HireApplicantsRequestProps(BaseModel):
